@@ -1,7 +1,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 
-export interface SelectTemplateProps extends Omit<React.ComponentProps<'select'>, 'disabled' | 'required'> {
+export interface SelectTemplateProps extends Omit<React.ComponentProps<'select'>, 'disabled' | 'required' | 'size'> {
   /** Label rendered above the select (omit for unlabeled filter selects) */
   label?: string
   /** 'default' = forest green medium; 'compact' = uppercase gray tracking-widest */

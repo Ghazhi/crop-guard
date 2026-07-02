@@ -632,7 +632,7 @@ function InterventionCard({ intervention: iv, onEdit, onSuspend, onEnroll, onDel
     <div className={[
       'rounded-xl border overflow-hidden transition-colors',
       iv.status === 'Suspended'
-        ? 'bg-gray-50 border-gray-200 opacity-60 grayscale-[40%]'
+        ? 'bg-gray-50 border-gray-200 opacity-60 grayscale-40'
         : 'bg-white border-gray-200 hover:border-gray-300',
     ].join(' ')}>
       <div className="px-5 py-4 flex items-start gap-4">

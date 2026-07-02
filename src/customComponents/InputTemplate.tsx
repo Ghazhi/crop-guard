@@ -1,7 +1,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 
-export interface InputTemplateProps extends Omit<React.ComponentProps<'input'>, 'disabled' | 'required'> {
+export interface InputTemplateProps extends Omit<React.ComponentProps<'input'>, 'disabled' | 'required' | 'size'> {
   /** Label rendered above the input */
   label?: string
   /** 'default' = forest green medium; 'compact' = uppercase gray tracking-widest */

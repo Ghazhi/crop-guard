@@ -1205,7 +1205,7 @@ function DonutChart({ data }: { data: { name: string; value: number }[] }) {
           {filled.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-        {total > 0 && <Tooltip formatter={(v: number) => [`${v}`, '']} />}
+        {total > 0 && <Tooltip formatter={(v) => [`${v ?? ''}`, '']} />}
       </PieChart>
     </ResponsiveContainer>
   )
@@ -1217,7 +1217,7 @@ function MiniBarChart({ data }: { data: { name: string; value: number }[] }) {
       <BarChart data={data} barSize={20} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
         <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9ca3af' }} />
         <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} allowDecimals={false} />
-        <Tooltip formatter={(v: number) => [`${v}`, '']} />
+        <Tooltip formatter={(v) => [`${v ?? ''}`, '']} />
         <Bar dataKey="value" radius={[3, 3, 0, 0]}>
           {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
         </Bar>

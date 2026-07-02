@@ -231,7 +231,7 @@ export function Main() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number, n: string) => [v, n]} />
+                    <Tooltip formatter={(v, n) => [v ?? '', n]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-3">

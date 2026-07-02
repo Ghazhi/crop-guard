@@ -633,7 +633,7 @@ function CoopEditSheet({
         value={communityId} onChange={e => setCommunityId(e.target.value)}
         options={communities.map(c => ({
           value: c.id,
-          label: c.communityRegion ? `${c.name} · ${c.regionName}` : c.name,
+          label: c.regionName ? `${c.name} · ${c.regionName}` : c.name,
         } as { value: string; label: string }))}
         placeholder="No community" />
 

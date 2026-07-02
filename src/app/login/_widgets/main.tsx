@@ -129,23 +129,19 @@ export function Main() {
         </form>
 
         {/* Footer */}
-        <div className="border-t border-gray-100">
-          <div className="px-6 py-4 text-center space-y-1.5 bg-gray-50">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              By signing in, you agree to our{' '}
-              <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Terms of Service</span>
-              {' '}and{' '}
-              <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Privacy Policy</span>.
-            </p>
-            <p className="text-xs cursor-pointer" style={{ color: '#3D7A56' }}>
-              Need help? Contact our support team
-            </p>
-          </div>
-          <div className="px-6 py-3 text-center border-t border-gray-100 bg-white">
-            <p className="text-xs text-gray-400">
-              Powered by <span className="font-bold" style={{ color: '#3D7A56' }}>asinyo</span>
-            </p>
-          </div>
+        <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 text-center space-y-2">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            By signing in, you agree to our{' '}
+            <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Terms of Service</span>
+            {' '}and{' '}
+            <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Privacy Policy</span>.
+          </p>
+          <p className="text-xs cursor-pointer" style={{ color: '#3D7A56' }}>
+            Need help? Contact our support team
+          </p>
+          <p className="text-xs text-gray-400 pt-1">
+            Powered by <span className="font-bold" style={{ color: '#3D7A56' }}>asinyo</span>
+          </p>
         </div>
 
       </div>

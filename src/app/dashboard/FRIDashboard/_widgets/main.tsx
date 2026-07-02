@@ -6,7 +6,7 @@ import {
   ArrowUp, ArrowDown, Minus, X, Phone, Hash,
   BarChart2, Layers, CheckSquare, Zap,
   User, CalendarDays, MapPin, Map, Home, Leaf, Ruler, BadgeCheck,
-  BookOpen, Users, ChevronRight, Cpu,
+  BookOpen, Users, ChevronRight, Cpu, LayoutGrid,
 } from 'lucide-react'
 import type { CheckinRecord, BaselineItem } from '../_logics/interface'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -87,16 +87,26 @@ function StatCard({ label, value, valueColor, sub }: {
   )
 }
 
-function ZoneCard({ zone, count }: { zone: FriZone; count: number }) {
+function ZoneCard({ zone, count, selected, onClick }: {
+  zone: FriZone; count: number; selected?: boolean; onClick?: () => void
+}) {
   const c = ZONE_CFG[zone]
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex flex-col items-start gap-2">
-      <p className="text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{count}</p>
+    <button
+      onClick={onClick}
+      className={`w-full text-left rounded-xl border px-4 py-3 flex flex-col items-start gap-2 transition-all ${
+        selected
+          ? 'bg-white border-2'
+          : 'bg-white border border-gray-200 hover:border-gray-300 hover:shadow-sm'
+      }`}
+      style={selected ? { borderColor: c.pillColor } : undefined}
+    >
+      <p className="text-3xl font-bold" style={{ color: selected ? c.pillColor : 'var(--brand-forest)' }}>{count}</p>
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
             style={{ background: c.pillBg, color: c.pillColor }}>
         {c.label}
       </span>
-    </div>
+    </button>
   )
 }
 
@@ -546,6 +556,12 @@ function FarmerDetailSheet({ farmer, open, onClose }: {
                         {/* Expanded content */}
                         {isOpen && (
                           <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-3 bg-gray-50/40">
+                            {/* Verified by */}
+                            {c.verified && c.verifiedBy && (
+                              <p className="text-[11px] text-green-700 font-medium">
+                                Verified by {c.verifiedBy} on {fmtDate(c.date)}
+                              </p>
+                            )}
                             {/* Pillar score cards */}
                             <div className="grid grid-cols-4 gap-2">
                               {([ ['P1', c.pillarScores?.p1 ?? 0, 30], ['P2', c.pillarScores?.p2 ?? 0, 30], ['P3', c.pillarScores?.p3 ?? 0, 20], ['P4', c.pillarScores?.p4 ?? 0, 20] ] as [string, number, number][]).map(([code, score, max]) => {
@@ -635,6 +651,8 @@ export function Main() {
   const [filterProgram, setFilterProgram] = useState('')
   const [filterCohort,  setFilterCohort]  = useState('')
   const [filterStatus,  setFilterStatus]  = useState('')
+  const [filterZone,    setFilterZone]    = useState<FriZone | ''>('')
+  const [showCards,     setShowCards]     = useState(false)
 
   const [focusFarmer, setFocusFarmer] = useState<FRIFarmer | null>(null)
   const [detailOpen,  setDetailOpen]  = useState(false)
@@ -662,8 +680,9 @@ export function Main() {
     if (filterStatus === 'not_scored')    list = list.filter(f => f.currentFri === null)
     if (filterStatus === 'baseline_done') list = list.filter(f => f.baselineDone)
     if (filterStatus === 'help')          list = list.filter(f => f.helpRequested)
+    if (filterZone) list = list.filter(f => f.currentZone === filterZone)
     return list
-  }, [farmers, search, filterProgram, filterCohort, filterStatus])
+  }, [farmers, search, filterProgram, filterCohort, filterStatus, filterZone])
 
   function openDetail(f: FRIFarmer) {
     setFocusFarmer(f)
@@ -682,39 +701,59 @@ export function Main() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowCards(s => !s)}
+            className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-colors ${
+              showCards
+                ? 'border-transparent text-white'
+                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+            }`}
+            style={showCards ? { background: 'var(--brand-forest)' } : undefined}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Overview
+          </button>
           <ButtonTemplate variant="outline" size="sm" leftIcon={<Download className="w-3.5 h-3.5" />} label="Export CSV" />
           <ButtonTemplate variant="ghost" size="sm" isIcon><RefreshCw className="w-4 h-4" /></ButtonTemplate>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-5 gap-3">
-        {loading ? (
-          Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
-        ) : summary && (
-          <>
-            <StatCard label="Total Farmers"   value={summary.totalFarmers} sub="enrolled" />
-            <StatCard label="Avg FRI Score"   value={summary.avgFri ?? '—'} valueColor={summary.avgFri ? 'var(--brand-green)' : undefined} sub="all scored farmers" />
-            <StatCard label="Baselines Done"  value={summary.baselinesDone} sub={`${summary.baselinesPending} pending`} />
-            <StatCard label="Check-ins"       value={summary.totalCheckins} sub={`${summary.verifiedCheckins} verified`} />
-            <StatCard label="Farmers w/ Help" value={summary.helpRequested} valueColor={summary.helpRequested > 0 ? 'var(--brand-amber)' : undefined} sub="help requested" />
-          </>
-        )}
-      </div>
+      {/* Stat + Zone cards (collapsible) */}
+      {showCards && (
+        <>
+          <div className="grid grid-cols-5 gap-3">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
+            ) : summary && (
+              <>
+                <StatCard label="Total Farmers"   value={summary.totalFarmers} sub="enrolled" />
+                <StatCard label="Avg FRI Score"   value={summary.avgFri ?? '—'} valueColor={summary.avgFri ? 'var(--brand-green)' : undefined} sub="all scored farmers" />
+                <StatCard label="Baselines Done"  value={summary.baselinesDone} sub={`${summary.baselinesPending} pending`} />
+                <StatCard label="Check-ins"       value={summary.totalCheckins} sub={`${summary.verifiedCheckins} verified`} />
+                <StatCard label="Farmers w/ Help" value={summary.helpRequested} valueColor={summary.helpRequested > 0 ? 'var(--brand-amber)' : undefined} sub="help requested" />
+              </>
+            )}
+          </div>
 
-      {/* Zone cards */}
-      <div className="grid grid-cols-4 gap-3">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
-        ) : summary && (
-          <>
-            <ZoneCard zone="Resilience Leader"  count={summary.leaderCount}  />
-            <ZoneCard zone="Resilience Builder" count={summary.builderCount} />
-            <ZoneCard zone="Resilience Learner" count={summary.learnerCount} />
-            <ZoneCard zone="Resilience Starter" count={summary.starterCount} />
-          </>
-        )}
-      </div>
+          <div className="grid grid-cols-4 gap-3">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
+            ) : summary && (
+              <>
+                {(['Resilience Leader', 'Resilience Builder', 'Resilience Learner', 'Resilience Starter'] as FriZone[]).map(zone => (
+                  <ZoneCard
+                    key={zone}
+                    zone={zone}
+                    count={zone === 'Resilience Leader' ? summary.leaderCount : zone === 'Resilience Builder' ? summary.builderCount : zone === 'Resilience Learner' ? summary.learnerCount : summary.starterCount}
+                    selected={filterZone === zone}
+                    onClick={() => setFilterZone(prev => prev === zone ? '' : zone)}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-2 flex-wrap">

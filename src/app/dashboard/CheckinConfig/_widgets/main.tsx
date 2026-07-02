@@ -1,13 +1,25 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Download, X } from 'lucide-react'
+import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Download, X, Building2 } from 'lucide-react'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type Crop   = 'maize' | 'soybean'
+type Crop   = 'maize' | 'soybean' | 'rice' | 'cassava' | 'yam' | 'groundnut' | 'cowpea' | 'tomato'
 type Pillar = 'agronomy' | 'climate_smart' | 'advisory_commitment' | 'farm_enterprise'
 type Section = 'weekly' | 'cohort' | 'baseline'
+
+// ─── organisations ────────────────────────────────────────────────────────────
+
+interface Org { id: string; name: string }
+
+const ORGS: Org[] = [
+  { id: 'org-001', name: 'Barclays Ghana'       },
+  { id: 'org-002', name: 'Fidelity Bank'        },
+  { id: 'org-003', name: 'GCB Bank'             },
+  { id: 'org-004', name: 'Absa Ghana'           },
+  { id: 'org-005', name: 'Agricultural DFI'     },
+]
 
 interface Question { id: string; pillar: Pillar; label: string; hint?: string; active: boolean }
 interface Week      { week: number; title: string; questions: Question[] }
@@ -220,6 +232,53 @@ const SOYBEAN_SEED: Week[] = [
   { week: 11, title: 'Post-Harvest & Storage',           questions: [q('s11q1','agronomy','I dried my grain to safe moisture'),q('s11q2','agronomy','I stored my grain appropriately'),q('s11q3','climate_smart','I used a climate-smart storage method'),q('s11q4','advisory_commitment','I completed the post-harvest debrief'),q('s11q5','farm_enterprise','I calculated my gross margin'),q('s11q6','farm_enterprise','I started planning for next season')] },
 ]
 
+const RICE_SEED: Week[] = [
+  { week: 1, title: 'Land Preparation & Flooding', questions: [q('r1q1','agronomy','I levelled my paddy field'),q('r1q2','agronomy','I prepared bunds and water channels'),q('r1q3','climate_smart','I managed water intake efficiently'),q('r1q4','advisory_commitment','I attended the pre-season rice advisory'),q('r1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Nursery & Transplanting',     questions: [q('r2q1','agronomy','I prepared my nursery bed'),q('r2q2','agronomy','I transplanted at the correct age'),q('r2q3','climate_smart','I maintained correct water depth at transplanting'),q('r2q4','advisory_commitment','I followed transplanting advisory'),q('r2q5','farm_enterprise','I arranged transplanting labour')] },
+  { week: 3, title: 'Tillering & Fertilisation',   questions: [q('r3q1','agronomy','My crop has reached tillering stage'),q('r3q2','agronomy','I applied basal fertiliser correctly'),q('r3q3','climate_smart','I maintained AWD (alternate wetting/drying)'),q('r3q4','advisory_commitment','I received a tillering advisory'),q('r3q5','farm_enterprise','I recorded fertiliser costs')] },
+  { week: 4, title: 'Weed & Pest Management',      questions: [q('r4q1','agronomy','I completed weeding on time'),q('r4q2','agronomy','I scouted for stem borer'),q('r4q3','climate_smart','I managed flood events'),q('r4q4','advisory_commitment','I reported pest findings to my agent'),q('r4q5','farm_enterprise','I recorded weeding costs')] },
+  { week: 5, title: 'Panicle Initiation',          questions: [q('r5q1','agronomy','My crop has reached panicle initiation'),q('r5q2','agronomy','I applied top-dress nitrogen'),q('r5q3','climate_smart','I managed water during panicle initiation'),q('r5q4','advisory_commitment','I confirmed panicle stage with agent'),q('r5q5','farm_enterprise','I updated my yield estimate')] },
+  { week: 6, title: 'Heading & Grain Fill',        questions: [q('r6q1','agronomy','Heading is uniform'),q('r6q2','agronomy','I scouted for blast disease'),q('r6q3','climate_smart','I applied final irrigation correctly'),q('r6q4','advisory_commitment','I received heading advisory'),q('r6q5','farm_enterprise','I arranged harvest equipment')] },
+  { week: 7, title: 'Harvesting & Post-Harvest',   questions: [q('r7q1','agronomy','I harvested at correct moisture'),q('r7q2','agronomy','I minimised threshing losses'),q('r7q3','climate_smart','I dried grain in a clean area'),q('r7q4','advisory_commitment','I shared yield data with my agent'),q('r7q5','farm_enterprise','I calculated gross margin')] },
+]
+
+const CASSAVA_SEED: Week[] = [
+  { week: 1, title: 'Land Prep & Planting',        questions: [q('c1q1','agronomy','I used healthy, disease-free cuttings'),q('c1q2','agronomy','I planted at the correct spacing'),q('c1q3','climate_smart','I planted on ridges to improve drainage'),q('c1q4','advisory_commitment','I attended the pre-season training'),q('c1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Establishment & Early Weeds', questions: [q('c2q1','agronomy','My crop has established well'),q('c2q2','agronomy','I controlled early-season weeds'),q('c2q3','climate_smart','I managed soil erosion'),q('c2q4','advisory_commitment','My agent completed an early visit'),q('c2q5','farm_enterprise','I recorded planting costs')] },
+  { week: 3, title: 'Pest & Disease Scouting',     questions: [q('c3q1','agronomy','I scouted for cassava mosaic disease'),q('c3q2','agronomy','I scouted for mealybug'),q('c3q3','climate_smart','I removed and destroyed diseased plants'),q('c3q4','advisory_commitment','I reported disease findings to agent'),q('c3q5','farm_enterprise','I estimated replanting cost if needed')] },
+  { week: 4, title: 'Mid-Season Assessment',       questions: [q('c4q1','agronomy','My canopy is healthy and closed'),q('c4q2','agronomy','I applied fertiliser mid-season'),q('c4q3','climate_smart','I maintained soil cover'),q('c4q4','advisory_commitment','I received mid-season advisory'),q('c4q5','farm_enterprise','I updated expenditure records')] },
+  { week: 5, title: 'Harvest Readiness',           questions: [q('c5q1','agronomy','I assessed root size for maturity'),q('c5q2','agronomy','I planned staggered harvest to reduce waste'),q('c5q3','climate_smart','I harvested during dry conditions'),q('c5q4','advisory_commitment','I confirmed harvest date with agent'),q('c5q5','farm_enterprise','I arranged a buyer or processor')] },
+]
+
+const YAM_SEED: Week[] = [
+  { week: 1, title: 'Mound Preparation & Seeding', questions: [q('y1q1','agronomy','I prepared mounds at correct height'),q('y1q2','agronomy','I used healthy seed yam pieces'),q('y1q3','climate_smart','I oriented mounds to reduce erosion'),q('y1q4','advisory_commitment','I attended yam pre-season training'),q('y1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Staking & Early Growth',      questions: [q('y2q1','agronomy','I staked all mounds'),q('y2q2','agronomy','I controlled early-season weeds'),q('y2q3','climate_smart','I managed shade levels'),q('y2q4','advisory_commitment','My agent visited during staking'),q('y2q5','farm_enterprise','I recorded staking costs')] },
+  { week: 3, title: 'Vine & Tuber Development',    questions: [q('y3q1','agronomy','Vine growth is vigorous and healthy'),q('y3q2','agronomy','I scouted for yam beetle'),q('y3q3','climate_smart','I managed vine damage from weather'),q('y3q4','advisory_commitment','I received tuber development advisory'),q('y3q5','farm_enterprise','I updated yield estimate')] },
+  { week: 4, title: 'Harvest & Storage',           questions: [q('y4q1','agronomy','I harvested at correct maturity'),q('y4q2','agronomy','I cured my yam properly before storage'),q('y4q3','climate_smart','I stored in a ventilated yam barn'),q('y4q4','advisory_commitment','I shared harvest data with agent'),q('y4q5','farm_enterprise','I calculated gross margin')] },
+]
+
+const GROUNDNUT_SEED: Week[] = [
+  { week: 1, title: 'Land Prep & Planting',        questions: [q('g1q1','agronomy','I planted at the correct spacing'),q('g1q2','agronomy','I treated seed with fungicide'),q('g1q3','climate_smart','I planted on well-drained soil'),q('g1q4','advisory_commitment','I attended pre-season groundnut training'),q('g1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Establishment & Pegging',     questions: [q('g2q1','agronomy','Germination rate is good'),q('g2q2','agronomy','Pegging has started uniformly'),q('g2q3','climate_smart','I maintained soil moisture during pegging'),q('g2q4','advisory_commitment','I received pegging advisory'),q('g2q5','farm_enterprise','I recorded input costs')] },
+  { week: 3, title: 'Weeding & Pest Control',      questions: [q('g3q1','agronomy','I completed timely weeding'),q('g3q2','agronomy','I scouted for leafminer'),q('g3q3','climate_smart','I avoided deep cultivation near pegs'),q('g3q4','advisory_commitment','I reported pest findings to agent'),q('g3q5','farm_enterprise','I recorded weeding costs')] },
+  { week: 4, title: 'Harvest & Drying',            questions: [q('g4q1','agronomy','I harvested at correct maturity'),q('g4q2','agronomy','I dried pods on raised racks'),q('g4q3','climate_smart','I avoided drying on bare soil'),q('g4q4','advisory_commitment','I confirmed harvest timing with agent'),q('g4q5','farm_enterprise','I calculated gross margin')] },
+]
+
+const COWPEA_SEED: Week[] = [
+  { week: 1, title: 'Planting & Establishment',    questions: [q('cp1q1','agronomy','I used improved cowpea variety'),q('cp1q2','agronomy','I planted at the correct seed rate'),q('cp1q3','climate_smart','I timed planting to reliable rainfall'),q('cp1q4','advisory_commitment','I attended pre-season advisory'),q('cp1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Weed & Pest Management',      questions: [q('cp2q1','agronomy','I completed first weeding'),q('cp2q2','agronomy','I scouted for thrips and aphids'),q('cp2q3','climate_smart','I preserved beneficial shade cover'),q('cp2q4','advisory_commitment','I received pest advisory'),q('cp2q5','farm_enterprise','I recorded weeding costs')] },
+  { week: 3, title: 'Flowering & Pod Set',         questions: [q('cp3q1','agronomy','Flowering is uniform'),q('cp3q2','agronomy','I scouted for pod borer'),q('cp3q3','climate_smart','I managed drought stress at flowering'),q('cp3q4','advisory_commitment','I reported pod set to agent'),q('cp3q5','farm_enterprise','I updated yield estimate')] },
+  { week: 4, title: 'Harvest & Storage',           questions: [q('cp4q1','agronomy','I harvested at correct maturity'),q('cp4q2','agronomy','I dried grain before storage'),q('cp4q3','climate_smart','I used hermetic bags for storage'),q('cp4q4','advisory_commitment','I shared yield data with agent'),q('cp4q5','farm_enterprise','I calculated gross margin')] },
+]
+
+const TOMATO_SEED: Week[] = [
+  { week: 1, title: 'Nursery & Transplanting',     questions: [q('t1q1','agronomy','I raised seedlings in a protected nursery'),q('t1q2','agronomy','I transplanted at correct seedling size'),q('t1q3','climate_smart','I hardened off seedlings before transplant'),q('t1q4','advisory_commitment','I attended pre-season tomato training'),q('t1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Staking & Early Management',  questions: [q('t2q1','agronomy','I staked all plants'),q('t2q2','agronomy','I pruned suckers correctly'),q('t2q3','climate_smart','I applied mulch to conserve moisture'),q('t2q4','advisory_commitment','I received early-growth advisory'),q('t2q5','farm_enterprise','I recorded establishment costs')] },
+  { week: 3, title: 'Pest & Disease Management',   questions: [q('t3q1','agronomy','I scouted for early blight'),q('t3q2','agronomy','I applied fungicide on schedule'),q('t3q3','climate_smart','I avoided overhead irrigation'),q('t3q4','advisory_commitment','I reported disease pressure to agent'),q('t3q5','farm_enterprise','I recorded spray costs')] },
+  { week: 4, title: 'Flowering & Fruit Set',       questions: [q('t4q1','agronomy','Flowering is uniform'),q('t4q2','agronomy','I managed blossom drop'),q('t4q3','climate_smart','I maintained consistent soil moisture'),q('t4q4','advisory_commitment','I received fruit-set advisory'),q('t4q5','farm_enterprise','I updated my yield estimate')] },
+  { week: 5, title: 'Harvest & Post-Harvest',      questions: [q('t5q1','agronomy','I harvested at the correct ripeness stage'),q('t5q2','agronomy','I minimised bruising during harvest'),q('t5q3','climate_smart','I stored fruit in a cool ventilated space'),q('t5q4','advisory_commitment','I shared yield data with agent'),q('t5q5','farm_enterprise','I calculated gross margin')] },
+]
+
 // ─── baseline activities data ─────────────────────────────────────────────────
 
 interface BaselineActivity { id: string; pillar: 'p1'|'p2'|'p3'|'p4'; label: string; desc: string }
@@ -286,20 +345,70 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 
 // ─── main ─────────────────────────────────────────────────────────────────────
 
+interface OrgConfig {
+  maizeWeeks:     Week[]
+  soybeanWeeks:   Week[]
+  riceWeeks:      Week[]
+  cassavaWeeks:   Week[]
+  yamWeeks:       Week[]
+  groundnutWeeks: Week[]
+  cowpeaWeeks:    Week[]
+  tomatoWeeks:    Week[]
+  baselineActive: Record<string, boolean>
+}
+
+function cloneWeeks(seed: Week[]): Week[] {
+  return seed.map(w => ({ ...w, questions: w.questions.map(q2 => ({ ...q2 })) }))
+}
+
+function freshConfig(): OrgConfig {
+  return {
+    maizeWeeks:     cloneWeeks(MAIZE_SEED),
+    soybeanWeeks:   cloneWeeks(SOYBEAN_SEED),
+    riceWeeks:      cloneWeeks(RICE_SEED),
+    cassavaWeeks:   cloneWeeks(CASSAVA_SEED),
+    yamWeeks:       cloneWeeks(YAM_SEED),
+    groundnutWeeks: cloneWeeks(GROUNDNUT_SEED),
+    cowpeaWeeks:    cloneWeeks(COWPEA_SEED),
+    tomatoWeeks:    cloneWeeks(TOMATO_SEED),
+    baselineActive: Object.fromEntries(BASELINE_SEED.map(a => [a.id, a.id !== 'savings_habit'])),
+  }
+}
+
 export function Main() {
   const [section, setSection]       = useState<Section>('weekly')
   const [crop, setCrop]             = useState<Crop>('maize')
   const [expandedWeeks, setExpanded] = useState<Set<number>>(new Set([1]))
-  const [maizeWeeks, setMaizeWeeks]  = useState<Week[]>(MAIZE_SEED.map(w => ({
-    ...w, questions: w.questions.map(q2 => ({ ...q2 }))
-  })))
-  const [soybeanWeeks, setSoybeanWeeks] = useState<Week[]>(SOYBEAN_SEED.map(w => ({
-    ...w, questions: w.questions.map(q2 => ({ ...q2 }))
-  })))
+  const [org, setOrg]               = useState<string>(ORGS[0].id)
 
-  const [baselineActive, setBaselineActive] = useState<Record<string, boolean>>(
-    Object.fromEntries(BASELINE_SEED.map(a => [a.id, a.id !== 'savings_habit']))
+  const [orgConfigs, setOrgConfigs] = useState<Record<string, OrgConfig>>(() =>
+    Object.fromEntries(ORGS.map(o => [o.id, freshConfig()]))
   )
+
+  const cfg            = orgConfigs[org]
+  const baselineActive = cfg.baselineActive
+
+  type WeekUpdater = Week[] | ((prev: Week[]) => Week[])
+  function makeWeekSetter(key: keyof OrgConfig) {
+    return (updater: WeekUpdater) => {
+      setOrgConfigs(prev => {
+        const cur = prev[org][key] as Week[]
+        return { ...prev, [org]: { ...prev[org], [key]: typeof updater === 'function' ? updater(cur) : updater } }
+      })
+    }
+  }
+  const setMaizeWeeks     = makeWeekSetter('maizeWeeks')
+  const setSoybeanWeeks   = makeWeekSetter('soybeanWeeks')
+  const setRiceWeeks      = makeWeekSetter('riceWeeks')
+  const setCassavaWeeks   = makeWeekSetter('cassavaWeeks')
+  const setYamWeeks       = makeWeekSetter('yamWeeks')
+  const setGroundnutWeeks = makeWeekSetter('groundnutWeeks')
+  const setCowpeaWeeks    = makeWeekSetter('cowpeaWeeks')
+  const setTomatoWeeks    = makeWeekSetter('tomatoWeeks')
+
+  function setBaselineActive(updater: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) {
+    setOrgConfigs(prev => ({ ...prev, [org]: { ...prev[org], baselineActive: typeof updater === 'function' ? updater(prev[org].baselineActive) : updater } }))
+  }
 
   const [addingTo, setAddingTo]     = useState<{ weekNum: number } | null>(null)
   const [newPillar, setNewPillar]   = useState<Pillar>('agronomy')
@@ -307,8 +416,38 @@ export function Main() {
   const [newHint, setNewHint]       = useState('')
   const [newActive, setNewActive]   = useState(true)
 
-  const weeks    = crop === 'maize' ? maizeWeeks    : soybeanWeeks
-  const setWeeks = crop === 'maize' ? setMaizeWeeks : setSoybeanWeeks
+  const CROP_WEEKS: Record<Crop, Week[]> = {
+    maize:     cfg.maizeWeeks,
+    soybean:   cfg.soybeanWeeks,
+    rice:      cfg.riceWeeks,
+    cassava:   cfg.cassavaWeeks,
+    yam:       cfg.yamWeeks,
+    groundnut: cfg.groundnutWeeks,
+    cowpea:    cfg.cowpeaWeeks,
+    tomato:    cfg.tomatoWeeks,
+  }
+  const CROP_SETTERS: Record<Crop, (u: WeekUpdater) => void> = {
+    maize:     setMaizeWeeks,
+    soybean:   setSoybeanWeeks,
+    rice:      setRiceWeeks,
+    cassava:   setCassavaWeeks,
+    yam:       setYamWeeks,
+    groundnut: setGroundnutWeeks,
+    cowpea:    setCowpeaWeeks,
+    tomato:    setTomatoWeeks,
+  }
+  const CROP_SEEDS: Record<Crop, Week[]> = {
+    maize:     MAIZE_SEED,
+    soybean:   SOYBEAN_SEED,
+    rice:      RICE_SEED,
+    cassava:   CASSAVA_SEED,
+    yam:       YAM_SEED,
+    groundnut: GROUNDNUT_SEED,
+    cowpea:    COWPEA_SEED,
+    tomato:    TOMATO_SEED,
+  }
+  const weeks    = CROP_WEEKS[crop]
+  const setWeeks = CROP_SETTERS[crop]
 
   const totalQ  = weeks.reduce((a, w) => a + w.questions.length, 0)
   const activeQ = weeks.reduce((a, w) => a + w.questions.filter(q2 => q2.active).length, 0)
@@ -356,9 +495,7 @@ export function Main() {
   }
 
   function handleReseed() {
-    const seed = crop === 'maize' ? MAIZE_SEED : SOYBEAN_SEED
-    const fresh = seed.map(w => ({ ...w, questions: w.questions.map(q2 => ({ ...q2 })) }))
-    if (crop === 'maize') setMaizeWeeks(fresh); else setSoybeanWeeks(fresh)
+    setWeeks(cloneWeeks(CROP_SEEDS[crop]))
   }
 
   const SECTION_NAV = [
@@ -370,12 +507,28 @@ export function Main() {
   return (
     <div className="flex flex-col gap-4 p-6">
       {/* page header */}
-      <div>
-        <div className="flex items-center gap-2 mb-0.5">
-          <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--brand-forest)' }} />
-          <h1 className="text-xl font-bold text-gray-900">Check-in Configuration</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--brand-forest)' }} />
+            <h1 className="text-xl font-bold text-gray-900">Check-in Configuration</h1>
+          </div>
+          <p className="text-sm text-gray-500 ml-7">Configure weekly check-in questions, cohort schedules, and baseline activities</p>
         </div>
-        <p className="text-sm text-gray-500 ml-7">Configure weekly check-in questions, cohort schedules, and baseline activities</p>
+        {/* Organisation selector */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+          <div className="relative">
+            <select
+              value={org}
+              onChange={e => setOrg(e.target.value)}
+              className="h-9 pl-3 pr-8 text-sm border border-gray-200 rounded-lg bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-(--brand-dark)/30 font-medium"
+              style={{ color: 'var(--brand-forest)', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234A5568' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '12px' }}
+            >
+              {ORGS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* body: sidebar + content */}
@@ -417,18 +570,20 @@ export function Main() {
               </div>
 
               {/* crop tabs */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
-                {(['maize', 'soybean'] as Crop[]).map(c => (
+              <div className="overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit min-w-max">
+                {(['maize', 'soybean', 'rice', 'cassava', 'yam', 'groundnut', 'cowpea', 'tomato'] as Crop[]).map(c => (
                   <button
                     key={c}
                     onClick={() => setCrop(c)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                       crop === c ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    {c === 'maize' ? 'Maize' : 'Soybeans'}
+                    {{ maize: 'Maize', soybean: 'Soybeans', rice: 'Rice', cassava: 'Cassava', yam: 'Yam', groundnut: 'Groundnut', cowpea: 'Cowpea', tomato: 'Tomato' }[c]}
                   </button>
                 ))}
+              </div>
               </div>
 
               {/* stats + re-seed */}
@@ -628,41 +783,38 @@ export function Main() {
                 <h2 className="text-base font-bold text-gray-900">Baseline Activities</h2>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex flex-col gap-3">
                 {BASELINE_PILLARS.map(pillar => {
                   const activities = BASELINE_SEED.filter(a => a.pillar === pillar.id)
                   return (
-                    <div key={pillar.id}>
-                      {/* pillar strip */}
-                      <div className="px-4 py-2" style={{ background: pillar.strip }}>
-                        <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color: pillar.color }}>
-                          {pillar.label}
-                        </p>
-                      </div>
+                    <div key={pillar.id} className="flex flex-col gap-1.5">
+                      {/* pillar label */}
+                      <p className="text-xs font-semibold uppercase tracking-wider px-1" style={{ color: pillar.color }}>
+                        {pillar.label}
+                      </p>
                       {/* activity rows */}
-                      {activities.map(activity => {
-                        const active = baselineActive[activity.id] ?? true
-                        return (
-                          <div
-                            key={activity.id}
-                            className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p
-                                className="text-sm font-medium leading-tight"
-                                style={{ color: active ? pillar.color : '#9ca3af' }}
-                              >
-                                {activity.label}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-0.5">{activity.desc}</p>
+                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderLeftColor: pillar.color, borderLeftWidth: 3 }}>
+                        {activities.map(activity => {
+                          const active = baselineActive[activity.id] ?? true
+                          return (
+                            <div
+                              key={activity.id}
+                              className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium leading-tight ${active ? 'text-gray-800' : 'text-gray-400'}`}>
+                                  {activity.label}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5">{activity.desc}</p>
+                              </div>
+                              <Toggle
+                                checked={active}
+                                onChange={v => setBaselineActive(prev => ({ ...prev, [activity.id]: v }))}
+                              />
                             </div>
-                            <Toggle
-                              checked={active}
-                              onChange={v => setBaselineActive(prev => ({ ...prev, [activity.id]: v }))}
-                            />
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
                   )
                 })}

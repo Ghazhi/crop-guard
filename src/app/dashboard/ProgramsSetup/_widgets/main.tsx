@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   ChevronDown, ChevronRight, Plus, Pencil, PowerOff,
-  ToggleRight, Trash2, Users, GitBranch, Check, X,
+  ToggleRight, Trash2, Users, GitBranch, Check, X, Eye, Calendar, Wheat,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CardTemplate } from '@/customComponents/CardTemplate'
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sheet'
 import { getPrograms } from '../_logics/functions'
 import type { Program, Cohort } from '../_logics/interface'
+import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 
 /* ── constants ──────────────────────────────────────────────────────────────── */
 
@@ -473,50 +474,212 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
   )
 }
 
+/* ── CohortFarmersSheet ─────────────────────────────────────────────────────── */
+
+function avatarStyle(name: string) {
+  const colors = [
+    ['#D1FAE5','#065F46'],['#DBEAFE','#1E40AF'],['#FEF3C7','#92400E'],
+    ['#FCE7F3','#9D174D'],['#EDE9FE','#5B21B6'],['#FEE2E2','#991B1B'],
+  ]
+  const i = name.charCodeAt(0) % colors.length
+  return { bg: colors[i][0], fg: colors[i][1] }
+}
+
+function CohortFarmersSheet({ open, onClose, cohort, programName }: {
+  open: boolean
+  onClose: () => void
+  cohort: Cohort | null
+  programName: string
+}) {
+  if (!cohort) return null
+
+  const farmers = FARMERS_LIST.filter(f => f.enrollment?.cohortId === cohort.id)
+
+  return (
+    <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <SheetContent side="right" showCloseButton className="w-full sm:max-w-md flex flex-col p-0 gap-0">
+        <SheetHeader className="px-6 py-4 border-b border-gray-100">
+          <SheetTitle style={{ color: 'var(--brand-forest)' }}>
+            {cohort.name} — Farmers
+          </SheetTitle>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {cohort.region} · {cohort.district} ·{' '}
+            <span style={{ color: 'var(--brand-green)' }}>
+              {farmers.length}/{cohort.targetCount} enrolled
+            </span>
+          </p>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto">
+          {farmers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8 py-20">
+              <Users className="w-10 h-10 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-500">No farmers enrolled yet</p>
+              <p className="text-xs text-gray-400">
+                Enroll farmers from the{' '}
+                <span style={{ color: 'var(--brand-green)' }}>Farmers page</span>.
+              </p>
+            </div>
+          ) : (
+            <div className="px-4 py-3 space-y-1">
+              {farmers.map(f => {
+                const av = avatarStyle(f.fullName)
+                return (
+                  <div key={f.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
+                      style={{ background: av.bg, color: av.fg }}>
+                      {f.fullName.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
+                        {f.fullName}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {f.phone}{f.region ? ` · ${REGION_OPTIONS.find(r => r.value.toLowerCase() === f.region.toLowerCase())?.label ?? f.region}` : ''}
+                      </p>
+                    </div>
+                    {f.currentFri != null && (
+                      <span className="text-xs font-bold shrink-0" style={{ color: 'var(--brand-forest)' }}>
+                        FRI {f.currentFri}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/* ── CohortDetailsSheet ─────────────────────────────────────────────────────── */
+
+function CohortDetailsSheet({ open, cohort, programName, onClose, onEdit }: {
+  open: boolean
+  cohort: Cohort | null
+  programName: string
+  onClose: () => void
+  onEdit: () => void
+}) {
+  if (!cohort) return null
+  const filled = pct(cohort.enrolledCount, cohort.targetCount)
+
+  return (
+    <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <SheetContent side="right" showCloseButton className="w-full sm:max-w-md flex flex-col p-0 gap-0">
+        <SheetHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-start justify-between pr-6">
+            <div className="flex-1 min-w-0">
+              <SheetTitle style={{ color: 'var(--brand-forest)' }}>{cohort.name}</SheetTitle>
+              <p className="text-xs text-gray-400 mt-0.5">{programName}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <BadgeTemplate label={cohort.status} variant={cohort.status === 'Active' ? 'success' : 'neutral'} size="sm" />
+              <ButtonTemplate
+                variant="outline" size="sm"
+                leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                label="Edit"
+                onClick={() => { onClose(); onEdit() }}
+              />
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* Location */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Region</span>
+              <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{cohort.region}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">District</span>
+              <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{cohort.district}</span>
+            </div>
+            {cohort.agentName && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Agent</span>
+                <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{cohort.agentName}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Enrollment progress */}
+          <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>Enrollment</span>
+              <span className="text-gray-400 tabular-nums">{cohort.enrolledCount} / {cohort.targetCount}</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+            </div>
+            <p className="text-xs text-gray-400">{filled}% of target reached</p>
+          </div>
+
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 /* ── CohortRow ──────────────────────────────────────────────────────────────── */
 
-function CohortRow({ cohort, programs, onUpdateCohort, onDeleteCohort }: {
+function CohortRow({ cohort, programs, programName, onUpdateCohort, onDeleteCohort }: {
   cohort: Cohort
   programs: Program[]
+  programName: string
   onUpdateCohort: (updated: Cohort) => void
   onDeleteCohort: (id: string) => void
 }) {
   const toast    = useToast()
   const filled   = pct(cohort.enrolledCount, cohort.targetCount)
-  const [editOpen, setEditOpen] = useState(false)
+  const isActive = cohort.status === 'Active'
+  const [viewOpen,    setViewOpen]    = useState(false)
+  const [editOpen,    setEditOpen]    = useState(false)
+  const [farmersOpen, setFarmersOpen] = useState(false)
+
+  function handleToggle() {
+    const next: Cohort['status'] = isActive ? 'Inactive' : 'Active'
+    onUpdateCohort({ ...cohort, status: next })
+    toast.success(`${cohort.name} ${next === 'Active' ? 'activated' : 'deactivated'}`)
+  }
 
   return (
     <>
-      <div className="border-t hover:bg-white/50 transition-colors" style={{ borderColor: 'var(--brand-pale)' }}>
+      <div
+        className={cn('border-t cursor-pointer transition-colors hover:bg-gray-50', !isActive && 'opacity-50')}
+        style={{ borderColor: '#e5e7eb' }}
+        onClick={() => setViewOpen(true)}
+      >
         {/* Row 1: icon · name · actions */}
         <div className="flex items-center gap-2.5 px-5 pt-3 pb-1">
-          <GitBranch className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: 'var(--brand-mid)' }} />
-          <p className="flex-1 text-sm font-semibold min-w-0 truncate" style={{ color: 'var(--brand-forest)' }}>
+          <GitBranch className="w-3.5 h-3.5 shrink-0 mt-0.5 text-gray-400" />
+          <p className="flex-1 text-sm font-bold min-w-0 truncate text-gray-800">
             {cohort.name}
           </p>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
             <ButtonTemplate
               variant="ghost" size="sm" isIcon
               leftIcon={<Users className="w-3.5 h-3.5" />}
-              className="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200"
-              onClick={() => toast.info(`View farmers in ${cohort.name}`)}
-            />
-            <ButtonTemplate
-              variant="outline" size="sm"
-              leftIcon={<Pencil className="w-3 h-3" />}
-              label="Edit"
-              onClick={() => setEditOpen(true)}
+              className="text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200"
+              title="View farmers"
+              onClick={() => setFarmersOpen(true)}
             />
             <ButtonTemplate
               variant="ghost" size="sm" isIcon
               leftIcon={<ToggleRight className="w-4 h-4" />}
-              className="text-amber-500 hover:text-amber-600 hover:bg-amber-50"
-              onClick={() => toast.info(`Toggle ${cohort.name}`)}
+              className={isActive ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50' : 'text-green-500 hover:text-green-600 hover:bg-green-50'}
+              title={isActive ? 'Deactivate cohort' : 'Activate cohort'}
+              onClick={handleToggle}
             />
             <ButtonTemplate
               variant="ghost" size="sm" isIcon
               leftIcon={<Trash2 className="w-3.5 h-3.5" />}
               className="text-red-400 hover:text-red-500 hover:bg-red-50"
+              title="Delete cohort"
               onClick={() => {
                 onDeleteCohort(cohort.id)
                 toast.success(`${cohort.name} removed`)
@@ -524,32 +687,153 @@ function CohortRow({ cohort, programs, onUpdateCohort, onDeleteCohort }: {
             />
           </div>
         </div>
-        {/* Row 2: location */}
-        <p className="px-5 pl-7.5 text-xs text-gray-400 pb-2">
-          {cohort.region} · {cohort.district} ·{' '}
-          <span style={{ color: 'var(--brand-forest)' }}>{cohort.agentName}</span>
-        </p>
+        {/* Row 2: location + agent chip */}
+        <div className="px-5 pl-7.5 pb-2 flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-gray-600">{cohort.region} · {cohort.district}</span>
+          {cohort.agentName ? (
+            <span className="group/chip inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-xs font-medium text-white"
+                  style={{ backgroundColor: 'var(--brand-forest)' }}>
+              {cohort.agentName}
+              <button
+                onClick={e => { e.stopPropagation(); onUpdateCohort({ ...cohort, agentName: '' }); toast.success(`${cohort.agentName} unassigned`) }}
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 hover:bg-white/20 transition-opacity"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No agent</span>
+          )}
+        </div>
         {/* Row 3: progress */}
         <div className="flex items-center gap-3 px-5 pl-7.5 pb-3">
-          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
           </div>
-          <span className="text-xs text-gray-400 tabular-nums shrink-0">
+          <span className="text-xs font-semibold text-gray-700 tabular-nums shrink-0">
             {cohort.enrolledCount} / {cohort.targetCount}
           </span>
         </div>
       </div>
 
+      <CohortDetailsSheet
+        open={viewOpen}
+        cohort={cohort}
+        programName={programName}
+        onClose={() => setViewOpen(false)}
+        onEdit={() => setEditOpen(true)}
+      />
       <CohortFormSheet
         open={editOpen}
         mode="edit"
-        programName={programs[0]?.name ?? ''}
+        programName={programName}
         programs={programs}
         initial={cohort}
         onSave={data => onUpdateCohort({ ...cohort, ...data })}
         onClose={() => setEditOpen(false)}
       />
+      <CohortFarmersSheet
+        open={farmersOpen}
+        onClose={() => setFarmersOpen(false)}
+        cohort={cohort}
+        programName={programName}
+      />
     </>
+  )
+}
+
+/* ── ProgramDetailsSheet ────────────────────────────────────────────────────── */
+
+function ProgramDetailsSheet({ open, program, onClose, onEdit }: {
+  open: boolean
+  program: Program | null
+  onClose: () => void
+  onEdit: () => void
+}) {
+  if (!program) return null
+  const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
+  const filled        = pct(totalEnrolled, program.targetCount)
+  const statusVariant = program.status === 'Active' ? 'success' : program.status === 'Completed' ? 'info' : 'neutral'
+
+  return (
+    <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
+      <SheetContent side="right" showCloseButton className="w-full sm:max-w-md flex flex-col p-0 gap-0">
+        <SheetHeader className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-start justify-between pr-6">
+            <div className="flex-1 min-w-0">
+              <SheetTitle style={{ color: 'var(--brand-forest)' }}>{program.name}</SheetTitle>
+              <p className="text-xs text-gray-400 mt-0.5">{program.season}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mt-0.5">
+              <BadgeTemplate label={program.status} variant={statusVariant} size="sm" />
+              <ButtonTemplate
+                variant="outline" size="sm"
+                leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                label="Edit"
+                onClick={() => { onClose(); onEdit() }}
+              />
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          {/* Description */}
+          {program.description && (
+            <p className="text-sm text-gray-600 leading-relaxed">{program.description}</p>
+          )}
+
+          {/* Dates */}
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Calendar className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-mid)' }} />
+            <span>{fmtDate(program.startDate)} – {fmtDate(program.endDate)}</span>
+          </div>
+
+          {/* Crops */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Wheat className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-mid)' }} />
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Crops</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5 pl-6">
+              {program.crops.map(c => <BadgeTemplate key={c} label={c} variant="success" size="sm" />)}
+            </div>
+          </div>
+
+          {/* Enrollment progress */}
+          <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>Enrollment</span>
+              <span className="text-gray-400 tabular-nums">{totalEnrolled} / {program.targetCount}</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+            </div>
+            <p className="text-xs text-gray-400">{filled}% of target reached</p>
+          </div>
+
+          {/* Cohorts summary */}
+          {program.cohorts.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                Cohorts ({program.cohorts.length})
+              </p>
+              <div className="space-y-2">
+                {program.cohorts.map(c => (
+                  <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-gray-100 bg-gray-50">
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: 'var(--brand-forest)' }}>{c.name}</p>
+                      <p className="text-xs text-gray-400">{c.region} · {c.district}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 tabular-nums">{c.enrolledCount}/{c.targetCount}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -560,7 +844,8 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
   allPrograms: Program[]
   onUpdate: (updated: Program) => void
 }) {
-  const [expanded,        setExpanded]        = useState(true)
+  const [expanded,        setExpanded]        = useState(false)
+  const [viewOpen,        setViewOpen]        = useState(false)
   const [editProgramOpen, setEditProgramOpen] = useState(false)
   const [addCohortOpen,   setAddCohortOpen]   = useState(false)
   const toast = useToast()
@@ -631,9 +916,9 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
           <div className="flex items-center gap-2">
             <ButtonTemplate
               variant="outline" size="sm"
-              leftIcon={<Pencil className="w-3.5 h-3.5" />}
-              label="Edit"
-              onClick={() => setEditProgramOpen(true)}
+              leftIcon={<Eye className="w-3.5 h-3.5" />}
+              label="View"
+              onClick={() => setViewOpen(true)}
             />
             <ButtonTemplate
               variant="outline" size="sm"
@@ -655,12 +940,13 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         {/* Cohorts */}
         {expanded && program.cohorts.length > 0 && (
           <div className={cn('rounded-b-xl overflow-hidden', !isActive && 'opacity-50 pointer-events-none')}
-            style={{ backgroundColor: 'var(--brand-mint)' }}>
+            style={{ backgroundColor: '#fafcfb' }}>
             {program.cohorts.map(cohort => (
               <CohortRow
                 key={cohort.id}
                 cohort={cohort}
                 programs={allPrograms}
+                programName={program.name}
                 onUpdateCohort={handleUpdateCohort}
                 onDeleteCohort={handleDeleteCohort}
               />
@@ -669,6 +955,12 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         )}
       </CardTemplate>
 
+      <ProgramDetailsSheet
+        open={viewOpen}
+        program={program}
+        onClose={() => setViewOpen(false)}
+        onEdit={() => setEditProgramOpen(true)}
+      />
       <ProgramFormSheet
         open={editProgramOpen}
         mode="edit"
@@ -682,7 +974,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         programName={program.name}
         programs={allPrograms}
         onSave={data => {
-          const newCohort: Cohort = { id: uid('coh'), enrolledCount: 0, ...data }
+          const newCohort: Cohort = { id: uid('coh'), enrolledCount: 0, status: 'Active', ...data }
           onUpdate({ ...program, cohorts: [...program.cohorts, newCohort] })
         }}
         onClose={() => setAddCohortOpen(false)}

@@ -6,6 +6,7 @@ export interface Cohort {
   agentName:    string
   enrolledCount: number
   targetCount:  number
+  status:       'Active' | 'Inactive'
 }
 
 export interface Program {

@@ -9,11 +9,11 @@ import { SelectTemplate }   from '@/customComponents/SelectTemplate'
 import { TextareaTemplate } from '@/customComponents/TextareaTemplate'
 import { BadgeTemplate }    from '@/customComponents/BadgeTemplate'
 import { ConfirmModal }     from '@/customComponents/ConfirmModal'
-import { getInterventions, getPrograms } from '../_logics/functions'
+import { getInterventions, getPrograms, getProgramsWithCohorts } from '../_logics/functions'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import type {
-  Intervention, ProgramOption, InterventionStatus,
-  InterventionType, ApprovalMode, EligibilityRule, ImprovementStep,
+  Intervention, ProgramOption, ProgramWithCohorts, EnrolledCohort,
+  InterventionStatus, InterventionType, ApprovalMode, EligibilityRule, ImprovementStep,
 } from '../_logics/interface'
 import type { Farmer } from '@/app/dashboard/FarmersRegistry/_logics/interface'
 
@@ -54,7 +54,6 @@ const RULE_OPS = [
 
 // ── Form state ─────────────────────────────────────────────────────────────────
 interface FormState {
-  programId:        string
   name:             string
   type:             InterventionType
   season:           string
@@ -69,14 +68,14 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  programId: '', name: '', type: 'Input Loan', season: '',
+  name: '', type: 'Input Loan', season: '',
   valueDescription: '', description: '', minFri: 60, capacity: 5,
   status: 'Active', approval: 'Auto', rules: [], steps: [],
 }
 
 function toForm(i: Intervention): FormState {
   return {
-    programId: i.programId ?? '', name: i.name, type: i.type, season: i.season,
+    name: i.name, type: i.type, season: i.season,
     valueDescription: i.valueDescription, description: i.description,
     minFri: i.minFri, capacity: i.capacity, status: i.status, approval: i.approval,
     rules: i.rules, steps: i.steps,
@@ -88,12 +87,11 @@ interface SheetProps {
   open:     boolean
   mode:     'new' | 'edit'
   initial:  FormState
-  programs: ProgramOption[]
   onSave:   (f: FormState) => void
   onClose:  () => void
 }
 
-function InterventionSheet({ open, mode, initial, programs, onSave, onClose }: SheetProps) {
+function InterventionSheet({ open, mode, initial, onSave, onClose }: SheetProps) {
   const [form, setForm] = useState<FormState>(initial)
   const [simFri, setSimFri] = useState(65)
 
@@ -121,11 +119,6 @@ function InterventionSheet({ open, mode, initial, programs, onSave, onClose }: S
     set('steps', form.steps.map(s => s.id === id ? { ...s, description } : s))
   }
 
-  const programOptions = [
-    { value: '', label: 'Select program' },
-    ...programs.map(p => ({ value: p.id, label: p.name })),
-  ]
-
   return (
     <SheetTemplate
       open={open}
@@ -148,16 +141,6 @@ function InterventionSheet({ open, mode, initial, programs, onSave, onClose }: S
 
         {/* ── Left column ── */}
         <div className="space-y-4">
-          <SelectTemplate
-            label="Program"
-            labelVariant="compact"
-            isRequired
-            size="sm"
-            options={programOptions}
-            value={form.programId}
-            onChange={e => set('programId', e.currentTarget.value)}
-          />
-
           <InputTemplate
             label="Opportunity Name"
             labelVariant="compact"
@@ -386,35 +369,78 @@ const TAB_EMPTY: Record<EnrolTab, { icon: React.ReactNode; message: string }> = 
 }
 
 // ── EnrollSheet ────────────────────────────────────────────────────────────────
-function EnrollSheet({ open, onClose, intervention }: {
-  open: boolean; onClose: () => void; intervention: Intervention | null
+function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts, onUpdateCohorts }: {
+  open: boolean
+  onClose: () => void
+  intervention: Intervention | null
+  onEdit: () => void
+  programsWithCohorts: ProgramWithCohorts[]
+  onUpdateCohorts: (cohorts: EnrolledCohort[]) => void
 }) {
-  const [tab,       setTab]      = useState<EnrolTab>('eligible')
-  const [search,    setSearch]   = useState('')
-  const [selected,  setSelected] = useState<Set<string>>(new Set())
-  const [entries,   setEntries]  = useState<EnrolledEntry[]>([{ farmerId: 'f-001', date: '6/21/2026' }])
-  const [suspended, setSuspended] = useState<Set<string>>(new Set())
-  const [saving,    setSaving]   = useState(false)
+  const [tab,          setTab]         = useState<EnrolTab>('eligible')
+  const [search,       setSearch]      = useState('')
+  const [selected,     setSelected]    = useState<Set<string>>(new Set())
+  const [entries,      setEntries]     = useState<EnrolledEntry[]>([{ farmerId: 'f-001', date: '6/21/2026' }])
+  const [suspended,    setSuspended]   = useState<Set<string>>(new Set())
+  const [saving,       setSaving]      = useState(false)
+  const [filterProg,   setFilterProg]  = useState('')
+  const [filterCohort, setFilterCohort] = useState('')
+  const [addOpen,      setAddOpen]     = useState(false)
+  const [pickProg,     setPickProg]    = useState('')
+  const [pickCohort,   setPickCohort]  = useState('')
 
-  useEffect(() => { if (open) { setTab('eligible'); setSearch(''); setSelected(new Set()) } }, [open])
+  useEffect(() => {
+    if (open) {
+      setTab('eligible'); setSearch(''); setSelected(new Set())
+      setFilterProg(''); setFilterCohort(''); setAddOpen(false)
+    }
+  }, [open])
 
-  const minFri     = intervention?.minFri ?? 0
-  const allFarmers = FARMERS_LIST as Farmer[]
-  const enrolledIds = new Set(entries.map(e => e.farmerId))
+  if (!intervention) return null
 
-  const eligible = allFarmers.filter(f => (f.currentFri ?? 0) >= minFri)
+  const enrolledCohorts = intervention.enrolledCohorts ?? []
+  const enrolledIds     = new Set(entries.map(e => e.farmerId))
+  const minFri          = intervention.minFri ?? 0
+  const allFarmers      = FARMERS_LIST as Farmer[]
+
+  // Cohorts visible after applying filters
+  const visibleCohortIds = enrolledCohorts
+    .filter(ec => (!filterProg || ec.programId === filterProg) && (!filterCohort || ec.cohortId === filterCohort))
+    .map(ec => ec.cohortId)
+
+  const cohortFarmers = enrolledCohorts.length === 0
+    ? allFarmers
+    : allFarmers.filter(f => f.enrollment?.cohortId && visibleCohortIds.includes(f.enrollment.cohortId))
+
+  const eligible = cohortFarmers.filter(f => (f.currentFri ?? 0) >= minFri && !enrolledIds.has(f.id))
   const approved = allFarmers.filter(f => enrolledIds.has(f.id) && !suspended.has(f.id))
   const closed   = allFarmers.filter(f => suspended.has(f.id))
 
-  const tabFarmers: Record<EnrolTab, Farmer[]> = {
-    eligible, applied: [], approved, rejected: [], closed,
-  }
+  const tabFarmers: Record<EnrolTab, Farmer[]> = { eligible, applied: [], approved, rejected: [], closed }
 
   const displayed = tabFarmers[tab].filter(f =>
-    !search ||
-    f.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    f.phone.includes(search)
+    !search || f.fullName.toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search)
   )
+
+  // Programs with enrolled cohorts (for filter dropdowns)
+  const enrolledPrograms = [...new Map(enrolledCohorts.map(ec => [ec.programId, { id: ec.programId, name: ec.programName }])).values()]
+  const filterableCohorts = enrolledCohorts.filter(ec => !filterProg || ec.programId === filterProg)
+
+  // Cohorts available to add (not already enrolled)
+  const enrolledCohortIds = new Set(enrolledCohorts.map(ec => ec.cohortId))
+  const pickableCohorts   = (programsWithCohorts.find(p => p.id === pickProg)?.cohorts ?? []).filter(c => !enrolledCohortIds.has(c.id))
+
+  function addCohort() {
+    const prog = programsWithCohorts.find(p => p.id === pickProg)
+    const coh  = prog?.cohorts.find(c => c.id === pickCohort)
+    if (!prog || !coh) return
+    onUpdateCohorts([...enrolledCohorts, { programId: prog.id, programName: prog.name, cohortId: coh.id, cohortName: coh.name }])
+    setPickProg(''); setPickCohort(''); setAddOpen(false)
+  }
+
+  function removeCohort(cohortId: string) {
+    onUpdateCohorts(enrolledCohorts.filter(ec => ec.cohortId !== cohortId))
+  }
 
   function toggleSelect(id: string) {
     if (enrolledIds.has(id)) return
@@ -425,10 +451,7 @@ function EnrollSheet({ open, onClose, intervention }: {
     setSaving(true)
     await new Promise(r => setTimeout(r, 500))
     const today = new Date().toLocaleDateString('en-US')
-    setEntries(prev => [
-      ...prev,
-      ...[...selected].filter(id => !enrolledIds.has(id)).map(farmerId => ({ farmerId, date: today })),
-    ])
+    setEntries(prev => [...prev, ...[...selected].filter(id => !enrolledIds.has(id)).map(farmerId => ({ farmerId, date: today }))])
     setSelected(new Set())
     setTab('approved')
     setSaving(false)
@@ -436,8 +459,6 @@ function EnrollSheet({ open, onClose, intervention }: {
 
   function handleSuspend(id: string) { setSuspended(prev => new Set([...prev, id])) }
   function handleClose(id: string)   { setEntries(prev => prev.filter(e => e.farmerId !== id)) }
-
-  if (!intervention) return null
 
   const enrollableSelected = [...selected].filter(id => !enrolledIds.has(id))
 
@@ -450,37 +471,86 @@ function EnrollSheet({ open, onClose, intervention }: {
   ]
 
   return (
-    <SheetTemplate
-      open={open}
-      onClose={onClose}
-      title={intervention.name}
-      size="lg"
-      bodyClassName="flex flex-col"
-    >
-      {/* Segmented tabs */}
-      <div className="px-4 pt-4 pb-3 shrink-0">
+    <SheetTemplate open={open} onClose={onClose} title={intervention.name} size="lg" bodyClassName="flex flex-col">
+
+      {/* Edit row */}
+      <div className="px-4 pt-3 shrink-0 flex justify-end">
+        <ButtonTemplate variant="outline" size="sm" leftIcon={<Edit2 className="w-3.5 h-3.5" />} label="Edit"
+          onClick={() => { onClose(); onEdit() }} />
+      </div>
+
+      {/* Enrolled cohorts */}
+      <div className="px-4 pb-3 shrink-0 space-y-2 border-b border-gray-100">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Enrolled Cohorts</p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {enrolledCohorts.map(ec => (
+            <span key={ec.cohortId}
+              className="group/chip inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+              <span className="text-green-500 text-[10px] font-normal">{ec.programName.split(' ')[0]} ·</span>{' '}
+              {ec.cohortName}
+              <button onClick={() => removeCohort(ec.cohortId)}
+                className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 hover:bg-green-100 transition-opacity">
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </span>
+          ))}
+          {!addOpen && (
+            <button onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors">
+              <Plus className="w-3 h-3" /> Add Cohort
+            </button>
+          )}
+        </div>
+
+        {/* Inline cohort picker */}
+        {addOpen && (
+          <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl bg-gray-50 border border-gray-200">
+            <select value={pickProg} onChange={e => { setPickProg(e.target.value); setPickCohort('') }}
+              className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white flex-1 min-w-32 focus:outline-none">
+              <option value="">Select program</option>
+              {programsWithCohorts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <select value={pickCohort} onChange={e => setPickCohort(e.target.value)} disabled={!pickProg}
+              className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white flex-1 min-w-32 focus:outline-none disabled:opacity-50">
+              <option value="">Select cohort</option>
+              {pickableCohorts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <ButtonTemplate size="sm" label="Add" isDisabled={!pickProg || !pickCohort} onClick={addCohort} />
+            <ButtonTemplate variant="ghost" size="sm" label="Cancel" onClick={() => { setAddOpen(false); setPickProg(''); setPickCohort('') }} />
+          </div>
+        )}
+      </div>
+
+      {/* Filters */}
+      {enrolledCohorts.length > 0 && (
+        <div className="px-4 py-2 shrink-0 flex items-center gap-2 border-b border-gray-100">
+          <select value={filterProg} onChange={e => { setFilterProg(e.target.value); setFilterCohort('') }}
+            className="h-7 px-2 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none">
+            <option value="">All programs</option>
+            {enrolledPrograms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select value={filterCohort} onChange={e => setFilterCohort(e.target.value)}
+            className="h-7 px-2 text-xs border border-gray-200 rounded-lg bg-white focus:outline-none">
+            <option value="">All cohorts</option>
+            {filterableCohorts.map(ec => <option key={ec.cohortId} value={ec.cohortId}>{ec.cohortName}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="px-4 pt-3 pb-3 shrink-0">
         <div className="flex gap-1 rounded-xl p-1 bg-gray-100">
           {TABS.map(t => {
             const isActive = tab === t.key
             return (
-              <button
-                key={t.key}
-                onClick={() => { setTab(t.key); setSelected(new Set()) }}
-                className={[
-                  'flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap',
-                  isActive ? 'bg-white shadow-sm' : 'hover:bg-white/60',
-                ].join(' ')}
-                style={{ color: isActive ? 'var(--brand-forest)' : '#6b7280' }}
-              >
+              <button key={t.key} onClick={() => { setTab(t.key); setSelected(new Set()) }}
+                className={['flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all whitespace-nowrap',
+                  isActive ? 'bg-white shadow-sm' : 'hover:bg-white/60'].join(' ')}
+                style={{ color: isActive ? 'var(--brand-forest)' : '#6b7280' }}>
                 {t.icon}
                 {t.label}
-                <span
-                  className="text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none"
-                  style={isActive
-                    ? { background: 'var(--brand-forest)', color: '#fff' }
-                    : { background: '#e5e7eb', color: '#374151' }
-                  }
-                >
+                <span className="text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none"
+                  style={isActive ? { background: 'var(--brand-forest)', color: '#fff' } : { background: '#e5e7eb', color: '#374151' }}>
                   {t.count}
                 </span>
               </button>
@@ -489,26 +559,17 @@ function EnrollSheet({ open, onClose, intervention }: {
         </div>
       </div>
 
-      {/* Search + Enrol (eligible tab only) */}
+      {/* Search + Enrol */}
       {tab === 'eligible' && (
         <div className="px-4 pb-3 flex items-center gap-2 shrink-0">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search farmers..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 placeholder:text-gray-400"
-            />
+            <input type="text" placeholder="Search farmers..." value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 placeholder:text-gray-400" />
           </div>
-          <ButtonTemplate
-            size="sm"
-            leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+          <ButtonTemplate size="sm" leftIcon={<UserPlus className="w-3.5 h-3.5" />}
             label={saving ? 'Enrolling…' : 'Enrol'}
-            isDisabled={saving || enrollableSelected.length === 0}
-            onClick={handleEnrol}
-          />
+            isDisabled={saving || enrollableSelected.length === 0} onClick={handleEnrol} />
         </div>
       )}
 
@@ -520,15 +581,13 @@ function EnrollSheet({ open, onClose, intervention }: {
             <p className="text-sm text-gray-400">{TAB_EMPTY[tab].message}</p>
           </div>
         ) : tab === 'approved' ? (
-          /* Approved tab: date + Suspend/Close actions */
           <div className="px-3 py-2 space-y-1">
             {displayed.map(f => {
               const entry = entries.find(e => e.farmerId === f.id)
               const av    = avatarStyle(f.fullName)
               return (
                 <div key={f.id} className="flex items-center gap-3 px-3 py-3 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                       style={{ background: av.bg, color: av.fg }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: av.bg, color: av.fg }}>
                     {f.fullName.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -537,57 +596,40 @@ function EnrollSheet({ open, onClose, intervention }: {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <p className="text-xs text-gray-400">{entry?.date}</p>
-                    <button
-                      onClick={() => handleSuspend(f.id)}
+                    <button onClick={() => handleSuspend(f.id)}
                       className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors hover:bg-amber-50"
-                      style={{ borderColor: '#f59e0b', color: '#b45309' }}>
-                      Suspend
-                    </button>
-                    <button
-                      onClick={() => handleClose(f.id)}
-                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-100">
-                      Close
-                    </button>
+                      style={{ borderColor: '#f59e0b', color: '#b45309' }}>Suspend</button>
+                    <button onClick={() => handleClose(f.id)}
+                      className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-gray-300 text-gray-500 transition-colors hover:bg-gray-100">Close</button>
                   </div>
                 </div>
               )
             })}
           </div>
         ) : (
-          /* Eligible tab: checkbox + FRI score */
           <div className="px-3 py-2 space-y-1">
             {displayed.map(f => {
               const isEnrolled = enrolledIds.has(f.id)
               const isSelected = selected.has(f.id)
               const av         = avatarStyle(f.fullName)
               return (
-                <div
-                  key={f.id}
-                  onClick={() => toggleSelect(f.id)}
-                  className={[
-                    'flex items-center gap-3 px-3 py-3 rounded-xl border transition-all',
-                    isEnrolled
-                      ? 'cursor-default border-transparent'
-                      : isSelected
-                        ? 'cursor-pointer bg-white'
-                        : 'cursor-pointer border-transparent hover:border-gray-200 hover:bg-gray-50',
-                  ].join(' ')}
-                  style={isSelected ? { borderColor: 'var(--brand-forest)' } : {}}
-                >
-                  <div className={[
-                    'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                <div key={f.id} onClick={() => toggleSelect(f.id)}
+                  className={['flex items-center gap-3 px-3 py-3 rounded-xl border transition-all',
+                    isEnrolled ? 'cursor-default border-transparent'
+                      : isSelected ? 'cursor-pointer bg-white'
+                      : 'cursor-pointer border-transparent hover:border-gray-200 hover:bg-gray-50'].join(' ')}
+                  style={isSelected ? { borderColor: 'var(--brand-forest)' } : {}}>
+                  <div className={['w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
                     isEnrolled ? 'border-gray-200 bg-gray-100'
                       : isSelected ? 'bg-(--brand-dark) border-(--brand-dark)'
-                      : 'border-gray-300 bg-white',
-                  ].join(' ')}>
+                      : 'border-gray-300 bg-white'].join(' ')}>
                     {isSelected && !isEnrolled && (
                       <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
                         <path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                       style={{ background: av.bg, color: av.fg }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: av.bg, color: av.fg }}>
                     {f.fullName.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -635,7 +677,7 @@ function InterventionCard({ intervention: iv, onEdit, onSuspend, onEnroll, onDel
         ? 'bg-gray-50 border-gray-200 opacity-60 grayscale-40'
         : 'bg-white border-gray-200 hover:border-gray-300',
     ].join(' ')}>
-      <div className="px-5 py-4 flex items-start gap-4">
+      <div className="px-5 py-4 flex items-start gap-4 cursor-pointer" onClick={onEnroll}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
              style={{ background: 'var(--brand-mint)' }}>
           <Package className="w-4 h-4" style={{ color: iconColor }} />
@@ -650,15 +692,18 @@ function InterventionCard({ intervention: iv, onEdit, onSuspend, onEnroll, onDel
             <BadgeTemplate label={iv.status} variant={STATUS_VARIANT[iv.status]} size="md" />
           </div>
 
-          {iv.programName && (
-            <p className="text-[11px] mt-1.5 font-medium" style={{ color: 'var(--brand-green)' }}>{iv.programName}</p>
-          )}
-
-          {iv.valueDescription && (
-            <p className="text-sm font-bold mt-1" style={{ color: 'var(--brand-dark)' }}>
-              {iv.valueDescription}
-            </p>
-          )}
+          <div className="flex items-center justify-between gap-3 mt-1.5">
+            {iv.enrolledCohorts.length > 0 ? (
+              <p className="text-[11px] font-medium" style={{ color: 'var(--brand-green)' }}>
+                {iv.enrolledCohorts.length} cohort{iv.enrolledCohorts.length !== 1 ? 's' : ''}
+              </p>
+            ) : (
+              <p className="text-[11px] text-gray-400">No cohorts enrolled</p>
+            )}
+            {iv.valueDescription && (
+              <p className="text-sm font-bold" style={{ color: 'var(--brand-dark)' }}>{iv.valueDescription}</p>
+            )}
+          </div>
 
           <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
             <span>Min FRI: <span className="font-semibold text-(--brand-slate)">{iv.minFri}</span></span>
@@ -671,8 +716,7 @@ function InterventionCard({ intervention: iv, onEdit, onSuspend, onEnroll, onDel
       </div>
 
       {/* Action bar */}
-      <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-1.5">
-        <ButtonTemplate variant="ghost" size="sm" leftIcon={<Edit2 className="w-3.5 h-3.5" />} label="Edit" onClick={onEdit} />
+      <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
         <ButtonTemplate
           variant="ghost" size="sm"
           leftIcon={<PauseCircle className="w-3.5 h-3.5" />}
@@ -781,27 +825,29 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function Main() {
-  const [interventions, setInterventions] = useState<Intervention[]>([])
-  const [programs,      setPrograms]      = useState<ProgramOption[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [filterProgram, setFilterProgram] = useState('')
-  const [filterStatus,  setFilterStatus]  = useState('')
-  const [modal,         setModal]         = useState<{ mode: 'new' | 'edit'; initial: FormState; id?: string } | null>(null)
-  const [enrollTarget,  setEnrollTarget]  = useState<Intervention | null>(null)
-  const [deleteTarget,  setDeleteTarget]  = useState<Intervention | null>(null)
-  const [suspendTarget, setSuspendTarget] = useState<Intervention | null>(null)
+  const [interventions,       setInterventions]       = useState<Intervention[]>([])
+  const [programs,            setPrograms]            = useState<ProgramOption[]>([])
+  const [programsWithCohorts, setProgramsWithCohorts] = useState<ProgramWithCohorts[]>([])
+  const [loading,             setLoading]             = useState(true)
+  const [filterProgram,       setFilterProgram]       = useState('')
+  const [filterStatus,        setFilterStatus]        = useState('')
+  const [modal,               setModal]               = useState<{ mode: 'new' | 'edit'; initial: FormState; id?: string } | null>(null)
+  const [enrollTarget,        setEnrollTarget]        = useState<Intervention | null>(null)
+  const [deleteTarget,        setDeleteTarget]        = useState<Intervention | null>(null)
+  const [suspendTarget,       setSuspendTarget]       = useState<Intervention | null>(null)
 
   useEffect(() => {
-    Promise.all([getInterventions(), getPrograms()]).then(([ivs, progs]) => {
+    Promise.all([getInterventions(), getPrograms(), getProgramsWithCohorts()]).then(([ivs, progs, pwc]) => {
       setInterventions(ivs)
       setPrograms(progs)
+      setProgramsWithCohorts(pwc)
       setLoading(false)
     })
   }, [])
 
   const filtered = interventions.filter(iv => {
-    if (filterProgram && iv.programId !== filterProgram) return false
-    if (filterStatus  && iv.status    !== filterStatus)  return false
+    if (filterProgram && !iv.enrolledCohorts.some(ec => ec.programId === filterProgram)) return false
+    if (filterStatus  && iv.status !== filterStatus) return false
     return true
   })
 
@@ -812,21 +858,18 @@ export function Main() {
     if (modal?.mode === 'new') {
       const next: Intervention = {
         id: `int-${Date.now()}`,
-        programId:        form.programId || null,
-        programName:      programs.find(p => p.id === form.programId)?.name ?? null,
-        name:             form.name, type: form.type, season: form.season,
+        name: form.name, type: form.type, season: form.season,
         valueDescription: form.valueDescription, description: form.description,
         minFri: form.minFri, capacity: form.capacity,
         status: form.status, approval: form.approval,
         rules: form.rules, steps: form.steps,
+        enrolledCohorts: [],
         createdAt: new Date().toISOString().slice(0, 10),
       }
       setInterventions(prev => [next, ...prev])
     } else if (modal?.id) {
       setInterventions(prev => prev.map(iv => iv.id !== modal.id ? iv : {
         ...iv,
-        programId:        form.programId || null,
-        programName:      programs.find(p => p.id === form.programId)?.name ?? null,
         name: form.name, type: form.type, season: form.season,
         valueDescription: form.valueDescription, description: form.description,
         minFri: form.minFri, capacity: form.capacity,
@@ -835,6 +878,11 @@ export function Main() {
       }))
     }
     setModal(null)
+  }
+
+  function handleUpdateCohorts(id: string, cohorts: EnrolledCohort[]) {
+    setInterventions(prev => prev.map(iv => iv.id !== id ? iv : { ...iv, enrolledCohorts: cohorts }))
+    if (enrollTarget?.id === id) setEnrollTarget(prev => prev ? { ...prev, enrolledCohorts: cohorts } : prev)
   }
 
   function handleSuspend(id: string) {
@@ -848,7 +896,7 @@ export function Main() {
 
   const activeCount   = interventions.filter(iv => iv.status === 'Active').length
   const totalCapacity = interventions.reduce((sum, iv) => sum + iv.capacity, 0)
-  const programCount  = new Set(interventions.map(iv => iv.programId).filter(Boolean)).size
+  const cohortCount   = interventions.reduce((sum, iv) => sum + iv.enrolledCohorts.length, 0)
 
   return (
     <div className="min-h-screen bg-(--brand-gray) p-6 space-y-5">
@@ -875,7 +923,7 @@ export function Main() {
           <StatCard icon={<Layers className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Total" value={interventions.length} />
           <StatCard icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Active" value={activeCount} />
           <StatCard icon={<Users className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Total Capacity" value={totalCapacity.toLocaleString()} />
-          <StatCard icon={<Package className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Programs" value={programCount} />
+          <StatCard icon={<Package className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Cohorts" value={cohortCount} />
         </div>
       )}
 
@@ -924,7 +972,6 @@ export function Main() {
         open={modal !== null}
         mode={modal?.mode ?? 'new'}
         initial={modal?.initial ?? EMPTY_FORM}
-        programs={programs}
         onSave={handleSave}
         onClose={() => setModal(null)}
       />
@@ -933,6 +980,9 @@ export function Main() {
         open={enrollTarget !== null}
         onClose={() => setEnrollTarget(null)}
         intervention={enrollTarget}
+        onEdit={() => { setEnrollTarget(null); openEdit(enrollTarget!) }}
+        programsWithCohorts={programsWithCohorts}
+        onUpdateCohorts={cohorts => enrollTarget && handleUpdateCohorts(enrollTarget.id, cohorts)}
       />
 
       <ConfirmModal

@@ -69,6 +69,70 @@ function riskBandVariant(rb: RiskBand) {
   return 'danger'
 }
 
+// ─── Item scores data ─────────────────────────────────────────────────────────
+
+const PILLAR_ITEMS: { pillar: 'p1'|'p2'|'p3'|'p4'; label: string; max: number }[] = [
+  { pillar: 'p1', label: 'Farming Experience',     max: 6 },
+  { pillar: 'p1', label: 'Weed Management',        max: 6 },
+  { pillar: 'p1', label: 'Proper Planting',        max: 6 },
+  { pillar: 'p1', label: 'Fertilizer Use',         max: 6 },
+  { pillar: 'p1', label: 'Pest & Disease Control', max: 6 },
+  { pillar: 'p2', label: 'Mulching',               max: 6 },
+  { pillar: 'p2', label: 'Composting',             max: 6 },
+  { pillar: 'p2', label: 'Crop Rotation',          max: 6 },
+  { pillar: 'p2', label: 'Water Harvesting',       max: 6 },
+  { pillar: 'p2', label: 'Conservation Tillage',   max: 6 },
+  { pillar: 'p3', label: 'Attends Training',       max: 5 },
+  { pillar: 'p3', label: 'Follows Agronomist',     max: 5 },
+  { pillar: 'p3', label: 'Cooperative Visits',     max: 5 },
+  { pillar: 'p3', label: 'Cooperative Affiliation',max: 5 },
+  { pillar: 'p4', label: 'Repayment History',      max: 5 },
+  { pillar: 'p4', label: 'Savings Habit',          max: 5 },
+  { pillar: 'p4', label: 'Additional Income',      max: 5 },
+  { pillar: 'p4', label: 'Offtaker Confirmed',     max: 5 },
+]
+
+const ECI_ITEMS: { label: string; max: number }[] = [
+  { label: 'Stable Income & Debt Burden',  max: 8 },
+  { label: 'Moderate Financial Stability', max: 8 },
+  { label: 'Identity & Eligibility',       max: 8 },
+  { label: 'Production Commitment',        max: 8 },
+  { label: 'Asset & Land Tenure',          max: 8 },
+]
+
+const PILLAR_META = {
+  p1: { label: 'P1 — AGRONOMY',  color: '#2C5F3F' },
+  p2: { label: 'P2 — CSA',       color: '#2B7BB9' },
+  p3: { label: 'P3 — ADVISORY',  color: '#E8963A' },
+  p4: { label: 'P4 — ENTERPRISE',color: '#D94F3D' },
+}
+
+function hash(seed: string): number {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0
+  }
+  return Math.abs(h)
+}
+
+function scatterScores(pillarScore: number, items: { label: string; max: number }[], farmerId: string) {
+  const total = items.reduce((s, i) => s + i.max, 0)
+  if (total === 0 || pillarScore === 0) return items.map(() => 0)
+  const weights = items.map(item => {
+    const h = hash(`${farmerId}:${item.label}`) % 100
+    return item.max * (0.5 + h / 200)
+  })
+  const weightSum = weights.reduce((s, w) => s + w, 0)
+  let remaining = pillarScore
+  return items.map((item, idx) => {
+    if (idx === items.length - 1) return Math.max(0, Math.min(item.max, remaining))
+    const raw = Math.round((weights[idx] / weightSum) * pillarScore)
+    const score = Math.min(item.max, Math.max(0, raw))
+    remaining -= score
+    return score
+  })
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SkeletonBlock({ className }: { className?: string }) {
@@ -120,6 +184,77 @@ function PillarBar({
           style={{ width: `${pct}%`, background: 'var(--brand-dark)' }}
         />
       </div>
+    </div>
+  )
+}
+
+function ItemScoresPanel({ weekData, eciScore, farmerId }: { weekData: WeekScore; eciScore: number; farmerId: string }) {
+  const [open, setOpen] = useState(false)
+
+  const p1Items = PILLAR_ITEMS.filter(i => i.pillar === 'p1')
+  const p2Items = PILLAR_ITEMS.filter(i => i.pillar === 'p2')
+  const p3Items = PILLAR_ITEMS.filter(i => i.pillar === 'p3')
+  const p4Items = PILLAR_ITEMS.filter(i => i.pillar === 'p4')
+
+  const p1Scores = scatterScores(weekData.p1Score, p1Items, farmerId)
+  const p2Scores = scatterScores(weekData.p2Score, p2Items, farmerId)
+  const p3Scores = scatterScores(weekData.p3Score, p3Items, farmerId)
+  const p4Scores = scatterScores(weekData.p4Score, p4Items, farmerId)
+  const eciScores = scatterScores(eciScore, ECI_ITEMS, farmerId)
+
+  function ItemRow({ label, score, max, color }: { label: string; score: number; max: number; color: string }) {
+    const pct = Math.round((score / max) * 100)
+    return (
+      <div className="flex items-center gap-3 py-2">
+        <span className="flex-1 text-sm text-gray-700">{label}</span>
+        <div className="w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+        </div>
+        <span className="text-xs font-medium text-gray-500 tabular-nums w-8 text-right shrink-0">{score}/{max}</span>
+      </div>
+    )
+  }
+
+  function PillarSection({ pillar, items, scores }: { pillar: 'p1'|'p2'|'p3'|'p4'; items: typeof p1Items; scores: number[] }) {
+    const meta = PILLAR_META[pillar]
+    return (
+      <div className="pt-3">
+        <p className="text-xs font-bold tracking-wide mb-1" style={{ color: meta.color }}>{meta.label}</p>
+        <div className="divide-y divide-gray-50">
+          {items.map((item, i) => (
+            <ItemRow key={item.label} label={item.label} score={scores[i]} max={item.max} color={meta.color} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 border-t border-gray-100 pt-3">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between text-sm text-gray-500 hover:text-gray-700 transition-colors py-1"
+      >
+        <span className="font-medium">View all item scores</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-1">
+          <PillarSection pillar="p1" items={p1Items} scores={p1Scores} />
+          <PillarSection pillar="p2" items={p2Items} scores={p2Scores} />
+          <PillarSection pillar="p3" items={p3Items} scores={p3Scores} />
+          <PillarSection pillar="p4" items={p4Items} scores={p4Scores} />
+          <div className="pt-3">
+            <p className="text-xs font-bold tracking-wide mb-1" style={{ color: '#2B7BB9' }}>ECI ITEMS</p>
+            <div className="divide-y divide-gray-50">
+              {ECI_ITEMS.map((item, i) => (
+                <ItemRow key={item.label} label={item.label} score={eciScores[i]} max={item.max} color="#2B7BB9" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -490,12 +625,15 @@ export function Main({ farmerId }: { farmerId: string }) {
       <div className="mb-6">
         <CardTemplate title="Pillar Scores">
           {activeWeekData ? (
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              <PillarBar label="P1 Agronomy Readiness" score={activeWeekData.p1Score} max={30} />
-              <PillarBar label="P2 CSA & Climate-Smart" score={activeWeekData.p2Score} max={30} />
-              <PillarBar label="P3 Advisory & Commitment" score={activeWeekData.p3Score} max={20} />
-              <PillarBar label="P4 Farm Enterprise" score={activeWeekData.p4Score} max={20} />
-            </div>
+            <>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <PillarBar label="P1 Agronomy Readiness" score={activeWeekData.p1Score} max={30} />
+                <PillarBar label="P2 CSA & Climate-Smart" score={activeWeekData.p2Score} max={30} />
+                <PillarBar label="P3 Advisory & Commitment" score={activeWeekData.p3Score} max={20} />
+                <PillarBar label="P4 Farm Enterprise" score={activeWeekData.p4Score} max={20} />
+              </div>
+              <ItemScoresPanel weekData={activeWeekData} eciScore={farmer.eciScore} farmerId={farmer.farmerId} />
+            </>
           ) : (
             <p className="text-sm" style={{ color: 'var(--brand-slate)' }}>
               No data for this week.

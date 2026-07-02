@@ -41,6 +41,7 @@ export interface CheckinRecord {
   week:         number
   date:         string
   verified:     boolean
+  verifiedBy?:  string
   helpNeeded:   boolean
   pillarScores: { p1: number; p2: number; p3: number; p4: number }
   items:        CheckinItem[]

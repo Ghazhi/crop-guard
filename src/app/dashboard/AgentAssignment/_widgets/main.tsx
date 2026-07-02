@@ -504,6 +504,20 @@ export function Main() {
     toast.success(`${agent.name} added to cohort`)
   }
 
+  function handleRemoveAgent(cohortId: string, agentId: string) {
+    const agent = agents.find(a => a.id === agentId)
+    setCohorts(prev => prev.map(c => {
+      if (c.cohortId !== cohortId) return c
+      const remaining = c.agents.filter(a => a.agentId !== agentId)
+      if (remaining.length > 0 && !remaining[0].isPrimary) {
+        remaining[0] = { ...remaining[0], isPrimary: true }
+      }
+      return { ...c, agents: remaining }
+    }))
+    setAgents(prev => prev.map(a => a.id !== agentId ? a : { ...a, cohortCount: Math.max(0, a.cohortCount - 1) }))
+    toast.success(`${agent?.name ?? 'Agent'} unassigned`)
+  }
+
   return (
     <div className="p-6 space-y-6" style={{ background: 'var(--brand-gray)', minHeight: '100vh' }}>
 
@@ -531,14 +545,16 @@ export function Main() {
         </div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-1">
-          {agents.map(a => (
-            <div key={a.id} className="w-64 shrink-0">
-            <AgentCard agent={a}
-              isActive={filterAgent === a.id}
-              onFilter={() => setFilterAgent(prev => prev === a.id ? '' : a.id)}
-              onViewFarmers={() => { setFocusAgent(a); setAgentFarmOpen(true) }} />
-            </div>
-          ))}
+          {agents
+            .filter(a => !filterAgent || filterAgent === a.id)
+            .map(a => (
+              <div key={a.id} className="w-64 shrink-0">
+                <AgentCard agent={a}
+                  isActive={filterAgent === a.id}
+                  onFilter={() => setFilterAgent(prev => prev === a.id ? '' : a.id)}
+                  onViewFarmers={() => { setFocusAgent(a); setAgentFarmOpen(true) }} />
+              </div>
+            ))}
         </div>
       )}
 
@@ -625,11 +641,20 @@ export function Main() {
                         <span className="text-[11px] text-gray-400 tabular-nums shrink-0">{c.farmerCount}/{c.capacity}</span>
                         {c.agents.map(a => (
                           <span key={a.agentId} className={cn(
-                            'flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full leading-none whitespace-nowrap',
+                            'group/chip flex items-center gap-1 text-[11px] font-medium pl-2.5 pr-1 py-1 rounded-full leading-none whitespace-nowrap',
                             a.isPrimary ? 'text-white' : 'bg-emerald-50 text-emerald-700'
                           )} style={a.isPrimary ? { backgroundColor: 'var(--brand-dark)' } : {}}>
                             {a.agentName}
                             {a.isPrimary && <span className="text-[9px] opacity-70 font-normal">primary</span>}
+                            <button
+                              onClick={() => handleRemoveAgent(c.cohortId, a.agentId)}
+                              className={cn(
+                                'w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 transition-opacity',
+                                a.isPrimary ? 'hover:bg-white/20' : 'hover:bg-emerald-100'
+                              )}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
                           </span>
                         ))}
                       </div>

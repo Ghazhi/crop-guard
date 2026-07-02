@@ -4,8 +4,8 @@ export type ApprovalMode         = 'Auto' | 'Manual'
 
 export interface EligibilityRule {
   id:       string
-  field:    string   // e.g. 'fri_score', 'zone', 'crop'
-  operator: string   // e.g. '>=', '<=', '==', 'in'
+  field:    string
+  operator: string
   value:    string
 }
 
@@ -15,10 +15,15 @@ export interface ImprovementStep {
   order:       number
 }
 
+export interface EnrolledCohort {
+  programId:   string
+  programName: string
+  cohortId:    string
+  cohortName:  string
+}
+
 export interface Intervention {
   id:               string
-  programId:        string | null
-  programName:      string | null
   name:             string
   type:             InterventionType
   season:           string
@@ -31,9 +36,16 @@ export interface Intervention {
   rules:            EligibilityRule[]
   steps:            ImprovementStep[]
   createdAt:        string
+  enrolledCohorts:  EnrolledCohort[]
 }
 
 export interface ProgramOption {
   id:   string
   name: string
+}
+
+export interface ProgramWithCohorts {
+  id:      string
+  name:    string
+  cohorts: { id: string; name: string }[]
 }

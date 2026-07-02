@@ -3,8 +3,6 @@ import type { Intervention } from '@/app/dashboard/OpportunityPathways/_logics/i
 export const INTERVENTIONS: Intervention[] = [
   {
     id:               'int-001',
-    programId:        'prog-002',
-    programName:      'Maize Season 2026A',
     name:             'Maize Input Loan',
     type:             'Input Loan',
     season:           '2026A',
@@ -14,6 +12,9 @@ export const INTERVENTIONS: Intervention[] = [
     capacity:         200,
     status:           'Active',
     approval:         'Auto',
+    enrolledCohorts: [
+      { programId: 'prog-002', programName: 'Maize Season 2026A', cohortId: 'coh-005', cohortName: 'Kumasi Cohort A' },
+    ],
     rules: [
       { id: 'r-001', field: 'primaryCrop', operator: '=',  value: 'maize' },
       { id: 'r-002', field: 'farmSize',    operator: '>=', value: '0.5'   },
@@ -27,8 +28,6 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id:               'int-002',
-    programId:        'prog-002',
-    programName:      'Maize Season 2026A',
     name:             'Climate-Smart Insurance',
     type:             'Insurance',
     season:           '2026A',
@@ -38,6 +37,10 @@ export const INTERVENTIONS: Intervention[] = [
     capacity:         300,
     status:           'Active',
     approval:         'Auto',
+    enrolledCohorts: [
+      { programId: 'prog-002', programName: 'Maize Season 2026A', cohortId: 'coh-005', cohortName: 'Kumasi Cohort A' },
+      { programId: 'prog-001', programName: 'WAVE Program',       cohortId: 'coh-001', cohortName: 'Cohort 1 - Gurubagu' },
+    ],
     rules: [
       { id: 'r-003', field: 'primaryCrop', operator: '=',  value: 'maize' },
       { id: 'r-004', field: 'fri',         operator: '>=', value: '65'    },
@@ -50,8 +53,6 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id:               'int-003',
-    programId:        'prog-001',
-    programName:      'WAVE Program',
     name:             'Soybean Input Loan',
     type:             'Input Loan',
     season:           '2026A',
@@ -61,11 +62,15 @@ export const INTERVENTIONS: Intervention[] = [
     capacity:         100,
     status:           'Active',
     approval:         'Manual',
+    enrolledCohorts: [
+      { programId: 'prog-001', programName: 'WAVE Program', cohortId: 'coh-001', cohortName: 'Cohort 1 - Gurubagu' },
+      { programId: 'prog-001', programName: 'WAVE Program', cohortId: 'coh-002', cohortName: 'Cohort 2 - Watato'   },
+    ],
     rules: [
-      { id: 'r-005', field: 'primaryCrop', operator: '=',  value: 'soybean' },
+      { id: 'r-005', field: 'primaryCrop', operator: '=', value: 'soybean' },
     ],
     steps: [
-      { id: 's-006', description: 'Agent confirms farm details and completes eligibility check.', order: 1 },
+      { id: 's-006', description: 'Agent confirms farm details and completes eligibility check.',   order: 1 },
       { id: 's-007', description: 'Programme officer approves application within 3 working days.', order: 2 },
       { id: 's-008', description: 'Inputs collected at district aggregation point.',               order: 3 },
     ],
@@ -73,8 +78,6 @@ export const INTERVENTIONS: Intervention[] = [
   },
   {
     id:               'int-004',
-    programId:        'prog-001',
-    programName:      'WAVE Program',
     name:             'Market Linkage — Premium Offtake',
     type:             'Market Access',
     season:           '2026A',
@@ -84,9 +87,10 @@ export const INTERVENTIONS: Intervention[] = [
     capacity:         50,
     status:           'Draft',
     approval:         'Manual',
+    enrolledCohorts:  [],
     rules: [
-      { id: 'r-006', field: 'fri',      operator: '>=', value: '75'    },
-      { id: 'r-007', field: 'verified', operator: '=',  value: 'true'  },
+      { id: 'r-006', field: 'fri',      operator: '>=', value: '75'   },
+      { id: 'r-007', field: 'verified', operator: '=',  value: 'true' },
     ],
     steps: [
       { id: 's-009', description: 'Farmer submits produce volume estimate 4 weeks before harvest.', order: 1 },

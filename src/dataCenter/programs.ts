@@ -13,9 +13,9 @@ export const PROGRAMS: Program[] = [
     targetCount:   100,
     status:        'Active',
     cohorts: [
-      { id: 'coh-003', name: 'Cohort 3 - Lingbensi', region: 'Savannah', district: 'North Gonja', agentName: 'Abdul Razak',  enrolledCount: 1, targetCount: 15 },
-      { id: 'coh-002', name: 'Cohort 2 - Watato',    region: 'Savannah', district: 'North Gonja', agentName: 'Kwame Asante', enrolledCount: 1, targetCount: 40 },
-      { id: 'coh-001', name: 'Cohort 1 - Gurubagu',  region: 'Savannah', district: 'North Gonja', agentName: 'Abdul Razak',  enrolledCount: 1, targetCount: 45 },
+      { id: 'coh-003', name: 'Cohort 3 - Lingbensi', region: 'Savannah', district: 'North Gonja', agentName: 'Abdul Razak',  enrolledCount: 1, targetCount: 15, status: 'Active' },
+      { id: 'coh-002', name: 'Cohort 2 - Watato',    region: 'Savannah', district: 'North Gonja', agentName: 'Kwame Asante', enrolledCount: 1, targetCount: 40, status: 'Active' },
+      { id: 'coh-001', name: 'Cohort 1 - Gurubagu',  region: 'Savannah', district: 'North Gonja', agentName: 'Abdul Razak',  enrolledCount: 1, targetCount: 45, status: 'Active' },
     ],
   },
   {
@@ -30,7 +30,7 @@ export const PROGRAMS: Program[] = [
     targetCount:   500,
     status:        'Active',
     cohorts: [
-      { id: 'coh-005', name: 'Kumasi Cohort A', region: 'Ashanti', district: 'Kumasi Metro', agentName: 'Kwame Asante', enrolledCount: 2, targetCount: 100 },
+      { id: 'coh-005', name: 'Kumasi Cohort A', region: 'Ashanti', district: 'Kumasi Metro', agentName: 'Kwame Asante', enrolledCount: 2, targetCount: 100, status: 'Active' },
     ],
   },
 ]

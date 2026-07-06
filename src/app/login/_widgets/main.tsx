@@ -120,8 +120,8 @@ export function Main() {
         </form>
 
         {/* Test credentials */}
-        <div className="mx-6 mb-4 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Test Logins</p>
+        <div className="mx-6 mb-4 flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mr-1">Try:</span>
           {[
             { role: 'Staff',   user: 'staff',   pass: 'staff123'   },
             { role: 'Partner', user: 'partner', pass: 'partner123' },
@@ -129,10 +129,9 @@ export function Main() {
           ].map(({ role, user, pass }) => (
             <button key={role} type="button"
               onClick={() => { setUsername(user); setPassword(pass) }}
-              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-white border border-amber-100 hover:border-amber-300 transition-colors text-left"
+              className="px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors text-xs font-medium text-amber-700"
             >
-              <span className="text-xs font-semibold text-gray-700">{role}</span>
-              <span className="text-xs text-gray-400 font-mono">{user} / {pass}</span>
+              {role}
             </button>
           ))}
         </div>

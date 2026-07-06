@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, Download, X, Building2 } from 'lucide-react'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -410,6 +411,8 @@ export function Main() {
     setOrgConfigs(prev => ({ ...prev, [org]: { ...prev[org], baselineActive: typeof updater === 'function' ? updater(prev[org].baselineActive) : updater } }))
   }
 
+  const [deleteQTarget, setDeleteQTarget] = useState<{ weekNum: number; qId: string; qText: string } | null>(null)
+
   const [addingTo, setAddingTo]     = useState<{ weekNum: number } | null>(null)
   const [newPillar, setNewPillar]   = useState<Pillar>('agronomy')
   const [newLabel, setNewLabel]     = useState('')
@@ -672,7 +675,7 @@ export function Main() {
                                         <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
-                                        onClick={() => deleteQuestion(w.week, question.id)}
+                                        onClick={() => setDeleteQTarget({ weekNum: w.week, qId: question.id, qText: question.label })}
                                         className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -824,6 +827,15 @@ export function Main() {
 
         </div>
       </div>
+      <ConfirmModal
+        open={!!deleteQTarget}
+        title="Delete question?"
+        message={`"${deleteQTarget?.qText ?? 'This question'}" will be permanently removed.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (deleteQTarget) deleteQuestion(deleteQTarget.weekNum, deleteQTarget.qId); setDeleteQTarget(null) }}
+        onCancel={() => setDeleteQTarget(null)}
+      />
     </div>
   )
 }

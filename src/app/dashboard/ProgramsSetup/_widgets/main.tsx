@@ -12,12 +12,14 @@ import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { useToast } from '@/customComponents/ToastTemplate'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
 import { getPrograms } from '../_logics/functions'
 import type { Program, Cohort } from '../_logics/interface'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
+import { PersonAvatar } from '@/customComponents/PersonAvatar'
 
 /* ── constants ──────────────────────────────────────────────────────────────── */
 
@@ -476,15 +478,6 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
 
 /* ── CohortFarmersSheet ─────────────────────────────────────────────────────── */
 
-function avatarStyle(name: string) {
-  const colors = [
-    ['#D1FAE5','#065F46'],['#DBEAFE','#1E40AF'],['#FEF3C7','#92400E'],
-    ['#FCE7F3','#9D174D'],['#EDE9FE','#5B21B6'],['#FEE2E2','#991B1B'],
-  ]
-  const i = name.charCodeAt(0) % colors.length
-  return { bg: colors[i][0], fg: colors[i][1] }
-}
-
 function CohortFarmersSheet({ open, onClose, cohort, programName }: {
   open: boolean
   onClose: () => void
@@ -523,13 +516,9 @@ function CohortFarmersSheet({ open, onClose, cohort, programName }: {
           ) : (
             <div className="px-4 py-3 space-y-1">
               {farmers.map(f => {
-                const av = avatarStyle(f.fullName)
                 return (
                   <div key={f.id} className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                      style={{ background: av.bg, color: av.fg }}>
-                      {f.fullName.charAt(0)}
-                    </div>
+                    <PersonAvatar name={f.fullName} size={32} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
                         {f.fullName}
@@ -627,12 +616,13 @@ function CohortDetailsSheet({ open, cohort, programName, onClose, onEdit }: {
 
 /* ── CohortRow ──────────────────────────────────────────────────────────────── */
 
-function CohortRow({ cohort, programs, programName, onUpdateCohort, onDeleteCohort }: {
+function CohortRow({ cohort, programs, programName, onUpdateCohort, onDeleteCohort, onRequestUnassignAgent }: {
   cohort: Cohort
   programs: Program[]
   programName: string
   onUpdateCohort: (updated: Cohort) => void
   onDeleteCohort: (id: string) => void
+  onRequestUnassignAgent: (cohortId: string, agentName: string) => void
 }) {
   const toast    = useToast()
   const filled   = pct(cohort.enrolledCount, cohort.targetCount)
@@ -680,10 +670,7 @@ function CohortRow({ cohort, programs, programName, onUpdateCohort, onDeleteCoho
               leftIcon={<Trash2 className="w-3.5 h-3.5" />}
               className="text-red-400 hover:text-red-500 hover:bg-red-50"
               title="Delete cohort"
-              onClick={() => {
-                onDeleteCohort(cohort.id)
-                toast.success(`${cohort.name} removed`)
-              }}
+              onClick={() => onDeleteCohort(cohort.id)}
             />
           </div>
         </div>
@@ -695,7 +682,7 @@ function CohortRow({ cohort, programs, programName, onUpdateCohort, onDeleteCoho
                   style={{ backgroundColor: 'var(--brand-forest)' }}>
               {cohort.agentName}
               <button
-                onClick={e => { e.stopPropagation(); onUpdateCohort({ ...cohort, agentName: '' }); toast.success(`${cohort.agentName} unassigned`) }}
+                onClick={e => { e.stopPropagation(); onRequestUnassignAgent(cohort.id, cohort.agentName) }}
                 className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 hover:bg-white/20 transition-opacity"
               >
                 <X className="w-2.5 h-2.5" />
@@ -848,6 +835,8 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
   const [viewOpen,        setViewOpen]        = useState(false)
   const [editProgramOpen, setEditProgramOpen] = useState(false)
   const [addCohortOpen,   setAddCohortOpen]   = useState(false)
+  const [deleteCohortTarget,  setDeleteCohortTarget]  = useState<{ id: string; name: string } | null>(null)
+  const [unassignAgentTarget, setUnassignAgentTarget] = useState<{ cohortId: string; agentName: string } | null>(null)
   const toast = useToast()
 
   const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
@@ -860,7 +849,12 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
   }
 
   function handleDeleteCohort(id: string) {
-    onUpdate({ ...program, cohorts: program.cohorts.filter(c => c.id !== id) })
+    const cohort = program.cohorts.find(c => c.id === id)
+    if (cohort) setDeleteCohortTarget({ id, name: cohort.name })
+  }
+
+  function handleRequestUnassignAgent(cohortId: string, agentName: string) {
+    setUnassignAgentTarget({ cohortId, agentName })
   }
 
   function handleToggleStatus() {
@@ -949,6 +943,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
                 programName={program.name}
                 onUpdateCohort={handleUpdateCohort}
                 onDeleteCohort={handleDeleteCohort}
+                onRequestUnassignAgent={handleRequestUnassignAgent}
               />
             ))}
           </div>
@@ -978,6 +973,39 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
           onUpdate({ ...program, cohorts: [...program.cohorts, newCohort] })
         }}
         onClose={() => setAddCohortOpen(false)}
+      />
+
+      <ConfirmModal
+        open={deleteCohortTarget !== null}
+        title="Delete Cohort"
+        message={`Are you sure you want to delete "${deleteCohortTarget?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => {
+          if (deleteCohortTarget) {
+            onUpdate({ ...program, cohorts: program.cohorts.filter(c => c.id !== deleteCohortTarget.id) })
+            toast.success(`${deleteCohortTarget.name} removed`)
+          }
+          setDeleteCohortTarget(null)
+        }}
+        onCancel={() => setDeleteCohortTarget(null)}
+      />
+
+      <ConfirmModal
+        open={unassignAgentTarget !== null}
+        title="Unassign Agent"
+        message={`Remove ${unassignAgentTarget?.agentName} from this cohort?`}
+        confirmLabel="Unassign"
+        variant="warning"
+        onConfirm={() => {
+          if (unassignAgentTarget) {
+            const cohort = program.cohorts.find(c => c.id === unassignAgentTarget.cohortId)
+            if (cohort) handleUpdateCohort({ ...cohort, agentName: '' })
+            toast.success(`${unassignAgentTarget.agentName} unassigned`)
+          }
+          setUnassignAgentTarget(null)
+        }}
+        onCancel={() => setUnassignAgentTarget(null)}
       />
     </>
   )

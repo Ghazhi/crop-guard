@@ -22,6 +22,11 @@ export interface EnrolledCohort {
   cohortName:  string
 }
 
+export interface PartnerAssignment {
+  partnerId: string
+  cohorts:   EnrolledCohort[]
+}
+
 export interface Intervention {
   id:               string
   name:             string
@@ -36,7 +41,8 @@ export interface Intervention {
   rules:            EligibilityRule[]
   steps:            ImprovementStep[]
   createdAt:        string
-  enrolledCohorts:  EnrolledCohort[]
+  enrolledCohorts:  EnrolledCohort[]   // master cohort list used in OpportunityPathways
+  partnerAssignments?: PartnerAssignment[]
 }
 
 export interface ProgramOption {

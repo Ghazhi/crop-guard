@@ -1,4 +1,5 @@
-export type FriZone = 'Resilience Leader' | 'Resilience Builder' | 'Resilience Learner' | 'Resilience Starter'
+import type { FriZone } from '@/lib/types'
+export type { FriZone }
 export type Trajectory = 'Improving' | 'Stable' | 'Declining'
 export type Recommendation = 'Approve' | 'Review' | 'Defer' | 'Decline'
 export type RiskBand = 'Low' | 'Moderate' | 'High' | 'Critical'

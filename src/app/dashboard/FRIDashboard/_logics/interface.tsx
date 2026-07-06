@@ -1,4 +1,5 @@
-export type FriZone    = 'Resilience Leader' | 'Resilience Builder' | 'Resilience Learner' | 'Resilience Starter'
+import type { FriZone } from '@/lib/types'
+export type { FriZone }
 export type CreditRisk = 'Low Risk' | 'Medium Risk' | 'High Risk'
 export type FriTrend   = 'up' | 'down' | 'flat'
 

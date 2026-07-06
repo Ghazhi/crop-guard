@@ -1,6 +1,7 @@
 import type { Farmer } from '@/app/dashboard/FarmersRegistry/_logics/interface'
 
 export const FARMERS_LIST: Farmer[] = [
+  // ── prog-001: WAVE Program (p-001 Fidelity Bank Ghana) ─────────────────────
   {
     id: 'f-001', fullName: 'Ama Mensah', phone: '0241234567',
     nationalId: 'GHA-0000000001', dateOfBirth: '1990-03-12', gender: 'female',
@@ -67,5 +68,489 @@ export const FARMERS_LIST: Farmer[] = [
     region: 'ue', district: 'Bolgatanga Municipal', community: 'Sumbrungu',
     primaryCrop: 'groundnut', farmSize: '1.5',
     enrollment: null, currentFri: 38, currentZone: 'Resilience Starter', duplicateFlag: false,
+  },
+
+  // ── prog-003: Rice Value Chain 2026 (p-002 Agricultural DFI) ───────────────
+  {
+    id: 'f-007', fullName: 'Issah Mahama', phone: '0241112233',
+    nationalId: 'GHA-100200300-1', dateOfBirth: '1988-04-20', gender: 'male',
+    region: 'nr', district: 'Tamale Metro', community: 'Tamale Central',
+    primaryCrop: 'rice', farmSize: '3.5',
+    enrollment: {
+      programId: 'prog-003', programName: 'Rice Value Chain 2026',
+      cohortId: 'coh-010', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 67, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-008', fullName: 'Fatima Alhassan', phone: '0551112234',
+    nationalId: 'GHA-100200300-2', dateOfBirth: '1993-08-11', gender: 'female',
+    region: 'nr', district: 'Tamale Metro', community: 'Savelugu Road',
+    primaryCrop: 'rice', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-003', programName: 'Rice Value Chain 2026',
+      cohortId: 'coh-010', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-009', fullName: 'Alhassan Fuseini', phone: '0201112235',
+    nationalId: 'GHA-100200300-3', dateOfBirth: '1980-12-03', gender: 'male',
+    region: 'nr', district: 'Tamale Metro', community: 'Gumbihini',
+    primaryCrop: 'rice', farmSize: '5.0',
+    enrollment: {
+      programId: 'prog-003', programName: 'Rice Value Chain 2026',
+      cohortId: 'coh-010', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 3,
+    },
+    currentFri: 74, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-010', fullName: 'Razak Sumaila', phone: '0241112240',
+    nationalId: 'GHA-100200300-4', dateOfBirth: '1987-06-17', gender: 'male',
+    region: 'nr', district: 'Yendi', community: 'Yendi Town',
+    primaryCrop: 'rice', farmSize: '4.0',
+    enrollment: {
+      programId: 'prog-003', programName: 'Rice Value Chain 2026',
+      cohortId: 'coh-011', cohortName: 'Cohort B - Yendi',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 59, currentZone: 'Resilience Learner', duplicateFlag: false,
+  },
+  {
+    id: 'f-011', fullName: 'Mariama Yakubu', phone: '0551112241',
+    nationalId: 'GHA-100200300-5', dateOfBirth: '1991-02-28', gender: 'female',
+    region: 'nr', district: 'Yendi', community: 'Nakpayili',
+    primaryCrop: 'rice', farmSize: '2.8',
+    enrollment: {
+      programId: 'prog-003', programName: 'Rice Value Chain 2026',
+      cohortId: 'coh-011', cohortName: 'Cohort B - Yendi',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+
+  // ── prog-004: Soybean Outgrower Scheme (p-002 Agricultural DFI) ────────────
+  {
+    id: 'f-012', fullName: 'Abukari Seidu', phone: '0241113344',
+    nationalId: 'GHA-200300400-1', dateOfBirth: '1986-09-14', gender: 'male',
+    region: 'sa', district: 'East Gonja', community: 'Buipe',
+    primaryCrop: 'soybean', farmSize: '6.5',
+    enrollment: {
+      programId: 'prog-004', programName: 'Soybean Outgrower Scheme',
+      cohortId: 'coh-012', cohortName: 'Cohort A - Savannah',
+      agentName: 'Abdul Razak', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 88, currentZone: 'Resilience Leader', duplicateFlag: false,
+  },
+  {
+    id: 'f-013', fullName: 'Zenabu Mahama', phone: '0551113345',
+    nationalId: 'GHA-200300400-2', dateOfBirth: '1994-03-22', gender: 'female',
+    region: 'sa', district: 'East Gonja', community: 'Yapei',
+    primaryCrop: 'soybean', farmSize: '3.2',
+    enrollment: {
+      programId: 'prog-004', programName: 'Soybean Outgrower Scheme',
+      cohortId: 'coh-012', cohortName: 'Cohort A - Savannah',
+      agentName: 'Abdul Razak', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 76, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-014', fullName: 'Yakubu Bawa', phone: '0201113346',
+    nationalId: 'GHA-200300400-3', dateOfBirth: '1982-11-07', gender: 'male',
+    region: 'sa', district: 'North Gonja', community: 'Damongo',
+    primaryCrop: 'soybean', farmSize: '8.0',
+    enrollment: {
+      programId: 'prog-004', programName: 'Soybean Outgrower Scheme',
+      cohortId: 'coh-012', cohortName: 'Cohort A - Savannah',
+      agentName: 'Abdul Razak', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 91, currentZone: 'Resilience Leader', duplicateFlag: false,
+  },
+  {
+    id: 'f-015', fullName: 'Sumaya Iddrisu', phone: '0241113347',
+    nationalId: 'GHA-200300400-4', dateOfBirth: '1997-07-01', gender: 'female',
+    region: 'sa', district: 'West Gonja', community: 'Bole',
+    primaryCrop: 'soybean', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-004', programName: 'Soybean Outgrower Scheme',
+      cohortId: 'coh-012', cohortName: 'Cohort A - Savannah',
+      agentName: 'Abdul Razak', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 63, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+
+  // ── prog-005: Cassava & Plantain Finance (p-003 Ghana Rural Bank) ──────────
+  {
+    id: 'f-016', fullName: 'Kwame Twumasi', phone: '0241223344',
+    nationalId: 'GHA-300400500-1', dateOfBirth: '1984-05-09', gender: 'male',
+    region: 'ah', district: 'Ejisu-Juaben', community: 'Ejisu',
+    primaryCrop: 'cassava', farmSize: '3.0',
+    enrollment: {
+      programId: 'prog-005', programName: 'Cassava & Plantain Finance 2026',
+      cohortId: 'coh-013', cohortName: 'Ashanti Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 70, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-017', fullName: 'Adwoa Sarpong', phone: '0551223345',
+    nationalId: 'GHA-300400500-2', dateOfBirth: '1989-10-15', gender: 'female',
+    region: 'ah', district: 'Ejisu-Juaben', community: 'Onwe',
+    primaryCrop: 'cassava', farmSize: '2.5',
+    enrollment: {
+      programId: 'prog-005', programName: 'Cassava & Plantain Finance 2026',
+      cohortId: 'coh-013', cohortName: 'Ashanti Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-018', fullName: 'Opoku Mensah', phone: '0201223346',
+    nationalId: 'GHA-300400500-3', dateOfBirth: '1991-01-25', gender: 'male',
+    region: 'ah', district: 'Ejisu-Juaben', community: 'Bomfa',
+    primaryCrop: 'yam', farmSize: '4.0',
+    enrollment: {
+      programId: 'prog-005', programName: 'Cassava & Plantain Finance 2026',
+      cohortId: 'coh-013', cohortName: 'Ashanti Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 54, currentZone: 'Resilience Learner', duplicateFlag: false,
+  },
+  {
+    id: 'f-019', fullName: 'Esi Amponsah', phone: '0241223350',
+    nationalId: 'GHA-300400500-4', dateOfBirth: '1986-07-18', gender: 'female',
+    region: 'ah', district: 'Kwabre East', community: 'Mamponteng',
+    primaryCrop: 'cassava', farmSize: '1.8',
+    enrollment: {
+      programId: 'prog-005', programName: 'Cassava & Plantain Finance 2026',
+      cohortId: 'coh-014', cohortName: 'Ashanti Cohort B',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: 45, currentZone: 'Resilience Starter', duplicateFlag: false,
+  },
+  {
+    id: 'f-020', fullName: 'Kojo Barimah', phone: '0551223351',
+    nationalId: 'GHA-300400500-5', dateOfBirth: '1978-03-30', gender: 'male',
+    region: 'ah', district: 'Kwabre East', community: 'Kodie',
+    primaryCrop: 'yam', farmSize: '5.5',
+    enrollment: {
+      programId: 'prog-005', programName: 'Cassava & Plantain Finance 2026',
+      cohortId: 'coh-014', cohortName: 'Ashanti Cohort B',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 3,
+    },
+    currentFri: 79, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+
+  // ── prog-006: Northern Sorghum Initiative (p-004 USAID Feed the Future) ────
+  {
+    id: 'f-021', fullName: 'Alhassan Ibrahim', phone: '0241334455',
+    nationalId: 'GHA-400500600-1', dateOfBirth: '1985-06-12', gender: 'male',
+    region: 'nr', district: 'Kumbungu', community: 'Kumbungu Town',
+    primaryCrop: 'sorghum', farmSize: '4.5',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-015', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 72, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-022', fullName: 'Fatima Zakari', phone: '0551334456',
+    nationalId: 'GHA-400500600-2', dateOfBirth: '1992-09-20', gender: 'female',
+    region: 'nr', district: 'Kumbungu', community: 'Wuba',
+    primaryCrop: 'millet', farmSize: '2.5',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-015', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-023', fullName: 'Seidu Mumuni', phone: '0201334457',
+    nationalId: 'GHA-400500600-3', dateOfBirth: '1979-11-05', gender: 'male',
+    region: 'nr', district: 'Kumbungu', community: 'Tali',
+    primaryCrop: 'sorghum', farmSize: '7.0',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-015', cohortName: 'Cohort A - Tamale',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 3,
+    },
+    currentFri: 83, currentZone: 'Resilience Leader', duplicateFlag: false,
+  },
+  {
+    id: 'f-024', fullName: 'Doris Dery', phone: '0241334460',
+    nationalId: 'GHA-400500600-4', dateOfBirth: '1990-04-14', gender: 'female',
+    region: 'uw', district: 'Wa Municipal', community: 'Wa Town',
+    primaryCrop: 'sorghum', farmSize: '3.0',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-016', cohortName: 'Cohort B - Upper West',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 58, currentZone: 'Resilience Learner', duplicateFlag: false,
+  },
+  {
+    id: 'f-025', fullName: 'Peter Naa', phone: '0551334461',
+    nationalId: 'GHA-400500600-5', dateOfBirth: '1983-08-29', gender: 'male',
+    region: 'uw', district: 'Wa Municipal', community: 'Kpongu',
+    primaryCrop: 'millet', farmSize: '4.5',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-016', cohortName: 'Cohort B - Upper West',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: 47, currentZone: 'Resilience Starter', duplicateFlag: false,
+  },
+  {
+    id: 'f-026', fullName: 'Agnes Bawa', phone: '0201334462',
+    nationalId: 'GHA-400500600-6', dateOfBirth: '1995-01-08', gender: 'female',
+    region: 'uw', district: 'Wa Municipal', community: 'Busa',
+    primaryCrop: 'groundnut', farmSize: '2.2',
+    enrollment: {
+      programId: 'prog-006', programName: 'Northern Sorghum Initiative',
+      cohortId: 'coh-016', cohortName: 'Cohort B - Upper West',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 65, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+
+  // ── prog-007: Feed the Future Groundnut Expansion (p-004 USAID) ────────────
+  {
+    id: 'f-027', fullName: 'Akosua Atanga', phone: '0241445566',
+    nationalId: 'GHA-500600700-1', dateOfBirth: '1987-03-16', gender: 'female',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Bolgatanga',
+    primaryCrop: 'groundnut', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-007', programName: 'Feed the Future Groundnut Expansion',
+      cohortId: 'coh-017', cohortName: 'Upper East Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 68, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-028', fullName: 'Emmanuel Ayamga', phone: '0551445567',
+    nationalId: 'GHA-500600700-2', dateOfBirth: '1981-07-23', gender: 'male',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Zuarungu',
+    primaryCrop: 'groundnut', farmSize: '3.5',
+    enrollment: {
+      programId: 'prog-007', programName: 'Feed the Future Groundnut Expansion',
+      cohortId: 'coh-017', cohortName: 'Upper East Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 3,
+    },
+    currentFri: 80, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-029', fullName: 'Cecelia Apusiga', phone: '0201445568',
+    nationalId: 'GHA-500600700-3', dateOfBirth: '1994-11-30', gender: 'female',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Sumbrungu',
+    primaryCrop: 'groundnut', farmSize: '1.5',
+    enrollment: {
+      programId: 'prog-007', programName: 'Feed the Future Groundnut Expansion',
+      cohortId: 'coh-017', cohortName: 'Upper East Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-030', fullName: 'Thomas Asigri', phone: '0241445569',
+    nationalId: 'GHA-500600700-4', dateOfBirth: '1977-05-04', gender: 'male',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Navrongo Road',
+    primaryCrop: 'sorghum', farmSize: '4.0',
+    enrollment: {
+      programId: 'prog-007', programName: 'Feed the Future Groundnut Expansion',
+      cohortId: 'coh-017', cohortName: 'Upper East Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 56, currentZone: 'Resilience Learner', duplicateFlag: false,
+  },
+
+  // ── prog-008: Women Smallholder Finance (p-005 Opportunity Intl. Ghana) ────
+  {
+    id: 'f-031', fullName: 'Mary Asare', phone: '0241556677',
+    nationalId: 'GHA-600700800-1', dateOfBirth: '1990-02-14', gender: 'female',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Bolgatanga Central',
+    primaryCrop: 'groundnut', farmSize: '1.8',
+    enrollment: {
+      programId: 'prog-008', programName: 'Women Smallholder Finance',
+      cohortId: 'coh-018', cohortName: 'Bolgatanga Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 62, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-032', fullName: 'Grace Akanpabadai', phone: '0551556678',
+    nationalId: 'GHA-600700800-2', dateOfBirth: '1993-06-18', gender: 'female',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Biu',
+    primaryCrop: 'maize', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-008', programName: 'Women Smallholder Finance',
+      cohortId: 'coh-018', cohortName: 'Bolgatanga Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-033', fullName: 'Comfort Awuni', phone: '0201556679',
+    nationalId: 'GHA-600700800-3', dateOfBirth: '1985-09-25', gender: 'female',
+    region: 'ue', district: 'Bolgatanga Municipal', community: 'Nangodi',
+    primaryCrop: 'groundnut', farmSize: '3.0',
+    enrollment: {
+      programId: 'prog-008', programName: 'Women Smallholder Finance',
+      cohortId: 'coh-018', cohortName: 'Bolgatanga Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 3,
+    },
+    currentFri: 77, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-034', fullName: 'Ama Atimbire', phone: '0241556680',
+    nationalId: 'GHA-600700800-4', dateOfBirth: '1991-12-02', gender: 'female',
+    region: 'ue', district: 'Bawku Municipal', community: 'Bawku Town',
+    primaryCrop: 'groundnut', farmSize: '1.5',
+    enrollment: {
+      programId: 'prog-008', programName: 'Women Smallholder Finance',
+      cohortId: 'coh-019', cohortName: 'Bawku Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: 42, currentZone: 'Resilience Starter', duplicateFlag: false,
+  },
+  {
+    id: 'f-035', fullName: 'Perpetua Akudibilla', phone: '0551556681',
+    nationalId: 'GHA-600700800-5', dateOfBirth: '1988-04-07', gender: 'female',
+    region: 'ue', district: 'Bawku Municipal', community: 'Manga',
+    primaryCrop: 'maize', farmSize: '2.2',
+    enrollment: {
+      programId: 'prog-008', programName: 'Women Smallholder Finance',
+      cohortId: 'coh-019', cohortName: 'Bawku Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 60, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+
+  // ── prog-009: Brong-Ahafo Climate Resilience (p-007 CARE International) ────
+  {
+    id: 'f-036', fullName: 'Kwame Owusu', phone: '0241667788',
+    nationalId: 'GHA-700800900-1', dateOfBirth: '1984-08-19', gender: 'male',
+    region: 'ba', district: 'Sunyani Municipal', community: 'Sunyani',
+    primaryCrop: 'maize', farmSize: '3.5',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-020', cohortName: 'Sunyani Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 2,
+    },
+    currentFri: 71, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-037', fullName: 'Abena Forson', phone: '0551667789',
+    nationalId: 'GHA-700800900-2', dateOfBirth: '1992-01-31', gender: 'female',
+    region: 'ba', district: 'Sunyani Municipal', community: 'Odumasi',
+    primaryCrop: 'maize', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-020', cohortName: 'Sunyani Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+  {
+    id: 'f-038', fullName: 'Kofi Boakye', phone: '0201667790',
+    nationalId: 'GHA-700800900-3', dateOfBirth: '1979-05-06', gender: 'male',
+    region: 'ba', district: 'Sunyani Municipal', community: 'Chiraa',
+    primaryCrop: 'yam', farmSize: '6.0',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-020', cohortName: 'Sunyani Cohort A',
+      agentName: 'Kwame Asante', status: 'active', currentStage: 3,
+    },
+    currentFri: 85, currentZone: 'Resilience Leader', duplicateFlag: false,
+  },
+  {
+    id: 'f-039', fullName: 'Yaa Acheampong', phone: '0241667791',
+    nationalId: 'GHA-700800900-4', dateOfBirth: '1988-10-22', gender: 'female',
+    region: 'ba', district: 'Techiman Municipal', community: 'Techiman',
+    primaryCrop: 'maize', farmSize: '2.5',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-021', cohortName: 'Techiman Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 2,
+    },
+    currentFri: 64, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-040', fullName: 'Kweku Baffoe', phone: '0551667792',
+    nationalId: 'GHA-700800900-5', dateOfBirth: '1982-03-14', gender: 'male',
+    region: 'ba', district: 'Techiman Municipal', community: 'Tuobodom',
+    primaryCrop: 'yam', farmSize: '4.5',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-021', cohortName: 'Techiman Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: 50, currentZone: 'Resilience Learner', duplicateFlag: false,
+  },
+  {
+    id: 'f-041', fullName: 'Adjoa Amponsah', phone: '0201667793',
+    nationalId: 'GHA-700800900-6', dateOfBirth: '1996-07-09', gender: 'female',
+    region: 'ba', district: 'Techiman Municipal', community: 'Nkoranza',
+    primaryCrop: 'maize', farmSize: '1.8',
+    enrollment: {
+      programId: 'prog-009', programName: 'Brong-Ahafo Climate Resilience',
+      cohortId: 'coh-021', cohortName: 'Techiman Cohort A',
+      agentName: 'Abdul Razak', status: 'active', currentStage: 1,
+    },
+    currentFri: null, currentZone: null, duplicateFlag: false,
+  },
+
+  // ── prog-010: Kumasi Cocoa Microloans (p-008 Sinapi Aba Trust) ────────────
+  {
+    id: 'f-042', fullName: 'Kofi Yeboah', phone: '0241778899',
+    nationalId: 'GHA-800900001-1', dateOfBirth: '1980-02-11', gender: 'male',
+    region: 'ah', district: 'Kumasi Metro', community: 'Adum',
+    primaryCrop: 'maize', farmSize: '2.5',
+    enrollment: {
+      programId: 'prog-010', programName: 'Kumasi Cocoa Microloans',
+      cohortId: 'coh-022', cohortName: 'Kumasi Metro Cohort',
+      agentName: 'Kwame Asante', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 73, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-043', fullName: 'Ama Darko', phone: '0551778900',
+    nationalId: 'GHA-800900001-2', dateOfBirth: '1986-06-27', gender: 'female',
+    region: 'ah', district: 'Kumasi Metro', community: 'Asokwa',
+    primaryCrop: 'cassava', farmSize: '1.8',
+    enrollment: {
+      programId: 'prog-010', programName: 'Kumasi Cocoa Microloans',
+      cohortId: 'coh-022', cohortName: 'Kumasi Metro Cohort',
+      agentName: 'Kwame Asante', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 66, currentZone: 'Resilience Builder', duplicateFlag: false,
+  },
+  {
+    id: 'f-044', fullName: 'Yaw Kusi', phone: '0201778901',
+    nationalId: 'GHA-800900001-3', dateOfBirth: '1975-09-15', gender: 'male',
+    region: 'ah', district: 'Kumasi Metro', community: 'Manhyia',
+    primaryCrop: 'maize', farmSize: '4.0',
+    enrollment: {
+      programId: 'prog-010', programName: 'Kumasi Cocoa Microloans',
+      cohortId: 'coh-022', cohortName: 'Kumasi Metro Cohort',
+      agentName: 'Kwame Asante', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 81, currentZone: 'Resilience Leader', duplicateFlag: false,
+  },
+  {
+    id: 'f-045', fullName: 'Adwoa Mensah', phone: '0241778902',
+    nationalId: 'GHA-800900001-4', dateOfBirth: '1993-12-03', gender: 'female',
+    region: 'ah', district: 'Kumasi Metro', community: 'Bantama',
+    primaryCrop: 'cassava', farmSize: '2.0',
+    enrollment: {
+      programId: 'prog-010', programName: 'Kumasi Cocoa Microloans',
+      cohortId: 'coh-022', cohortName: 'Kumasi Metro Cohort',
+      agentName: 'Kwame Asante', status: 'graduated', currentStage: 5,
+    },
+    currentFri: 57, currentZone: 'Resilience Learner', duplicateFlag: false,
   },
 ]

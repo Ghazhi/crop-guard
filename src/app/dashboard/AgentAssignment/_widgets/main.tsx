@@ -5,8 +5,10 @@ import { Search, Users, AlertTriangle, UserCog, X, UserRoundPlus, UserPlus } fro
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
+import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 
 import { getAgents, getCohorts, getPrograms, getFarmersByCohort, getFarmersByAgent } from '../_logics/functions'
 import type { AgentSummary, CohortRow, ProgramOption, FarmerPreview } from '../_logics/interface'
@@ -29,16 +31,6 @@ const SELECT_STYLE = {
 }
 
 const SELECT_CLS = 'h-9 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 cursor-pointer'
-
-function Avatar({ name, size = 8 }: { name: string; size?: number }) {
-  return (
-    <div className={cn(
-      `w-${size} h-${size} rounded-full flex items-center justify-center shrink-0 text-xs font-bold bg-emerald-50 text-emerald-700`
-    )}>
-      {name.charAt(0)}
-    </div>
-  )
-}
 
 // ── Add Agent to Cohort sheet ─────────────────────────────────────────────────
 
@@ -210,7 +202,7 @@ function AssignFarmersSheet({ open, onClose, cohort, agents }: {
                   </svg>
                 )}
               </div>
-              <Avatar name={f.fullName} size={7} />
+              <PersonAvatar name={f.fullName} size={28} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium leading-tight" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
                 <p className="text-[11px] text-gray-400">{f.phone}</p>
@@ -293,7 +285,7 @@ function AgentFarmersSheet({ open, onClose, agent, programs }: {
       <div className="space-y-1">
         {displayed.map(f => (
           <div key={f.id} className="flex items-center gap-3 py-3 px-3 rounded-xl hover:bg-gray-50 transition-colors">
-            <Avatar name={f.fullName} size={8} />
+            <PersonAvatar name={f.fullName} size={32} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
               <p className="text-[11px] text-gray-400 mt-0.5">{f.phone} · {f.region}</p>
@@ -409,7 +401,7 @@ function AgentCard({ agent, isActive, onFilter, onViewFarmers }: {
       onClick={onFilter}
     >
       <div className="flex items-start gap-3">
-        <Avatar name={agent.name} size={10} />
+        <PersonAvatar name={agent.name} size={40} />
         <div className="min-w-0">
           <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--brand-forest)' }}>{agent.name}</p>
           <p className="text-xs text-gray-400 mt-0.5">{agent.regions.join(', ')}</p>
@@ -458,6 +450,8 @@ export function Main() {
   const [filterCohort,  setFilterCohort]  = useState('')
   const [search,        setSearch]        = useState('')
 
+
+  const [removeAgentTarget, setRemoveAgentTarget] = useState<{ cohortId: string; agentId: string; agentName: string } | null>(null)
 
   const [addAgentOpen,    setAddAgentOpen]    = useState(false)
   const [assignFarmOpen,  setAssignFarmOpen]  = useState(false)
@@ -647,7 +641,7 @@ export function Main() {
                             {a.agentName}
                             {a.isPrimary && <span className="text-[9px] opacity-70 font-normal">primary</span>}
                             <button
-                              onClick={() => handleRemoveAgent(c.cohortId, a.agentId)}
+                              onClick={() => setRemoveAgentTarget({ cohortId: c.cohortId, agentId: a.agentId, agentName: a.agentName })}
                               className={cn(
                                 'w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 transition-opacity',
                                 a.isPrimary ? 'hover:bg-white/20' : 'hover:bg-emerald-100'
@@ -700,6 +694,15 @@ export function Main() {
       <BulkAssignSheet
         open={bulkOpen} onClose={() => setBulkOpen(false)}
         agents={agents} cohorts={cohorts}
+      />
+      <ConfirmModal
+        open={!!removeAgentTarget}
+        title="Remove agent?"
+        message={`Remove ${removeAgentTarget?.agentName ?? 'this agent'} from this cohort?`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => { if (removeAgentTarget) handleRemoveAgent(removeAgentTarget.cohortId, removeAgentTarget.agentId); setRemoveAgentTarget(null) }}
+        onCancel={() => setRemoveAgentTarget(null)}
       />
     </div>
   )

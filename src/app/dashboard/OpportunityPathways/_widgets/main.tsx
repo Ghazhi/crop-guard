@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, PauseCircle, Trash2, ChevronDown, ChevronUp, X, Package, AlertCircle, UserPlus, Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Plus, Pencil, PauseCircle, Trash2, ChevronDown, ChevronUp, X, Package, AlertCircle, UserPlus, Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { SheetTemplate }    from '@/customComponents/SheetTemplate'
 import { ButtonTemplate }   from '@/customComponents/ButtonTemplate'
 import { InputTemplate }    from '@/customComponents/InputTemplate'
@@ -16,6 +16,7 @@ import type {
   InterventionStatus, InterventionType, ApprovalMode, EligibilityRule, ImprovementStep,
 } from '../_logics/interface'
 import type { Farmer } from '@/app/dashboard/FarmersRegistry/_logics/interface'
+import { PersonAvatar } from '@/customComponents/PersonAvatar'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const TYPES: InterventionType[]      = ['Input Loan', 'Cash Loan', 'Insurance', 'Advisory', 'Market Access']
@@ -346,16 +347,6 @@ function InterventionSheet({ open, mode, initial, onSave, onClose }: SheetProps)
 }
 
 // ── EnrollSheet helpers ────────────────────────────────────────────────────────
-const AVATAR_COLORS = [
-  { bg: '#E6F4EC', fg: '#1A3D2B' },
-  { bg: '#D1FAE5', fg: '#065f46' },
-  { bg: '#E0F2FE', fg: '#0369a1' },
-  { bg: '#EDE9FE', fg: '#5b21b6' },
-  { bg: '#FEF3C7', fg: '#92400e' },
-  { bg: '#FCE7F3', fg: '#9d174d' },
-]
-function avatarStyle(name: string) { return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length] }
-
 type EnrolTab = 'eligible' | 'applied' | 'approved' | 'rejected' | 'closed'
 
 interface EnrolledEntry { farmerId: string; date: string }
@@ -381,6 +372,8 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
   const [search,       setSearch]      = useState('')
   const [selected,     setSelected]    = useState<Set<string>>(new Set())
   const [entries,      setEntries]     = useState<EnrolledEntry[]>([{ farmerId: 'f-001', date: '6/21/2026' }])
+  const [appliedIds,   setAppliedIds]  = useState<Set<string>>(new Set())
+  const [rejectedIds,  setRejectedIds] = useState<Set<string>>(new Set())
   const [suspended,    setSuspended]   = useState<Set<string>>(new Set())
   const [saving,       setSaving]      = useState(false)
   const [filterProg,   setFilterProg]  = useState('')
@@ -399,7 +392,9 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
   if (!intervention) return null
 
   const enrolledCohorts = intervention.enrolledCohorts ?? []
-  const enrolledIds     = new Set(entries.map(e => e.farmerId))
+  const approvedIds     = new Set(entries.map(e => e.farmerId))
+  // enrolledIds blocks eligible re-selection: anyone already applied, approved, or suspended
+  const enrolledIds     = new Set([...approvedIds, ...appliedIds, ...rejectedIds, ...suspended])
   const minFri          = intervention.minFri ?? 0
   const allFarmers      = FARMERS_LIST as Farmer[]
 
@@ -413,10 +408,12 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
     : allFarmers.filter(f => f.enrollment?.cohortId && visibleCohortIds.includes(f.enrollment.cohortId))
 
   const eligible = cohortFarmers.filter(f => (f.currentFri ?? 0) >= minFri && !enrolledIds.has(f.id))
-  const approved = allFarmers.filter(f => enrolledIds.has(f.id) && !suspended.has(f.id))
+  const applied  = allFarmers.filter(f => appliedIds.has(f.id))
+  const approved = allFarmers.filter(f => approvedIds.has(f.id) && !suspended.has(f.id))
+  const rejected = allFarmers.filter(f => rejectedIds.has(f.id))
   const closed   = allFarmers.filter(f => suspended.has(f.id))
 
-  const tabFarmers: Record<EnrolTab, Farmer[]> = { eligible, applied: [], approved, rejected: [], closed }
+  const tabFarmers: Record<EnrolTab, Farmer[]> = { eligible, applied, approved, rejected, closed }
 
   const displayed = tabFarmers[tab].filter(f =>
     !search || f.fullName.toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search)
@@ -450,23 +447,37 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
   async function handleEnrol() {
     setSaving(true)
     await new Promise(r => setTimeout(r, 500))
-    const today = new Date().toLocaleDateString('en-US')
-    setEntries(prev => [...prev, ...[...selected].filter(id => !enrolledIds.has(id)).map(farmerId => ({ farmerId, date: today }))])
+    const fresh = [...selected].filter(id => !enrolledIds.has(id))
+    setAppliedIds(prev => new Set([...prev, ...fresh]))
     setSelected(new Set())
-    setTab('approved')
+    setTab('applied')
     setSaving(false)
   }
 
+  function handleApprove(id: string) {
+    const today = new Date().toLocaleDateString('en-US')
+    setAppliedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    setEntries(prev => [...prev, { farmerId: id, date: today }])
+  }
+
+  function handleReject(id: string) {
+    setAppliedIds(prev => { const n = new Set(prev); n.delete(id); return n })
+    setRejectedIds(prev => new Set([...prev, id]))
+  }
+
   function handleSuspend(id: string) { setSuspended(prev => new Set([...prev, id])) }
-  function handleClose(id: string)   { setEntries(prev => prev.filter(e => e.farmerId !== id)) }
+  function handleClose(id: string) {
+    setEntries(prev => prev.filter(e => e.farmerId !== id))
+    setSuspended(prev => new Set([...prev, id]))
+  }
 
   const enrollableSelected = [...selected].filter(id => !enrolledIds.has(id))
 
   const TABS: { key: EnrolTab; label: string; count: number; icon: React.ReactNode }[] = [
     { key: 'eligible', label: 'Eligible',  count: eligible.length,  icon: <Users className="w-3.5 h-3.5" /> },
-    { key: 'applied',  label: 'Applied',   count: 0,                icon: <Clock className="w-3.5 h-3.5" /> },
+    { key: 'applied',  label: 'Applied',   count: applied.length,   icon: <Clock className="w-3.5 h-3.5" /> },
     { key: 'approved', label: 'Approved',  count: approved.length,  icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-    { key: 'rejected', label: 'Rejected',  count: 0,                icon: <XCircle className="w-3.5 h-3.5" /> },
+    { key: 'rejected', label: 'Rejected',  count: rejected.length,  icon: <XCircle className="w-3.5 h-3.5" /> },
     { key: 'closed',   label: 'Closed',    count: closed.length,    icon: <XCircle className="w-3.5 h-3.5" /> },
   ]
 
@@ -475,7 +486,7 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
 
       {/* Edit row */}
       <div className="px-4 pt-3 shrink-0 flex justify-end">
-        <ButtonTemplate variant="outline" size="sm" leftIcon={<Edit2 className="w-3.5 h-3.5" />} label="Edit"
+        <ButtonTemplate variant="outline" size="sm" leftIcon={<Pencil className="w-3.5 h-3.5" />} label="Edit"
           onClick={() => { onClose(); onEdit() }} />
       </div>
 
@@ -580,16 +591,32 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
             {TAB_EMPTY[tab].icon}
             <p className="text-sm text-gray-400">{TAB_EMPTY[tab].message}</p>
           </div>
+        ) : tab === 'applied' ? (
+          <div className="px-3 py-2 space-y-1">
+            {displayed.map(f => (
+              <div key={f.id} className="flex items-center gap-3 px-3 py-3 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all">
+                <PersonAvatar name={f.fullName} size={32} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{f.phone}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => handleApprove(f.id)}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-colors hover:bg-green-50"
+                    style={{ borderColor: '#16a34a', color: '#15803d' }}>Approve</button>
+                  <button onClick={() => handleReject(f.id)}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-red-200 text-red-500 transition-colors hover:bg-red-50">Reject</button>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : tab === 'approved' ? (
           <div className="px-3 py-2 space-y-1">
             {displayed.map(f => {
               const entry = entries.find(e => e.farmerId === f.id)
-              const av    = avatarStyle(f.fullName)
               return (
                 <div key={f.id} className="flex items-center gap-3 px-3 py-3 rounded-xl border border-transparent hover:border-gray-200 hover:bg-gray-50 transition-all">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: av.bg, color: av.fg }}>
-                    {f.fullName.charAt(0)}
-                  </div>
+                  <PersonAvatar name={f.fullName} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{f.phone}</p>
@@ -611,7 +638,6 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
             {displayed.map(f => {
               const isEnrolled = enrolledIds.has(f.id)
               const isSelected = selected.has(f.id)
-              const av         = avatarStyle(f.fullName)
               return (
                 <div key={f.id} onClick={() => toggleSelect(f.id)}
                   className={['flex items-center gap-3 px-3 py-3 rounded-xl border transition-all',
@@ -629,9 +655,7 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
                       </svg>
                     )}
                   </div>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ background: av.bg, color: av.fg }}>
-                    {f.fullName.charAt(0)}
-                  </div>
+                  <PersonAvatar name={f.fullName} size={32} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold leading-tight" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{f.phone}</p>

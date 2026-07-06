@@ -1,5 +1,6 @@
 'use client'
 
+import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -474,13 +475,6 @@ export function Main({ farmerId }: { farmerId: string }) {
 
   if (!farmer) return null
 
-  const initials = farmer.fullName
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
   return (
     <div className="min-h-screen p-6 md:p-8" style={{ background: 'var(--brand-gray)' }}>
       {/* ── Back button ────────────────────────────────────────────────────── */}
@@ -501,12 +495,7 @@ export function Main({ farmerId }: { farmerId: string }) {
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           {/* Left: avatar + identity */}
           <div className="flex items-start gap-4">
-            <div
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
-              style={{ background: 'var(--brand-dark)' }}
-            >
-              {initials}
-            </div>
+            <PersonAvatar name={farmer.fullName} size={56} />
             <div>
               <h1
                 className="text-2xl font-bold leading-tight"

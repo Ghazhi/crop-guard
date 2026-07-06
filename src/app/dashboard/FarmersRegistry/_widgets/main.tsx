@@ -1,8 +1,9 @@
 'use client'
 
+import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Search, X, Download, Upload, RefreshCw, Plus, Edit2,
+  Search, X, Download, Upload, RefreshCw, Plus, Pencil,
   UserMinus, UserCog, Users, Check, GitBranch, UserPlus,
   FileText, UserCheck, Clock, CreditCard, Truck, PackageCheck,
   MapPin, BarChart2, ChevronUp, ChevronDown, SlidersHorizontal,
@@ -19,6 +20,7 @@ import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { FileUploadTemplate } from '@/customComponents/FileUploadTemplate'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 
 import { getFarmers, getProgramOptions } from '../_logics/functions'
 import type { Farmer, FriZone, ProgramOption } from '../_logics/interface'
@@ -1102,6 +1104,11 @@ function DetailSheet({ open, onClose, farmer, onEdit, onUnenroll }: {
   const enr = farmer.enrollment
   return (
     <SheetTemplate open={open} onClose={onClose} title={farmer.fullName} bodyClassName="px-6 py-5 space-y-5">
+      <div className="flex justify-end">
+        <ButtonTemplate variant="outline" size="sm" label="Edit"
+          leftIcon={<Pencil className="w-3.5 h-3.5" />}
+          onClick={() => { onClose(); onEdit() }} />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {([
           ['Phone',     farmer.phone],
@@ -1119,9 +1126,6 @@ function DetailSheet({ open, onClose, farmer, onEdit, onUnenroll }: {
         ))}
       </div>
       <div className="flex gap-2 flex-wrap border-t pt-4">
-        <ButtonTemplate variant="outline" size="sm" label="Edit Details"
-          leftIcon={<Edit2 className="w-3.5 h-3.5" />}
-          onClick={() => { onClose(); onEdit() }} />
         {enr && (
           <ButtonTemplate variant="outline" size="sm" label="Unenroll"
             leftIcon={<UserMinus className="w-3.5 h-3.5" />}
@@ -1358,6 +1362,7 @@ export function Main() {
   const [focusFarmer,      setFocusFarmer]      = useState<Farmer | null>(null)
   const [statsOpen,        setStatsOpen]        = useState(false)
   const [filtersOpen,      setFiltersOpen]      = useState(false)
+  const [unenrollTarget,   setUnenrollTarget]   = useState<Farmer | null>(null)
 
   useEffect(() => {
     Promise.all([getFarmers(), getProgramOptions()]).then(([f, p]) => {
@@ -1677,12 +1682,7 @@ export function Main() {
                     >
                       {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
-                    <div className={cn(
-                      'w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold',
-                      enr ? 'text-(--brand-dark)' : 'bg-gray-100 text-gray-500'
-                    )} style={enr ? { background: 'var(--brand-pale)' } : {}}>
-                      {f.fullName.charAt(0)}
-                    </div>
+                    <PersonAvatar name={f.fullName} size={32} />
                   </div>
 
                   {/* Farmer Details */}
@@ -1783,7 +1783,7 @@ export function Main() {
                     <ButtonTemplate variant="outline" size="sm" label="Remove"
                       leftIcon={<UserMinus className="w-3 h-3" />}
                       isDisabled={!enr}
-                      onClick={enr ? () => unenrollFarmer(f) : undefined} />
+                      onClick={enr ? () => setUnenrollTarget(f) : undefined} />
                   </div>
                 </div>
               )
@@ -1803,7 +1803,16 @@ export function Main() {
       <BulkUploadSheet open={bulkUploadOpen} onClose={() => setBulkUploadOpen(false)} />
       <DetailSheet open={detailOpen} onClose={() => { setDetailOpen(false); setFocusFarmer(null) }}
         farmer={focusFarmer} onEdit={() => setEditOpen(true)}
-        onUnenroll={() => focusFarmer && unenrollFarmer(focusFarmer)} />
+        onUnenroll={() => setUnenrollTarget(focusFarmer)} />
+      <ConfirmModal
+        open={!!unenrollTarget}
+        title="Remove from programme?"
+        message={`${unenrollTarget?.fullName ?? 'This farmer'} will be unenrolled. This cannot be undone.`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => { if (unenrollTarget) unenrollFarmer(unenrollTarget); setUnenrollTarget(null) }}
+        onCancel={() => setUnenrollTarget(null)}
+      />
     </div>
   )
 }

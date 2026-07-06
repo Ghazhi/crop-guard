@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import {
   MapPin, Users, ChevronRight, Plus, Search,
-  Building2, Navigation, Pencil,
+  Building2, Navigation, Pencil, Trash2,
 } from 'lucide-react'
+import { ConfirmModal }         from '@/customComponents/ConfirmModal'
 import { SheetTemplate }        from '@/customComponents/SheetTemplate'
 import { ButtonTemplate }       from '@/customComponents/ButtonTemplate'
 import { InputTemplate }        from '@/customComponents/InputTemplate'
@@ -120,13 +121,20 @@ function IncomeStreamPill({ label }: { label: string }) {
 
 // ─── Community card ──────────────────────────────────────────────────────────
 
-function CommunityCard({ c, onClick }: { c: Community; onClick: () => void }) {
+function CommunityCard({ c, onClick, onRemove }: { c: Community; onClick: () => void; onRemove: () => void }) {
   return (
     <div onClick={onClick}
-      className="rounded-xl border border-gray-200 bg-white overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+      className="relative group rounded-xl border border-gray-200 bg-white overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
       <div className="h-32 flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
         <Building2 className="w-10 h-10" style={{ color: 'var(--brand-green)' }} />
       </div>
+      <button
+        onClick={e => { e.stopPropagation(); onRemove() }}
+        className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
+        title="Remove community"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
       <div className="p-4 space-y-2">
         <p className="font-semibold text-gray-900">{c.name}</p>
         <p className="text-xs flex items-center gap-1" style={{ color: 'var(--brand-green)' }}>
@@ -156,12 +164,21 @@ function CommunityCard({ c, onClick }: { c: Community; onClick: () => void }) {
 
 // ─── Cooperative card ────────────────────────────────────────────────────────
 
-function CoopCard({ c, onClick }: { c: Cooperative; onClick: () => void }) {
+function CoopCard({ c, onClick, onRemove }: { c: Cooperative; onClick: () => void; onRemove: () => void }) {
   return (
     <div onClick={onClick}
-      className="rounded-xl border border-gray-200 bg-white p-4 cursor-pointer hover:shadow-md transition-shadow space-y-2.5">
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
-        <Users className="w-5 h-5" style={{ color: 'var(--brand-green)' }} />
+      className="relative group rounded-xl border border-gray-200 bg-white p-4 cursor-pointer hover:shadow-md transition-shadow space-y-2.5">
+      <div className="flex items-start justify-between">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
+          <Users className="w-5 h-5" style={{ color: 'var(--brand-green)' }} />
+        </div>
+        <button
+          onClick={e => { e.stopPropagation(); onRemove() }}
+          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:bg-red-50"
+          title="Remove cooperative"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
       <div>
         <p className="font-semibold text-gray-900">{c.name}</p>
@@ -299,8 +316,9 @@ function CommunityEditSheet({
   const [leaderName,  setLeaderName]  = useState(community?.leaderName ?? '')
   const [leaderTel,   setLeaderTel]   = useState(community?.leaderContact ?? '')
 
-  // Reset when community changes
+  // Reset when community changes or sheet reopens
   useEffect(() => {
+    if (!open) return
     setName(community?.name ?? '')
     setRegionCode(community?.regionCode ?? '')
     setDistrict(community?.district ?? '')
@@ -311,7 +329,7 @@ function CommunityEditSheet({
     setAmenities(community?.socialAmenities ?? emptyAmenities())
     setLeaderName(community?.leaderName ?? '')
     setLeaderTel(community?.leaderContact ?? '')
-  }, [community])
+  }, [community, open])
 
   const selectedRegion = regions.find(r => r.code === regionCode)
   const districts = selectedRegion?.districts ?? []
@@ -569,6 +587,7 @@ function CoopEditSheet({
   const [secretary,   setSecretary]   = useState(coop?.secretaryName ?? '')
 
   useEffect(() => {
+    if (!open) return
     setCoopName(coop?.name ?? '')
     setCommunityId(coop?.communityId ?? '')
     setMembers(coop?.memberCount?.toString() ?? '')
@@ -577,7 +596,7 @@ function CoopEditSheet({
     setAnimals(coop?.farmAnimals.map(a => a.charAt(0).toUpperCase() + a.slice(1)) ?? [])
     setChair(coop?.chairmanName ?? '')
     setSecretary(coop?.secretaryName ?? '')
-  }, [coop])
+  }, [coop, open])
 
   function togglePrimary(c: string) {
     setPrimary(prev => prev.includes(c) ? prev.filter(x => x !== c) : prev.length < 2 ? [...prev, c] : prev)
@@ -687,14 +706,17 @@ export function Main() {
   const [regions,      setRegions]      = useState<RegionOption[]>([])
   const [loading,      setLoading]      = useState(true)
   const [search,       setSearch]       = useState('')
+  const [gridCols,     setGridCols]     = useState<3 | 5>(3)
 
   // view / edit state
-  const [viewCommunity,  setViewCommunity]  = useState<Community | null>(null)
-  const [editCommunity,  setEditCommunity]  = useState<Community | null>(null)
-  const [editCommOpen,   setEditCommOpen]   = useState(false)
-  const [viewCoop,       setViewCoop]       = useState<Cooperative | null>(null)
-  const [editCoop,       setEditCoop]       = useState<Cooperative | null>(null)
-  const [editCoopOpen,   setEditCoopOpen]   = useState(false)
+  const [viewCommunity,    setViewCommunity]    = useState<Community | null>(null)
+  const [editCommunity,    setEditCommunity]    = useState<Community | null>(null)
+  const [editCommOpen,     setEditCommOpen]     = useState(false)
+  const [viewCoop,         setViewCoop]         = useState<Cooperative | null>(null)
+  const [editCoop,         setEditCoop]         = useState<Cooperative | null>(null)
+  const [editCoopOpen,     setEditCoopOpen]     = useState(false)
+  const [removeCommTarget, setRemoveCommTarget] = useState<Community | null>(null)
+  const [removeCoopTarget, setRemoveCoopTarget] = useState<Cooperative | null>(null)
 
   useEffect(() => {
     Promise.all([fetchCommunities(), fetchCooperatives(), fetchRegions()]).then(
@@ -735,22 +757,32 @@ export function Main() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-full border border-gray-200 bg-gray-50 w-fit">
-        {([
-          { key: 'communities',  label: 'Communities',  icon: MapPin },
-          { key: 'cooperatives', label: 'Cooperatives', icon: Users  },
-        ] as const).map(({ key, label, icon: Icon }) => (
-          <button key={key}
-            onClick={() => { setTab(key); setSearch('') }}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors"
-            style={tab === key
-              ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
-              : { color: '#6b7280' }}
-          >
-            <Icon className="w-3.5 h-3.5" />{label}
-          </button>
-        ))}
+      {/* Tabs + grid toggle */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex gap-1 p-1 rounded-full border border-gray-200 bg-gray-50 w-fit">
+          {([
+            { key: 'communities',  label: 'Communities',  icon: MapPin },
+            { key: 'cooperatives', label: 'Cooperatives', icon: Users  },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button key={key}
+              onClick={() => { setTab(key); setSearch('') }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+              style={tab === key
+                ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
+                : { color: '#6b7280' }}
+            >
+              <Icon className="w-3.5 h-3.5" />{label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setGridCols(g => g === 3 ? 5 : 3)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500 hover:text-gray-800 hover:border-gray-300 transition-colors"
+        >
+          <span className="text-[10px] font-bold tabular-nums" style={{ color: 'var(--brand-forest)' }}>{gridCols}</span>
+          Toggle List
+        </button>
       </div>
 
       {/* Search + action */}
@@ -763,7 +795,7 @@ export function Main() {
             value={search} onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <ButtonTemplate variant="primary" size="sm"
+<ButtonTemplate variant="primary" size="sm"
           label={tab === 'communities' ? 'New Community' : 'New Cooperative'}
           leftIcon={<Plus className="w-4 h-4" />}
           onClick={() => {
@@ -775,23 +807,29 @@ export function Main() {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[1,2,3].map(i => <div key={i} className="h-52 rounded-xl bg-gray-200 animate-pulse" />)}
+        <div className={gridCols === 5 ? 'grid grid-cols-2 md:grid-cols-5 gap-5' : 'grid grid-cols-1 md:grid-cols-3 gap-5'}>
+          {Array.from({ length: gridCols }).map((_, i) => <div key={i} className="h-52 rounded-xl bg-gray-200 animate-pulse" />)}
         </div>
       ) : tab === 'communities' ? (
         filteredCommunities.length === 0
           ? <p className="text-sm text-gray-400 py-12 text-center">No communities found.</p>
-          : <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          : <div className={`grid grid-cols-2 md:grid-cols-${gridCols} gap-5`}>
               {filteredCommunities.map(c => (
-                <CommunityCard key={c.id} c={c} onClick={() => setViewCommunity(c)} />
+                <CommunityCard key={c.id} c={c}
+                  onClick={() => setViewCommunity(c)}
+                  onRemove={() => setRemoveCommTarget(c)}
+                />
               ))}
             </div>
       ) : (
         filteredCooperatives.length === 0
           ? <p className="text-sm text-gray-400 py-12 text-center">No cooperatives found.</p>
-          : <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          : <div className={`grid grid-cols-2 md:grid-cols-${gridCols} gap-5`}>
               {filteredCooperatives.map(c => (
-                <CoopCard key={c.id} c={c} onClick={() => setViewCoop(c)} />
+                <CoopCard key={c.id} c={c}
+                  onClick={() => setViewCoop(c)}
+                  onRemove={() => setRemoveCoopTarget(c)}
+                />
               ))}
             </div>
       )}
@@ -832,6 +870,31 @@ export function Main() {
           })
           setEditCoopOpen(false)
         }}
+      />
+
+      <ConfirmModal
+        open={!!removeCommTarget}
+        title="Remove community?"
+        message={`"${removeCommTarget?.name}" will be permanently removed. This cannot be undone.`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => {
+          setCommunities(prev => prev.filter(c => c.id !== removeCommTarget?.id))
+          setRemoveCommTarget(null)
+        }}
+        onCancel={() => setRemoveCommTarget(null)}
+      />
+      <ConfirmModal
+        open={!!removeCoopTarget}
+        title="Remove cooperative?"
+        message={`"${removeCoopTarget?.name}" will be permanently removed. This cannot be undone.`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => {
+          setCooperatives(prev => prev.filter(c => c.id !== removeCoopTarget?.id))
+          setRemoveCoopTarget(null)
+        }}
+        onCancel={() => setRemoveCoopTarget(null)}
       />
     </div>
   )

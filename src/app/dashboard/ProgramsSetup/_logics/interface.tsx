@@ -21,4 +21,5 @@ export interface Program {
   targetCount:   number
   status:        'Active' | 'Inactive' | 'Completed'
   cohorts:       Cohort[]
+  partnerId?:    string
 }

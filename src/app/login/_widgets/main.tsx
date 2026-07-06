@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react'
 import { login } from '../_logics/functions'
 
+const BRAND = '#2C5F3F'
+
 export function Main() {
   const router = useRouter()
   const [username,     setUsername]     = useState('')
@@ -20,7 +22,9 @@ export function Main() {
     const result = await login({ username, password })
     setLoading(false)
     if (!result.ok) { setError(result.error ?? 'Login failed.'); return }
-    router.push('/dashboard')
+    if (result.role === 'partner') router.push('/dashboard/PartnerPortal')
+    else if (result.role === 'finance') router.push('/dashboard/FinancePortal')
+    else router.push('/dashboard/Dashboard')
   }
 
   return (
@@ -29,7 +33,7 @@ export function Main() {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
         {/* Logo */}
-        <div className="pt-8 pb-3 flex flex-col items-center gap-1">
+        <div className="pt-8 pb-5 flex flex-col items-center gap-1">
           <div className="mb-1">
             <svg width="52" height="62" viewBox="0 0 52 62" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M26 0C11.64 0 0 11.64 0 26C0 44.2 26 62 26 62C26 62 52 44.2 52 26C52 11.64 40.36 0 26 0Z" fill="#F5A623"/>
@@ -48,9 +52,6 @@ export function Main() {
           <p className="text-xs tracking-wide" style={{ color: '#5A9E74' }}>Data-smart. Farmer-first.</p>
         </div>
 
-        {/* Subtitle */}
-        <p className="text-center text-sm text-gray-400 mt-2 mb-5">Sign in to access your account</p>
-
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
 
@@ -65,7 +66,7 @@ export function Main() {
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold" style={{ color: '#1A3D2B' }}>Username</label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#5A9E74' }}>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: BRAND }}>
                 <User className="w-4 h-4" />
               </span>
               <input
@@ -75,7 +76,7 @@ export function Main() {
                 onChange={e => setUsername(e.target.value)}
                 autoComplete="username"
                 style={{ backgroundColor: '#fefce8', borderColor: '#e9e9c8' }}
-                className="w-full h-12 pl-10 pr-4 rounded-xl border text-sm text-gray-700 focus:outline-none focus:border-[#3D7A56] focus:ring-2 focus:ring-[#3D7A56]/20 transition-all placeholder:text-gray-400"
+                className="w-full h-12 pl-10 pr-4 rounded-xl border text-sm text-gray-700 focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -84,7 +85,7 @@ export function Main() {
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-semibold" style={{ color: '#1A3D2B' }}>Password</label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: '#5A9E74' }}>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: BRAND }}>
                 <Lock className="w-4 h-4" />
               </span>
               <input
@@ -94,13 +95,13 @@ export function Main() {
                 onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password"
                 style={{ backgroundColor: '#fefce8', borderColor: '#e9e9c8' }}
-                className="w-full h-12 pl-10 pr-12 rounded-xl border text-sm text-gray-700 focus:outline-none focus:border-[#3D7A56] focus:ring-2 focus:ring-[#3D7A56]/20 transition-all placeholder:text-gray-400"
+                className="w-full h-12 pl-10 pr-12 rounded-xl border text-sm text-gray-700 focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(p => !p)}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                style={{ color: '#5A9E74' }}
+                style={{ color: BRAND }}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -112,22 +113,37 @@ export function Main() {
             type="submit"
             disabled={loading}
             className="w-full h-12 rounded-xl text-white text-sm font-semibold transition-opacity disabled:opacity-60 mt-1"
-            style={{ backgroundColor: '#1A3D2B' }}
+            style={{ backgroundColor: BRAND }}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
+        {/* Test credentials */}
+        <div className="mx-6 mb-4 rounded-xl border border-dashed border-amber-200 bg-amber-50 px-4 py-3 space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Test Logins</p>
+          {[
+            { role: 'Staff',   user: 'staff',   pass: 'staff123'   },
+            { role: 'Partner', user: 'partner', pass: 'partner123' },
+            { role: 'Finance', user: 'finance', pass: 'finance123' },
+          ].map(({ role, user, pass }) => (
+            <button key={role} type="button"
+              onClick={() => { setUsername(user); setPassword(pass) }}
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-white border border-amber-100 hover:border-amber-300 transition-colors text-left"
+            >
+              <span className="text-xs font-semibold text-gray-700">{role}</span>
+              <span className="text-xs text-gray-400 font-mono">{user} / {pass}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Terms */}
-        <div className="px-6 py-4 text-center space-y-1.5">
+        <div className="px-6 py-3 text-center">
           <p className="text-xs text-gray-400 leading-relaxed">
             By signing in, you agree to our{' '}
             <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Terms of Service</span>
             {' '}and{' '}
             <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Privacy Policy</span>.
-          </p>
-          <p className="text-xs cursor-pointer" style={{ color: '#3D7A56' }}>
-            Need help? Contact our support team
           </p>
         </div>
 
@@ -139,7 +155,6 @@ export function Main() {
         </div>
 
       </div>
-
     </div>
   )
 }

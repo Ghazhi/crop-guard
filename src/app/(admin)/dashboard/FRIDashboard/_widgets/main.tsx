@@ -179,7 +179,7 @@ function FarmerDetailSheet({ farmer, open, onClose }: {
 
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
-      <SheetContent side="right" className="w-135 sm:max-w-135 p-0 flex flex-col overflow-hidden">
+      <SheetContent side="right" className="w-full sm:w-135 sm:max-w-135 p-0 flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
@@ -732,7 +732,7 @@ export function Main() {
       {/* Stat + Zone cards (collapsible) */}
       {showCards && (
         <>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
             ) : summary && (
@@ -746,7 +746,7 @@ export function Main() {
             )}
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)
             ) : summary && (

@@ -1210,7 +1210,7 @@ function ProgramListRow({ program, onUpdate }: {
           </div>
           <p className="text-xs text-gray-400 mt-0.5">{program.season}</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <span className="text-xs text-gray-400 tabular-nums">{program.cohorts.length} cohort{program.cohorts.length !== 1 ? 's' : ''}</span>
           <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />

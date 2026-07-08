@@ -212,17 +212,17 @@ export function Main() {
 
       {loading ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
             {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
             {[1,2,3,4].map(i => <SkeletonCard key={i} />)}
           </div>
         </>
       ) : stats && (
         <>
           {/* Primary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
             <StatCard icon={Users}         label="Total Farmers"      value={stats.totalFarmers}      color="bg-(--brand-dark)"  onClick={() => open('totalFarmers')} />
             <StatCard icon={ClipboardList} label="Active Enrollments" value={stats.activeEnrollments} color="bg-(--brand-green)" onClick={() => open('activeEnrollments')} />
             <StatCard icon={UserCheck}     label="Verified Farmers"   value={stats.verifiedFarmers}   color="bg-(--brand-mid)"   onClick={() => open('verifiedFarmers')} />
@@ -230,7 +230,7 @@ export function Main() {
           </div>
 
           {/* Secondary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
             <StatCard icon={TrendingUp} label="Average FRI Score"    value={stats.avgFRI !== null ? `${stats.avgFRI}/100` : '—'} color="bg-emerald-600" sub="across all scored farmers"        onClick={() => open('avgFRI')} />
             <StatCard icon={UserCheck}  label="Verification Rate"    value={`${stats.verificationRate}%`}                        color="bg-sky-600"     sub="of registered farmers"             onClick={() => open('verificationRate')} />
             <StatCard icon={Zap}        label="Opportunity Enrolled" value={stats.opportunityCount}                               color="bg-orange-500"  sub="active intervention enrollments"   onClick={() => open('opportunityCount')} />

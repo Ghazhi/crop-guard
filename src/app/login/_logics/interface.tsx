@@ -1,4 +1,4 @@
-export type UserRole = 'staff' | 'partner' | 'finance'
+export type UserRole = 'staff' | 'partner' | 'finance' | 'pm'
 
 export interface LoginCredentials {
   username: string

@@ -4,6 +4,7 @@ const ROLE_HOME: Record<string, string> = {
   staff:   '/dashboard/Dashboard',
   partner: '/dashboard/PartnerPortal',
   finance: '/dashboard/FinancePortal',
+  pm:      '/dashboard/ProgramManager',
 }
 
 function parseSession(req: NextRequest): { role: string } | null {
@@ -53,12 +54,19 @@ export function proxy(req: NextRequest) {
       return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', req.url))
     }
 
+    // PM-only routes
+    if (pathname.startsWith('/dashboard/ProgramManager') && role !== 'pm') {
+      return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', req.url))
+    }
+
     // Routes shared between staff and partner
     const PARTNER_SHARED = ['/dashboard/PartnerDirectory', '/dashboard/PartnerContacts']
     const isPartnerShared = PARTNER_SHARED.some(r => pathname.startsWith(r))
 
     // Staff-only routes (everything that's not a portal or shared partner route)
-    const isPortal = pathname.startsWith('/dashboard/PartnerPortal') || pathname.startsWith('/dashboard/FinancePortal')
+    const isPortal = pathname.startsWith('/dashboard/PartnerPortal')
+                  || pathname.startsWith('/dashboard/FinancePortal')
+                  || pathname.startsWith('/dashboard/ProgramManager')
     if (!isPortal && !isPartnerShared && role !== 'staff') {
       return NextResponse.redirect(new URL(ROLE_HOME[role] ?? '/login', req.url))
     }

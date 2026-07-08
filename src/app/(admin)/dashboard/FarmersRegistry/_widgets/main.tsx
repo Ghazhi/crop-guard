@@ -1196,7 +1196,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   return (
     <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-2">{label}</p>
-      <p className="text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
+      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )

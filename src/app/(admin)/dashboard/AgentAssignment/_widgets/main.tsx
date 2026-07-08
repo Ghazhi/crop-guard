@@ -578,11 +578,11 @@ export function Main() {
           {[0, 1, 2, 3].map(i => <div key={i} className="h-44 w-64 shrink-0 rounded-2xl bg-gray-200 animate-pulse" />)}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {agents
             .filter(a => !filterAgent || filterAgent === a.id)
             .map(a => (
-              <div key={a.id} className="w-64 shrink-0">
+              <div key={a.id}>
                 <AgentCard agent={a}
                   isActive={filterAgent === a.id}
                   onFilter={() => setFilterAgent(prev => prev === a.id ? '' : a.id)}
@@ -633,7 +633,7 @@ export function Main() {
             </div>
 
             {filtersOpen && (
-              <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-gray-100">
                 <div className="space-y-1">
                   <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Program</p>
                   <select value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterCohort('') }}

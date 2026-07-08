@@ -24,6 +24,7 @@ export function Main() {
     if (!result.ok) { setError(result.error ?? 'Login failed.'); return }
     if (result.role === 'partner') router.push('/dashboard/PartnerPortal')
     else if (result.role === 'finance') router.push('/dashboard/FinancePortal')
+    else if (result.role === 'pm') router.push('/dashboard/ProgramManager')
     else router.push('/dashboard/Dashboard')
   }
 
@@ -126,6 +127,7 @@ export function Main() {
             { role: 'Staff',   user: 'staff',   pass: 'staff123'   },
             { role: 'Partner', user: 'partner', pass: 'partner123' },
             { role: 'Finance', user: 'finance', pass: 'finance123' },
+            { role: 'PM',      user: 'pm',      pass: 'pm123'      },
           ].map(({ role, user, pass }) => (
             <button key={role} type="button"
               onClick={() => { setUsername(user); setPassword(pass) }}

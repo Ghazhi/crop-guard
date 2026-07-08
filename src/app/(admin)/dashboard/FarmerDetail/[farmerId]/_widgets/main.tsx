@@ -194,7 +194,7 @@ function ItemRow({ label, score, max, color }: { label: string; score: number; m
   return (
     <div className="flex items-center gap-3 py-2">
       <span className="flex-1 text-sm text-gray-700">{label}</span>
-      <div className="w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
+      <div className="w-16 sm:w-28 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
       <span className="text-xs font-medium text-gray-500 tabular-nums w-8 text-right shrink-0">{score}/{max}</span>

@@ -210,7 +210,7 @@ export function Main() {
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-sm font-semibold text-gray-800 mb-4">Risk Distribution</p>
               <div className="flex items-center gap-6">
-                <ResponsiveContainer width={180} height={180}>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie
                       data={stats.riskDist}

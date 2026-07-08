@@ -389,13 +389,13 @@ function CommunitySheet({
           <div className="px-6 pb-6 space-y-5">
             {community && (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <InfoCell label="Nearest Town"     value={community.nearestTown} />
                   <InfoCell label="Socioeconomic"    value={community.socioeconomicStatus ? STATUS_LABEL[community.socioeconomicStatus] : null} />
                   <InfoCell label="Community Leader" value={community.leaderName} />
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <InfoCell label="Leader Contact" value={community.leaderContact} />
                   <InfoCell label="GPS"
                     value={community.gpsLat != null && community.gpsLng != null
@@ -658,7 +658,7 @@ function CoopSheet({
           <div className="px-6 pb-6 space-y-5">
             {coop && (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <InfoCell label="Members"   value={coop.memberCount} />
                   <InfoCell label="Chairman"  value={coop.chairmanName} />
                   <InfoCell label="Secretary" value={coop.secretaryName} />

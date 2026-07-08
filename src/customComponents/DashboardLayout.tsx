@@ -9,6 +9,7 @@ import {
   Menu, X, LogOut, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock,
   Handshake, FileText, PieChart,
   BookOpen, ClipboardList, AlertTriangle,
+  CalendarDays, Target, BarChart3, Settings2, Activity, ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -51,10 +52,24 @@ const FINANCE_NAV = [
   { href: '/dashboard/FinancePortal/Compliance',   label: 'Compliance & Audit',  icon: ClipboardList,   locked: false },
 ]
 
+const PM_NAV: NavItem[] = [
+  { href: '/dashboard/ProgramManager',               label: 'Overview',        icon: LayoutDashboard, locked: false },
+  { href: '/dashboard/ProgramManager/Farmers',       label: 'Farmers',         icon: Users,           locked: false },
+  { href: '/dashboard/ProgramManager/Cohorts',       label: 'Cohorts',         icon: CalendarDays,    locked: false },
+  { href: '/dashboard/ProgramManager/Partners',      label: 'Partners',        icon: Handshake,       locked: false },
+  { href: '/dashboard/ProgramManager/Staff',         label: 'Staff',           icon: UserCog,         locked: false },
+  { href: '/dashboard/ProgramManager/WeeklyProgress',label: 'Weekly Progress', icon: Activity,        locked: false },
+  { href: '/dashboard/ProgramManager/FRIPerformance',label: 'FRI Performance', icon: Target,          locked: false },
+  { href: '/dashboard/ProgramManager/Interventions', label: 'Interventions',   icon: Zap,             locked: false },
+  { href: '/dashboard/ProgramManager/Reports',       label: 'Reports',         icon: BarChart3,       locked: false },
+  { href: '/dashboard/ProgramManager/Settings',      label: 'Settings',        icon: Settings2,       locked: false },
+]
+
 const ROLE_META: Record<UserRole, { label: string; color: string; navBg: string }> = {
-  staff:   { label: 'Staff Portal',   color: 'var(--brand-forest)', navBg: 'var(--brand-forest)' },
-  partner: { label: 'Partner Portal', color: '#1e3a5f',             navBg: '#1e3a5f'             },
-  finance: { label: 'Finance Portal', color: '#7c3a00',             navBg: '#7c3a00'             },
+  staff:   { label: 'Staff Portal',           color: 'var(--brand-forest)', navBg: 'var(--brand-forest)' },
+  partner: { label: 'Partner Portal',         color: '#1e3a5f',             navBg: '#1e3a5f'             },
+  finance: { label: 'Finance Portal',         color: '#7c3a00',             navBg: '#7c3a00'             },
+  pm:      { label: 'Program Manager Portal', color: '#312e81',             navBg: '#312e81'             },
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -82,7 +97,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     fetch('/api/auth/logout', { method: 'POST' }).finally(() => router.push('/login'))
   }
 
-  const nav  = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : STAFF_NAV
+  const nav  = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : role === 'pm' ? PM_NAV : STAFF_NAV
   const meta = ROLE_META[role]
 
   const sidebarW = collapsed ? 'md:w-16' : 'md:w-60'
@@ -222,14 +237,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: meta.navBg }}>
               <span className="text-white text-xs font-bold">{authUser.initials}</span>
             </div>
-            <div className="hidden sm:flex flex-col">
+            <div className="flex flex-col">
               <span className="text-sm text-gray-700 leading-none">{authUser.name}</span>
               <span className="text-xs text-gray-400">{authUser.org}</span>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6">
           {children}
         </main>
       </div>

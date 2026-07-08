@@ -25,9 +25,9 @@ export interface SheetTemplateProps {
 }
 
 const SIZE_MAP: Record<NonNullable<SheetTemplateProps['size']>, string> = {
-  md: 'w-120 sm:max-w-120',
-  lg: 'w-160 sm:max-w-160',
-  xl: 'w-200 sm:max-w-200',
+  md: 'w-full sm:w-120 sm:max-w-120',
+  lg: 'w-full sm:w-160 sm:max-w-160',
+  xl: 'w-full sm:w-200 sm:max-w-200',
 }
 
 export function SheetTemplate({

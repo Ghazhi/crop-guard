@@ -163,7 +163,7 @@ export function Main() {
   }
 
   return (
-    <div className="p-6 max-w-[1200px]">
+    <div className="p-6 max-w-[1200px] mx-auto">
 
       {/* header */}
       <div className="flex items-start justify-between mb-5">
@@ -218,7 +218,7 @@ export function Main() {
       {tab === 'overview' && (
         <div className="flex flex-col gap-5">
           {/* stat cards */}
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard icon={Users}       iconBg="bg-[#E6F4EC]" iconColor="text-[#1A3D2B]" label="Registered Farmers"  value={totalFarmers} />
             <StatCard icon={CheckCircle2} iconBg="bg-green-50"  iconColor="text-green-600"  label="Verified Farmers"   value={verifiedFarmers}
               sub={<span className="text-xs font-medium" style={{ color: 'var(--brand-green)' }}>{verifiedPct}% of total</span>} />
@@ -229,7 +229,7 @@ export function Main() {
           </div>
 
           {/* charts row 1 */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* enrollment by program */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Enrollment by Program</p>
@@ -270,7 +270,7 @@ export function Main() {
           </div>
 
           {/* charts row 2 */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* weekly FRI trend */}
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Weekly Average FRI Score Trend</p>
@@ -416,7 +416,7 @@ export function Main() {
           {/* report type selector */}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-3">Select Report Type</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {REPORT_TYPES.map(rt => {
                 const selected = selectedReport === rt.id
                 return (

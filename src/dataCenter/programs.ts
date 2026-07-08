@@ -1,4 +1,4 @@
-import type { Program } from '@/app/dashboard/ProgramsSetup/_logics/interface'
+import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/interface'
 
 export const PROGRAMS: Program[] = [
   // ── p-001: Fidelity Bank Ghana ─────────────────────────────────────────────

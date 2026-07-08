@@ -2,6 +2,7 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Loader2 } from 'lucide-react'
+import { TooltipTemplate } from './TooltipTemplate'
 
 export interface ButtonTemplateProps extends Omit<React.ComponentProps<'button'>, 'disabled'> {
   /** Visual style */
@@ -22,6 +23,8 @@ export interface ButtonTemplateProps extends Omit<React.ComponentProps<'button'>
   isDisabled?: boolean
   /** Button text — use instead of children for self-closing usage */
   label?: string
+  /** Tooltip shown on hover — required when isIcon is true for accessibility */
+  tooltip?: string
 }
 
 const VARIANT_MAP: Record<NonNullable<ButtonTemplateProps['variant']>, string> = {
@@ -56,11 +59,12 @@ export function ButtonTemplate({
   rightIcon,
   isDisabled = false,
   label,
+  tooltip,
   className,
   children,
   ...props
 }: ButtonTemplateProps) {
-  return (
+  const btn = (
     <Button
       disabled={isDisabled || isLoading}
       className={cn(
@@ -83,6 +87,9 @@ export function ButtonTemplate({
       )}
     </Button>
   )
+
+  if (tooltip) return <TooltipTemplate label={tooltip}>{btn}</TooltipTemplate>
+  return btn
 }
 
 /*

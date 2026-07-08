@@ -1,4 +1,4 @@
-import type { Stats, CropBreakdown, ZoneBreakdown } from '@/app/dashboard/Dashboard/_logics/interface'
+import type { Stats, CropBreakdown, ZoneBreakdown } from '@/app/(admin)/dashboard/Dashboard/_logics/interface'
 
 export const DASHBOARD_STATS: Stats = {
   totalFarmers:      6,

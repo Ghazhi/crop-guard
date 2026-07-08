@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useRef, useState } from 'react'
+import Image from 'next/image'
 import { Upload, Image as ImageIcon, FileText, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -139,7 +140,7 @@ export function FileUploadTemplate({
       >
         {preview ? (
           <>
-            <img src={preview} alt="preview" className="w-full h-full object-cover" />
+            <Image src={preview} alt="preview" fill className="object-cover" />
             {!isDisabled && (
               <button type="button" onClick={clear}
                 className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors">

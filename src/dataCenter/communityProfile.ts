@@ -1,4 +1,4 @@
-import type { Community, Cooperative } from '@/app/dashboard/CommunityProfile/_logics/interface'
+import type { Community, Cooperative } from '@/app/(admin)/dashboard/CommunityProfile/_logics/interface'
 
 export const REGIONS = [
   { code: 'SA', name: 'Savannah',      districts: ['North Gonja', 'East Gonja', 'Central Gonja', 'West Gonja', 'Sawla-Tuna-Kalba', 'Bole'] },

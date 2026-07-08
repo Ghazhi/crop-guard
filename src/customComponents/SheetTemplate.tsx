@@ -1,5 +1,6 @@
 import React from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface SheetTemplateProps {
@@ -19,6 +20,8 @@ export interface SheetTemplateProps {
   footer?: React.ReactNode
   /** Additional className on the body wrapper */
   bodyClassName?: string
+  /** If provided, renders a back-arrow button in the header that calls this */
+  onBack?: () => void
 }
 
 const SIZE_MAP: Record<NonNullable<SheetTemplateProps['size']>, string> = {
@@ -36,6 +39,7 @@ export function SheetTemplate({
   children,
   footer,
   bodyClassName,
+  onBack,
 }: SheetTemplateProps) {
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
@@ -47,6 +51,17 @@ export function SheetTemplate({
         )}
       >
         <SheetHeader className="px-6 pt-5 pb-3.5 border-b border-gray-100 shrink-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex items-center gap-1 text-xs font-medium mb-2 -ml-0.5 transition-colors"
+              style={{ color: 'var(--brand-green)' }}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+          )}
           <SheetTitle className="text-sm font-semibold tracking-tight text-gray-900 leading-tight">
             {title}
           </SheetTitle>

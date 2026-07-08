@@ -1,4 +1,4 @@
-import type { Farmer } from '@/app/dashboard/FarmersRegistry/_logics/interface'
+import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 
 export const FARMERS_LIST: Farmer[] = [
   // ── prog-001: WAVE Program (p-001 Fidelity Bank Ghana) ─────────────────────

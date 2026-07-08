@@ -1,4 +1,4 @@
-import type { FRIFarmer } from '@/app/dashboard/FRIDashboard/_logics/interface'
+import type { FRIFarmer } from '@/app/(admin)/dashboard/FRIDashboard/_logics/interface'
 
 export const PILLARS_EMPTY = [
   { code: 'P1', name: 'Farm Management',    score: 0, max: 30, color: '#2C5F3F' },

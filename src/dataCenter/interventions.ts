@@ -1,4 +1,4 @@
-import type { Intervention } from '@/app/dashboard/OpportunityPathways/_logics/interface'
+import type { Intervention } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 
 export const INTERVENTIONS: Intervention[] = [
   // ── p-001: Fidelity Bank Ghana ─────────────────────────────────────────────

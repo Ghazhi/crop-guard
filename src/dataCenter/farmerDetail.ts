@@ -1,4 +1,4 @@
-import type { FarmerDetail, WeekScore, RiskFlag, Intervention } from '@/app/dashboard/FarmerDetail/[farmerId]/_logics/interface'
+import type { FarmerDetail, WeekScore, RiskFlag, Intervention } from '@/app/(admin)/dashboard/FarmerDetail/[farmerId]/_logics/interface'
 
 export const FARMER_DETAIL: FarmerDetail = {
   farmerId:        'F-4821',

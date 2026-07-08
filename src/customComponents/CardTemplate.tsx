@@ -15,6 +15,8 @@ export interface CardTemplateProps {
   noPadding?: boolean
   /** Additional class names */
   className?: string
+  /** Click handler — enables pointer cursor */
+  onClick?: () => void
   /** Card body content */
   children?: React.ReactNode
 }
@@ -26,10 +28,12 @@ export function CardTemplate({
   isHoverable = false,
   noPadding = false,
   className,
+  onClick,
   children,
 }: CardTemplateProps) {
   return (
     <Card
+      onClick={onClick}
       className={cn(
         'border-0 shadow-sm rounded-xl',
         isHoverable && 'hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer',

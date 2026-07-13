@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check, CalendarDays, Eye } from 'lucide-react'
+import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check, CalendarDays, Eye, Wallet } from 'lucide-react'
 import { MultiSelectTabsTemplate } from '@/customComponents/MultiSelectTabsTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
@@ -20,6 +20,9 @@ import {
   cloneWeeks,
   freshConfig,
 } from '@/dataCenter/checkinConfig'
+import { PARTNERS } from '@/dataCenter/partners'
+import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -33,6 +36,154 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     >
       <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
+  )
+}
+
+// ── Per-partner P4 baseline panel (Baseline Activities section) ────────────────
+
+function PartnerP4Panel({
+  questions, onAdd, onEdit, onDelete, onToggleActive,
+}: {
+  questions:      PartnerP4Question[]
+  onAdd:          (label: string, desc: string) => void
+  onEdit:         (id: string, label: string, desc: string) => void
+  onDelete:       (id: string) => void
+  onToggleActive: (id: string) => void
+}) {
+  const [adding,    setAdding]    = useState(false)
+  const [newLabel,  setNewLabel]  = useState('')
+  const [newDesc,   setNewDesc]   = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editDesc,  setEditDesc]  = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<PartnerP4Question | null>(null)
+
+  function submitAdd() {
+    if (!newLabel.trim()) return
+    onAdd(newLabel.trim(), newDesc.trim())
+    setNewLabel(''); setNewDesc(''); setAdding(false)
+  }
+
+  function startEdit(q: PartnerP4Question) {
+    setEditingId(q.id); setEditLabel(q.label); setEditDesc(q.desc)
+  }
+
+  function submitEdit() {
+    if (!editingId || !editLabel.trim()) return
+    onEdit(editingId, editLabel.trim(), editDesc.trim())
+    setEditingId(null)
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+          Questions ({questions.length})
+        </p>
+        <button
+          onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+          style={{ background: 'var(--brand-forest)' }}
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Question
+        </button>
+      </div>
+
+      {questions.length === 0 && !adding && (
+        <p className="text-sm text-gray-400 py-10 text-center">No P4 questions yet for this partner.</p>
+      )}
+
+      {questions.map(q => (
+        editingId === q.id ? (
+          <div key={q.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-2.5">
+            <input
+              type="text"
+              value={editLabel}
+              onChange={e => setEditLabel(e.target.value)}
+              placeholder="Question statement..."
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            />
+            <input
+              type="text"
+              value={editDesc}
+              onChange={e => setEditDesc(e.target.value)}
+              placeholder="Description"
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            />
+            <div className="flex items-center gap-2">
+              <button onClick={submitEdit}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ background: '#4b5563' }}>
+                <Check className="w-3.5 h-3.5" /> Save
+              </button>
+              <button onClick={() => setEditingId(null)}
+                className="flex items-center gap-1 h-8 px-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                <X className="w-3 h-3" /> Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div key={q.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm font-medium leading-tight ${q.active ? 'text-gray-800' : 'text-gray-400'}`}>{q.label}</p>
+              {q.desc && <p className="text-xs text-gray-400 mt-0.5">{q.desc}</p>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Toggle checked={q.active} onChange={() => onToggleActive(q.id)} />
+              <button onClick={() => startEdit(q)}
+                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setDeleteTarget(q)}
+                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )
+      ))}
+
+      {adding && (
+        <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-2.5">
+          <input
+            autoFocus
+            type="text"
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            placeholder="Question statement..."
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+          />
+          <input
+            type="text"
+            value={newDesc}
+            onChange={e => setNewDesc(e.target.value)}
+            placeholder="Description"
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+          />
+          <div className="flex items-center gap-2">
+            <button onClick={submitAdd}
+              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+              style={{ background: 'var(--brand-forest)' }}>
+              <Check className="w-3.5 h-3.5" /> Save
+            </button>
+            <button onClick={() => setAdding(false)}
+              className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
+              <X className="w-3.5 h-3.5" /> Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete question?"
+        message={`"${deleteTarget?.label ?? 'This question'}" will be permanently removed from this partner's P4 baseline.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) onDelete(deleteTarget.id); setDeleteTarget(null) }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
   )
 }
 
@@ -62,6 +213,52 @@ export function Main() {
 
   function setBaselineActive(updater: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) {
     setOrgConfigs(prev => ({ ...prev, [org]: { ...prev[org], baselineActive: typeof updater === 'function' ? updater(prev[org].baselineActive) : updater } }))
+  }
+
+  // ── Baseline Activities: per-partner P4 view ─────────────────────────────────
+  const [baselinePartnerId, setBaselinePartnerId] = useState('')
+  const [partnerP4Questions, setPartnerP4Questions] = useState<PartnerP4Question[]>([])
+
+  function handleBaselinePartnerChange(id: string) {
+    setBaselinePartnerId(id)
+    setPartnerP4Questions(id ? (PARTNER_BASELINES[id]?.questions ?? createDefaultP4Questions()) : [])
+  }
+
+  function persistPartnerP4(questions: PartnerP4Question[]) {
+    if (!baselinePartnerId) return
+    PARTNER_BASELINES[baselinePartnerId] = { partnerId: baselinePartnerId, questions }
+  }
+
+  function addPartnerP4Question(label: string, desc: string) {
+    setPartnerP4Questions(prev => {
+      const next = [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }]
+      persistPartnerP4(next)
+      return next
+    })
+  }
+
+  function editPartnerP4Question(id: string, label: string, desc: string) {
+    setPartnerP4Questions(prev => {
+      const next = prev.map(q => q.id !== id ? q : { ...q, label, desc })
+      persistPartnerP4(next)
+      return next
+    })
+  }
+
+  function deletePartnerP4Question(id: string) {
+    setPartnerP4Questions(prev => {
+      const next = prev.filter(q => q.id !== id)
+      persistPartnerP4(next)
+      return next
+    })
+  }
+
+  function togglePartnerP4QuestionActive(id: string) {
+    setPartnerP4Questions(prev => {
+      const next = prev.map(q => q.id !== id ? q : { ...q, active: !q.active })
+      persistPartnerP4(next)
+      return next
+    })
   }
 
   // ── crop management ──────────────────────────────────────────────────────────
@@ -943,6 +1140,33 @@ export function Main() {
                   )
                 })}
               </div>
+
+              <div className="flex flex-col gap-1.5 max-w-xs pt-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Partner</label>
+                <select
+                  value={baselinePartnerId}
+                  onChange={e => handleBaselinePartnerChange(e.target.value)}
+                  className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) bg-white"
+                >
+                  <option value="">Select a partner to view their P4 baseline…</option>
+                  {PARTNERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+
+              {!baselinePartnerId ? (
+                <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+                  <Wallet className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Select a partner to view their baseline.</p>
+                </div>
+              ) : (
+                <PartnerP4Panel
+                  questions={partnerP4Questions}
+                  onAdd={addPartnerP4Question}
+                  onEdit={editPartnerP4Question}
+                  onDelete={deletePartnerP4Question}
+                  onToggleActive={togglePartnerP4QuestionActive}
+                />
+              )}
             </div>
           )}
 

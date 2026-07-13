@@ -21,7 +21,8 @@ import { PARTNERS } from '@/dataCenter/partners'
 import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { PROGRAMS } from '@/dataCenter/programs'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
-import { BASELINE_SEED } from '@/dataCenter/checkinConfig'
+import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 import type { Intervention, EnrolledCohort } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/interface'
@@ -36,15 +37,6 @@ const TABS = [
   { id: 'reports',       label: 'Reports',               icon: FileText },
 ] as const
 type Tab = typeof TABS[number]['id']
-
-// ─── Types: P4 baseline ───────────────────────────────────────────────────────
-
-interface PartnerP4Question {
-  id:     string
-  label:  string
-  desc:   string
-  active: boolean
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1002,25 +994,51 @@ export function Main({ partnerId }: { partnerId: string }) {
   )
 
   // ── P4: Farm Enterprise Discipline — per-partner baseline questions ─────────
-  const [p4Assigned,  setP4Assigned]  = useState(false)
+  const [p4Assigned,  setP4Assigned]  = useState(() => !!PARTNER_BASELINES[partnerId])
   const [p4Questions, setP4Questions] = useState<PartnerP4Question[]>(() =>
-    BASELINE_SEED.filter(a => a.pillar === 'p4').map(a => ({ id: a.id, label: a.label, desc: a.desc, active: true }))
+    PARTNER_BASELINES[partnerId]?.questions ?? createDefaultP4Questions()
   )
 
+  function persistP4(questions: PartnerP4Question[]) {
+    PARTNER_BASELINES[partnerId] = { partnerId, questions }
+  }
+
+  function handleToggleP4Assign(v: boolean) {
+    setP4Assigned(v)
+    if (v) { persistP4(p4Questions) }
+    else { delete PARTNER_BASELINES[partnerId] }
+  }
+
   function addP4Question(label: string, desc: string) {
-    setP4Questions(prev => [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }])
+    setP4Questions(prev => {
+      const next = [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }]
+      persistP4(next)
+      return next
+    })
   }
 
   function editP4Question(id: string, label: string, desc: string) {
-    setP4Questions(prev => prev.map(q => q.id !== id ? q : { ...q, label, desc }))
+    setP4Questions(prev => {
+      const next = prev.map(q => q.id !== id ? q : { ...q, label, desc })
+      persistP4(next)
+      return next
+    })
   }
 
   function deleteP4Question(id: string) {
-    setP4Questions(prev => prev.filter(q => q.id !== id))
+    setP4Questions(prev => {
+      const next = prev.filter(q => q.id !== id)
+      persistP4(next)
+      return next
+    })
   }
 
   function toggleP4QuestionActive(id: string) {
-    setP4Questions(prev => prev.map(q => q.id !== id ? q : { ...q, active: !q.active }))
+    setP4Questions(prev => {
+      const next = prev.map(q => q.id !== id ? q : { ...q, active: !q.active })
+      persistP4(next)
+      return next
+    })
   }
 
   const assignedIds = useMemo(() => new Set(assignments.map(a => a.interventionId)), [assignments])
@@ -1142,7 +1160,7 @@ export function Main({ partnerId }: { partnerId: string }) {
       {activeTab === 'p4baseline' && (
         <P4BaselineTab
           assigned={p4Assigned}
-          onToggleAssign={setP4Assigned}
+          onToggleAssign={handleToggleP4Assign}
           questions={p4Questions}
           onAdd={addP4Question}
           onEdit={editP4Question}

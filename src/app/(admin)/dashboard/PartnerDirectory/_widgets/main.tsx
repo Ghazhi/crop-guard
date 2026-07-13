@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, MapPin, Mail, Building2, ChevronRight, ChevronDown, Eye, Trash2, Calendar, Layers, Pencil, CheckCircle2, Clock, X, SlidersHorizontal, Users } from 'lucide-react'
+import { Search, Plus, MapPin, Mail, Building2, ChevronRight, ChevronDown, ChevronUp, Eye, Trash2, Calendar, Layers, Pencil, CheckCircle2, Clock, X, SlidersHorizontal, Users, Wallet, Check, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
@@ -14,7 +14,10 @@ import {
 } from '@/components/ui/sheet'
 import { PARTNERS } from '@/dataCenter/partners'
 import type { PartnerStatus } from '@/dataCenter/partners'
+import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
 
 interface Partner {
   id: string; name: string; type: string; region: string
@@ -298,8 +301,9 @@ interface FarmersModal {
   fromIntervention?: boolean
 }
 
-function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
+function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline }: {
   partner: Partner | null; onClose: () => void; onRemove: (p: Partner) => void; onEdit: (p: Partner) => void
+  onManageBaseline: (p: Partner) => void
 }) {
   const [tab, setTab] = useState<ViewTab>('overview')
   const [programFilter, setProgramFilter] = useState('')
@@ -352,12 +356,22 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
     <Sheet open={!!partner} onOpenChange={open => { if (!open) { onClose(); setTab('overview'); setProgramFilter(''); setCohortFilter(''); setFarmersModal(null) } }}>
       <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <PersonAvatar name={p.name} size={40} shape="square" />
-            <div>
-              <SheetTitle className="text-base">{p.name}</SheetTitle>
-              <SheetDescription>{p.type}</SheetDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <PersonAvatar name={p.name} size={40} shape="square" />
+              <div>
+                <SheetTitle className="text-base">{p.name}</SheetTitle>
+                <SheetDescription>{p.type}</SheetDescription>
+              </div>
             </div>
+            <ButtonTemplate
+              variant="outline"
+              size="sm"
+              isIcon
+              tooltip="Edit"
+              leftIcon={<Pencil className="w-3.5 h-3.5" />}
+              onClick={() => { onClose(); onEdit(p) }}
+            />
           </div>
         </SheetHeader>
 
@@ -408,6 +422,30 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
                     </p>
                   </div>
                 ))}
+              </div>
+
+              {/* P4 Baseline */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">P4: Farm Enterprise Discipline</p>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <Wallet className="w-4 h-4 text-gray-400 shrink-0" />
+                    {PARTNER_BASELINES[p.id] ? (
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">Baseline assigned</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {PARTNER_BASELINES[p.id].questions.length} question{PARTNER_BASELINES[p.id].questions.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Not assigned yet</p>
+                    )}
+                  </div>
+                  <button onClick={() => onManageBaseline(p)}
+                    className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-white transition-colors">
+                    {PARTNER_BASELINES[p.id] ? 'Manage' : 'Create'}
+                  </button>
+                </div>
               </div>
 
               {/* Primary contact */}
@@ -557,12 +595,6 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
             className="flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" /> Remove
-          </button>
-          <button
-            onClick={() => { onClose(); onEdit(p) }}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" /> Edit
           </button>
           <button onClick={onClose}
             className="flex-1 h-9 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -719,6 +751,146 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
   )
 }
 
+// ── Create Baseline Sheet ──────────────────────────────────────────────────────
+
+function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, onSaved }: {
+  open: boolean; onOpenChange: (v: boolean) => void; partners: Partner[]
+  initialPartnerId?: string; onSaved: (partnerId: string) => void
+}) {
+  const [partnerId,  setPartnerId]  = useState('')
+  const [questions,  setQuestions]  = useState<PartnerP4Question[]>([])
+  const [adding,     setAdding]     = useState(false)
+  const [newLabel,   setNewLabel]   = useState('')
+  const [newDesc,    setNewDesc]    = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const pid = initialPartnerId ?? ''
+    setPartnerId(pid)
+    setQuestions(pid ? (PARTNER_BASELINES[pid]?.questions ?? createDefaultP4Questions()) : [])
+    setAdding(false); setNewLabel(''); setNewDesc('')
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [open, initialPartnerId])
+
+  function handlePartnerChange(id: string) {
+    setPartnerId(id)
+    setQuestions(id ? (PARTNER_BASELINES[id]?.questions ?? createDefaultP4Questions()) : [])
+  }
+
+  function submitAdd() {
+    if (!newLabel.trim()) return
+    setQuestions(prev => [...prev, { id: `p4_${Date.now()}`, label: newLabel.trim(), desc: newDesc.trim(), active: true }])
+    setNewLabel(''); setNewDesc(''); setAdding(false)
+  }
+
+  function removeQuestion(id: string) {
+    setQuestions(prev => prev.filter(q => q.id !== id))
+  }
+
+  function handleSave() {
+    if (!partnerId) return
+    PARTNER_BASELINES[partnerId] = { partnerId, questions }
+    onSaved(partnerId)
+    onOpenChange(false)
+  }
+
+  const selectedPartner = partners.find(p => p.id === partnerId)
+  const alreadyHasBaseline = !!(partnerId && PARTNER_BASELINES[partnerId])
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
+          <SheetTitle>Create P4 Baseline</SheetTitle>
+          <SheetDescription>Assign a Farm Enterprise Discipline baseline to a single partner.</SheetDescription>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <Field label="Partner">
+            <select value={partnerId} onChange={e => handlePartnerChange(e.target.value)}
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-green-300 text-gray-700">
+              <option value="">Select a partner…</option>
+              {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+
+          {partnerId && (
+            <>
+              {alreadyHasBaseline && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                  {selectedPartner?.name} already has a P4 baseline — saving will update it.
+                </p>
+              )}
+
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                    Questions ({questions.length})
+                  </p>
+                  <button
+                    onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}
+                    className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                    style={{ background: 'var(--brand-forest)' }}>
+                    <Plus className="w-3.5 h-3.5" /> Add
+                  </button>
+                </div>
+
+                {questions.map(q => (
+                  <div key={q.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 leading-tight">{q.label}</p>
+                      {q.desc && <p className="text-xs text-gray-400 mt-0.5">{q.desc}</p>}
+                    </div>
+                    <button onClick={() => removeQuestion(q.id)}
+                      className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {adding && (
+                  <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-2.5">
+                    <input autoFocus type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                      placeholder="Question statement..."
+                      className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300" />
+                    <input type="text" value={newDesc} onChange={e => setNewDesc(e.target.value)}
+                      placeholder="Description"
+                      className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300" />
+                    <div className="flex items-center gap-2">
+                      <button onClick={submitAdd}
+                        className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                        style={{ background: 'var(--brand-forest)' }}>
+                        <Check className="w-3.5 h-3.5" /> Save
+                      </button>
+                      <button onClick={() => setAdding(false)}
+                        className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
+                        <X className="w-3.5 h-3.5" /> Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <SheetFooter className="px-6 pb-6 pt-4 border-t border-gray-100 flex-row gap-3">
+          <button onClick={() => onOpenChange(false)}
+            className="flex-1 h-10 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={!partnerId}
+            className="flex-1 h-10 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: 'var(--brand-forest)' }}>
+            Save Baseline
+          </button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function Main() {
@@ -734,14 +906,21 @@ export function Main() {
   const [editPartner,    setEditPartner]    = useState<Partner | null>(null)
   const [editOpen,       setEditOpen]       = useState(false)
   const [removeTarget,   setRemoveTarget]   = useState<Partner | null>(null)
+  const [baselinePartnerFilter, setBaselinePartnerFilter] = useState('')
+  const [baselineSheetOpen,     setBaselineSheetOpen]     = useState(false)
+  const [baselineSheetPartnerId, setBaselineSheetPartnerId] = useState<string | undefined>(undefined)
+  const [statsOpen, setStatsOpen] = usePersistedState('partners-stats', false)
+  // bumped whenever a baseline is saved, to force a re-render of rows/badges reading the module-level store
+  const [, setBaselineVersion] = useState(0)
 
-  const activeFilterCount = [typeFilter, statusFilter].filter(Boolean).length
+  const activeFilterCount = [typeFilter, statusFilter, baselinePartnerFilter].filter(Boolean).length
   const types     = [...new Set(partners.map(p => p.type))]
   const filtered = partners.filter(p =>
     (!search       || p.name.toLowerCase().includes(search.toLowerCase()) ||
                       p.contact.toLowerCase().includes(search.toLowerCase())) &&
     (!typeFilter   || p.type === typeFilter) &&
-    (!statusFilter || p.status === statusFilter)
+    (!statusFilter || p.status === statusFilter) &&
+    (!baselinePartnerFilter || p.id === baselinePartnerFilter)
   )
   const displayed = pageSize > 0
     ? filtered.slice((page - 1) * pageSize, page * pageSize)
@@ -764,32 +943,47 @@ export function Main() {
           <h1 className="text-xl font-bold text-gray-900">Partners</h1>
           <p className="text-sm text-gray-500 mt-0.5">{partners.length} registered partner organisations</p>
         </div>
-        <button onClick={() => setSheetOpen(true)}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--brand-forest)' }}>
-          <Plus className="w-4 h-4" /> Add Partner
-        </button>
+        <div className="flex items-center gap-2">
+          <ButtonTemplate
+            variant="secondary" size="md"
+            leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+            rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+            label="Overview"
+            onClick={() => setStatsOpen(v => !v)}
+          />
+          <button onClick={() => { setBaselineSheetPartnerId(undefined); setBaselineSheetOpen(true) }}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+            <Wallet className="w-4 h-4" /> Create Baseline
+          </button>
+          <button onClick={() => setSheetOpen(true)}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--brand-forest)' }}>
+            <Plus className="w-4 h-4" /> Add Partner
+          </button>
+        </div>
       </div>
 
       {/* Overview stats bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
-        {[
-          { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
-          { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
-          { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
-          { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
-        ].map(({ icon: Icon, bg, color, value, label }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
-              <Icon className={`w-4 h-4 ${color}`} />
+      {statsOpen && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+          {[
+            { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
+            { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
+            { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
+            { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
+          ].map(({ icon: Icon, bg, color, value, label }) => (
+            <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
+                <Icon className={`w-4 h-4 ${color}`} />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       {/* Filters + Table */}
@@ -853,6 +1047,14 @@ export function Main() {
                   <option value="Pending">Pending</option>
                 </select>
               </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Partner</p>
+                <select value={baselinePartnerFilter} onChange={e => { setBaselinePartnerFilter(e.target.value); setPage(1) }}
+                  className="h-8 w-full border border-gray-200 rounded-lg px-2.5 text-xs focus:outline-none bg-white">
+                  <option value="">All partners</option>
+                  {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -873,6 +1075,7 @@ export function Main() {
                 <th className="text-left px-4 py-3">Region</th>
                 <th className="text-center px-4 py-3">Programs</th>
                 <th className="text-center px-4 py-3">Status</th>
+                <th className="text-center px-4 py-3">P4 Baseline</th>
                 <th className="text-center px-4 py-3">Since</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -906,9 +1109,21 @@ export function Main() {
                   <td className="px-4 py-3.5 text-center">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusCls(p.status)}`}>{p.status}</span>
                   </td>
+                  <td className="px-4 py-3.5 text-center">
+                    {PARTNER_BASELINES[p.id] ? (
+                      <BadgeTemplate label="Assigned" variant="success" size="sm" />
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3.5 text-center text-xs text-gray-400">{p.since}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-end">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => { setBaselineSheetPartnerId(p.id); setBaselineSheetOpen(true) }}
+                        title="Create / edit P4 baseline"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
+                        <Wallet className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={() => setViewPartner(p)}
                         title="View"
                         className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
@@ -932,11 +1147,20 @@ export function Main() {
 
       <AddPartnerSheet open={sheetOpen} onOpenChange={setSheetOpen} onSave={handleAdd} />
 
+      <CreateBaselineSheet
+        open={baselineSheetOpen}
+        onOpenChange={setBaselineSheetOpen}
+        partners={partners}
+        initialPartnerId={baselineSheetPartnerId}
+        onSaved={() => setBaselineVersion(v => v + 1)}
+      />
+
       <ViewPartnerSheet
         partner={viewPartner}
         onClose={() => setViewPartner(null)}
         onRemove={p => setRemoveTarget(p)}
         onEdit={p => { setEditPartner(p); setEditOpen(true) }}
+        onManageBaseline={p => { setViewPartner(null); setBaselineSheetPartnerId(p.id); setBaselineSheetOpen(true) }}
       />
 
       <EditPartnerSheet

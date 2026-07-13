@@ -85,15 +85,25 @@ const ROLE_META: Record<UserRole, { label: string; color: string; navBg: string 
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export interface DashboardLayoutProps {
+  children:     React.ReactNode
+  /** Role resolved server-side (from the session cookie) — avoids a staff-sidebar flash on first paint */
+  initialRole?: UserRole
+  initialUser?: AuthUser
+}
+
+export function DashboardLayout({ children, initialRole, initialUser }: DashboardLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed,  setCollapsed]  = useState(false)
-  const [role,       setRole]       = useState<UserRole>('staff')
-  const [authUser,   setAuthUser]   = useState<AuthUser>({ name: 'Abena Owusu', initials: 'AO', org: 'CropGuard' })
+  const [role,       setRole]       = useState<UserRole>(initialRole ?? 'staff')
+  const [authUser,   setAuthUser]   = useState<AuthUser>(initialUser ?? { name: 'Abena Owusu', initials: 'AO', org: 'CropGuard' })
   const pathname = usePathname()
   const router   = useRouter()
 
   useEffect(() => {
+    // server already resolved the role for first paint — this fetch is just a fallback
+    // for the rare case no session cookie was readable yet (e.g. straight after login)
+    if (initialRole) return
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
       .then(session => {
@@ -102,6 +112,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         if (session.user) setAuthUser(session.user)
       })
       .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleSignOut() {

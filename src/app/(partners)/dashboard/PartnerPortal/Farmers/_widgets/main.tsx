@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import {
-  ChevronDown, ChevronRight, ChevronUp, Users, GitBranch,
+  ChevronUp, Users, GitBranch,
   Calendar, Wheat, Layers, TrendingUp, Search, X, BarChart2,
+  LayoutGrid, List, Eye,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { CardTemplate }  from '@/customComponents/CardTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
@@ -145,73 +147,183 @@ function CohortRow({ cohort, programName }: { cohort: Cohort; programName: strin
   )
 }
 
+// ── Program detail sheet (read-only view) ──────────────────────────────────────
+function ProgramDetailSheet({ open, onClose, program }: {
+  open: boolean
+  onClose: () => void
+  program: Program | null
+}) {
+  if (!program) return null
+  const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
+  const filled        = pct(totalEnrolled, program.targetCount)
+  const statusVariant = program.status === 'Active' ? 'success' : program.status === 'Completed' ? 'info' : 'neutral'
+
+  return (
+    <SheetTemplate
+      open={open}
+      onClose={onClose}
+      title={program.name}
+      subtitle={program.season}
+      headerExtra={<BadgeTemplate label={program.status} variant={statusVariant} size="sm" />}
+    >
+      <div className="p-5 space-y-4">
+        {program.description && <p className="text-sm text-gray-600 leading-relaxed">{program.description}</p>}
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Calendar className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-mid)' }} />
+          <span>{fmtDate(program.startDate)} – {fmtDate(program.endDate)}</span>
+        </div>
+        {program.crops.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {program.crops.map(crop => (
+              <BadgeTemplate key={crop} label={crop} variant="success" size="sm" />
+            ))}
+          </div>
+        )}
+        <div className="rounded-xl border border-gray-100 p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>Enrollment</span>
+            <span className="text-gray-400 tabular-nums">{totalEnrolled} / {program.targetCount}</span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+          </div>
+          <p className="text-xs text-gray-400">{filled}% of target reached</p>
+        </div>
+      </div>
+    </SheetTemplate>
+  )
+}
+
+// ── Cohorts sheet ───────────────────────────────────────────────────────────────
+function CohortsSheet({ open, onClose, program }: {
+  open: boolean
+  onClose: () => void
+  program: Program | null
+}) {
+  if (!program) return null
+
+  return (
+    <SheetTemplate open={open} onClose={onClose} title={`${program.name} — Cohorts`}
+      subtitle={`${program.cohorts.length} cohort${program.cohorts.length !== 1 ? 's' : ''}`}>
+      {program.cohorts.length === 0 ? (
+        <div className="py-16 text-center text-sm text-gray-400">No cohorts in this program.</div>
+      ) : (
+        program.cohorts.map(cohort => (
+          <CohortRow key={cohort.id} cohort={cohort} programName={program.name} />
+        ))
+      )}
+    </SheetTemplate>
+  )
+}
+
 // ── Program card ───────────────────────────────────────────────────────────────
 function ProgramCard({ program }: { program: Program }) {
-  const [expanded, setExpanded] = useState(false)
+  const [viewOpen, setViewOpen] = useState(false)
+  const [cohortsOpen, setCohortsOpen] = useState(false)
   const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
   const filled        = pct(totalEnrolled, program.targetCount)
   const isActive      = program.status === 'Active'
   const statusVariant = program.status === 'Active' ? 'success' : program.status === 'Completed' ? 'info' : 'neutral'
 
   return (
-    <CardTemplate noPadding className="overflow-hidden">
-      <div className={['px-6 pt-4 pb-3', !isActive && 'opacity-60'].join(' ')}>
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <button onClick={() => setExpanded(v => !v)}
-              className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
-              {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </button>
+    <>
+      <CardTemplate noPadding className="overflow-hidden">
+        <div className={['px-6 pt-4 pb-3', !isActive && 'opacity-60'].join(' ')}>
+          <div className="flex items-start justify-between gap-3 mb-1">
             <h3 className="text-base font-bold truncate" style={{ color: 'var(--brand-forest)' }}>
               {program.name}
             </h3>
+            <BadgeTemplate label={program.status} variant={statusVariant} size="sm" />
           </div>
-          <BadgeTemplate label={program.status} variant={statusVariant} size="sm" />
+
+          <p className="text-xs text-gray-400 mb-1">{program.season}</p>
+          {program.description && (
+            <p className="text-sm text-gray-500 mb-2 leading-snug">{program.description}</p>
+          )}
+
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {program.crops.map(crop => (
+              <BadgeTemplate key={crop} label={crop} variant="success" size="sm" />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              {fmtDate(program.startDate)} – {fmtDate(program.endDate)}
+            </span>
+            <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--brand-dark)' }}>
+              <Users className="w-3.5 h-3.5" />
+              {totalEnrolled} / {program.targetCount}
+            </span>
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all"
+                   style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+            </div>
+            <span className="text-xs text-gray-400 tabular-nums shrink-0">{filled}%</span>
+          </div>
         </div>
 
-        <p className="pl-6 text-xs text-gray-400 mb-1">{program.season}</p>
-        {program.description && (
-          <p className="pl-6 text-sm text-gray-500 mb-2 leading-snug">{program.description}</p>
-        )}
-
-        <div className="pl-6 flex flex-wrap gap-1.5 mb-3">
-          {program.crops.map(crop => (
-            <BadgeTemplate key={crop} label={crop} variant="success" size="sm" />
-          ))}
+        {/* Actions bar */}
+        <div className="flex items-center justify-between px-6 py-2.5 border-t border-gray-100">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View"
+            leftIcon={<Eye className="w-3.5 h-3.5" />}
+            onClick={() => setViewOpen(true)} />
+          <ButtonTemplate variant="outline" size="sm" isIcon={false}
+            leftIcon={<GitBranch className="w-3.5 h-3.5" />}
+            label={`Cohorts (${program.cohorts.length})`}
+            onClick={() => setCohortsOpen(true)} />
         </div>
+      </CardTemplate>
 
-        <div className="pl-6 flex items-center gap-3">
-          <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5" />
-            {fmtDate(program.startDate)} – {fmtDate(program.endDate)}
-          </span>
-          <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--brand-dark)' }}>
-            <Users className="w-3.5 h-3.5" />
-            {totalEnrolled} / {program.targetCount}
-          </span>
-          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all"
-                 style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+      <ProgramDetailSheet open={viewOpen} onClose={() => setViewOpen(false)} program={program} />
+      <CohortsSheet open={cohortsOpen} onClose={() => setCohortsOpen(false)} program={program} />
+    </>
+  )
+}
+
+// ── Program list row (list view, admin ProgramListRow style) ──────────────────
+function ProgramListRow({ program }: { program: Program }) {
+  const [viewOpen, setViewOpen] = useState(false)
+  const [cohortsOpen, setCohortsOpen] = useState(false)
+  const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
+  const filled        = pct(totalEnrolled, program.targetCount)
+  const isActive      = program.status === 'Active'
+  const statusVariant = program.status === 'Active' ? 'success' : program.status === 'Completed' ? 'info' : 'neutral'
+
+  return (
+    <>
+      <div className={cn(
+        'flex items-center gap-4 px-5 py-4 border-b border-gray-100 hover:bg-gray-50/60 transition-colors',
+        !isActive && 'opacity-60'
+      )}>
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setViewOpen(true)}>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-semibold text-sm truncate" style={{ color: 'var(--brand-forest)' }}>{program.name}</p>
+            <BadgeTemplate label={program.status} variant={statusVariant} size="sm" />
           </div>
-          <span className="text-xs text-gray-400 tabular-nums shrink-0">{filled}%</span>
+          <p className="text-xs text-gray-400 mt-0.5">{program.season}</p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <span className="text-xs text-gray-400 tabular-nums">{program.cohorts.length} cohort{program.cohorts.length !== 1 ? 's' : ''}</span>
+          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+          </div>
+          <span className="text-xs text-gray-500 tabular-nums shrink-0">{totalEnrolled}/{program.targetCount}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View"
+            leftIcon={<Eye className="w-3.5 h-3.5" />}
+            onClick={() => setViewOpen(true)} />
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Cohorts"
+            leftIcon={<GitBranch className="w-3.5 h-3.5" />}
+            onClick={() => setCohortsOpen(true)} />
         </div>
       </div>
 
-      {/* Cohorts */}
-      {expanded && program.cohorts.length > 0 && (
-        <div className={['rounded-b-xl overflow-hidden', !isActive && 'opacity-60'].join(' ')}
-             style={{ backgroundColor: '#fafcfb' }}>
-          {program.cohorts.map(cohort => (
-            <CohortRow key={cohort.id} cohort={cohort} programName={program.name} />
-          ))}
-        </div>
-      )}
-      {expanded && program.cohorts.length === 0 && (
-        <div className="border-t border-gray-100 px-6 py-4 text-sm text-gray-400 italic">
-          No cohorts in this program
-        </div>
-      )}
-    </CardTemplate>
+      <ProgramDetailSheet open={viewOpen} onClose={() => setViewOpen(false)} program={program} />
+      <CohortsSheet open={cohortsOpen} onClose={() => setCohortsOpen(false)} program={program} />
+    </>
   )
 }
 
@@ -219,6 +331,7 @@ function ProgramCard({ program }: { program: Program }) {
 export function Main() {
   const partnerId = usePartnerId()
   const [statsOpen, setStatsOpen] = useState(false)
+  const [viewMode, setViewMode] = usePersistedState<'card' | 'list'>('partnerPrograms-view', 'card')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -243,13 +356,27 @@ export function Main() {
             {programs.length} program{programs.length === 1 ? '' : 's'} linked to your organisation
           </p>
         </div>
-        <ButtonTemplate
-          variant="secondary" size="md"
-          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
-          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
-          label="Overview"
-          onClick={() => setStatsOpen(v => !v)}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ButtonTemplate
+            variant="secondary" size="md"
+            leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+            rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+            label="Overview"
+            onClick={() => setStatsOpen(v => !v)}
+          />
+          <div className="flex gap-0.5 p-1 rounded-lg border border-gray-200 bg-gray-50">
+            <button onClick={() => setViewMode('card')} title="Card view"
+              className="p-1.5 rounded-md transition-colors"
+              style={viewMode === 'card' ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: '#9ca3af' }}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button onClick={() => setViewMode('list')} title="List view"
+              className="p-1.5 rounded-md transition-colors"
+              style={viewMode === 'list' ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: '#9ca3af' }}>
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Overview stats */}
@@ -292,9 +419,13 @@ export function Main() {
             {search ? 'No programs match your search.' : 'No programs linked to your organisation'}
           </p>
         </div>
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="space-y-4">
           {paginated.map(prog => <ProgramCard key={prog.id} program={prog} />)}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {paginated.map(prog => <ProgramListRow key={prog.id} program={prog} />)}
         </div>
       )}
     </div>

@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import {
   ChevronDown, ChevronUp, Package, AlertCircle, UserPlus,
   Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle,
-  X, SlidersHorizontal, BarChart2,
+  X, SlidersHorizontal, BarChart2, LayoutGrid, List,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { SheetTemplate }  from '@/customComponents/SheetTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -451,12 +452,46 @@ function InterventionCard({ intervention: iv, partnerCohorts, onEnrol }: {
   )
 }
 
+// ── Intervention list row (list view, admin ProgramListRow style) ─────────────
+function InterventionListRow({ intervention: iv, partnerCohorts, onEnrol }: {
+  intervention:   Intervention
+  partnerCohorts: EnrolledCohort[]
+  onEnrol:        () => void
+}) {
+  const isActive = iv.status === 'Active'
+
+  return (
+    <div className={cn(
+      'flex items-center gap-4 px-5 py-4 border-b border-gray-100 hover:bg-gray-50/60 transition-colors',
+      !isActive && 'opacity-60',
+    )}>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={onEnrol}>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-semibold text-sm truncate" style={{ color: 'var(--brand-forest)' }}>{iv.name}</p>
+          <BadgeTemplate label={iv.status} variant={STATUS_VARIANT[iv.status]} size="sm" />
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">{iv.type} · {iv.season}</p>
+      </div>
+      <div className="hidden sm:flex items-center gap-3 shrink-0 text-xs text-gray-400">
+        <span>{partnerCohorts.length} cohort{partnerCohorts.length !== 1 ? 's' : ''}</span>
+        {iv.valueDescription && <span className="font-bold" style={{ color: 'var(--brand-dark)' }}>{iv.valueDescription}</span>}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Enrol"
+          leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+          onClick={onEnrol} />
+      </div>
+    </div>
+  )
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 const STATUSES = ['Active', 'Suspended', 'Draft'] as const
 
 export function Main() {
   const partnerId                        = usePartnerId()
   const [statsOpen,    setStatsOpen]     = useState(false)
+  const [viewMode,     setViewMode]      = usePersistedState<'card' | 'list'>('partnerInterventions-view', 'card')
   const [search,       setSearch]        = useState('')
   const [filtersOpen,  setFiltersOpen]   = useState(false)
   const [filterProg,   setFilterProg]    = useState('')
@@ -500,13 +535,27 @@ export function Main() {
             {myInterventions.length} opportunit{myInterventions.length === 1 ? 'y' : 'ies'} assigned to your organisation
           </p>
         </div>
-        <ButtonTemplate
-          variant="secondary" size="md"
-          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
-          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
-          label="Overview"
-          onClick={() => setStatsOpen(v => !v)}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ButtonTemplate
+            variant="secondary" size="md"
+            leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+            rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+            label="Overview"
+            onClick={() => setStatsOpen(v => !v)}
+          />
+          <div className="flex gap-0.5 p-1 rounded-lg border border-gray-200 bg-gray-50">
+            <button onClick={() => setViewMode('card')} title="Card view"
+              className="p-1.5 rounded-md transition-colors"
+              style={viewMode === 'card' ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: '#9ca3af' }}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button onClick={() => setViewMode('list')} title="List view"
+              className="p-1.5 rounded-md transition-colors"
+              style={viewMode === 'list' ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : { color: '#9ca3af' }}>
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Overview stats */}
@@ -592,10 +641,21 @@ export function Main() {
           <AlertCircle className="w-8 h-8 text-gray-300" />
           <p className="text-sm text-gray-400">No interventions found</p>
         </div>
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {paginated.map(iv => (
             <InterventionCard
+              key={iv.id}
+              intervention={iv}
+              partnerCohorts={getPartnerCohorts(iv)}
+              onEnrol={() => setEnrollTarget(iv)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {paginated.map(iv => (
+            <InterventionListRow
               key={iv.id}
               intervention={iv}
               partnerCohorts={getPartnerCohorts(iv)}

@@ -1,10 +1,29 @@
 'use client'
 
+import Link from 'next/link'
+import { Layers, Zap, ArrowRight } from 'lucide-react'
 import { KpiCard, SectionCard } from '../_shared'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
+import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { KPI, FARMER_LOANS, LOAN_APPS, REPAY_ROWS, fmtGHS, fmt, loanStatusStyle, appStatusStyle, type LoanStatus, type AppStatus } from '../_data'
+import { usePartnerId } from '../_logics/usePartnerId'
+import { PROGRAMS } from '@/dataCenter/programs'
+import { INTERVENTIONS } from '@/dataCenter/interventions'
+import type { Cohort } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/interface'
 
 export function Main() {
+  const partnerId = usePartnerId()
+
+  const programs = PROGRAMS.filter(p => p.partnerId === partnerId)
+  const programsEnrolled = programs.reduce((s, p) =>
+    s + p.cohorts.reduce((cs: number, c: Cohort) => cs + c.enrolledCount, p.enrolledCount), 0)
+  const activePrograms = programs.filter(p => p.status === 'Active').length
+
+  const interventions = INTERVENTIONS.filter(iv =>
+    iv.partnerAssignments?.some((pa: { partnerId: string }) => pa.partnerId === partnerId)
+  )
+  const activeInterventions = interventions.filter(iv => iv.status === 'Active').length
+
   const repayByStatus = {
     onTime:   REPAY_ROWS.filter(r => r.status === 'On Time').length,
     late:     REPAY_ROWS.filter(r => r.status === 'Late').length,
@@ -17,6 +36,85 @@ export function Main() {
       <div>
         <h1 className="text-xl font-bold" style={{ color: '#1e3a5f' }}>Portfolio Overview</h1>
         <p className="text-sm text-gray-500 mt-0.5">Fidelity Bank · Loan portfolio and repayment management</p>
+      </div>
+
+      {/* Linked Programs + Interventions summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SectionCard
+          title="Linked Programs"
+          action={
+            <Link href="/dashboard/PartnerPortal/Farmers"
+              className="flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: 'var(--brand-forest)' }}>
+              View all <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        >
+          {programs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+              <Layers className="w-7 h-7 text-gray-300" />
+              <p className="text-sm text-gray-400">No programs linked yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 p-4">
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-bold" style={{ color: 'var(--brand-forest)' }}>{activePrograms}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Active</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-bold" style={{ color: 'var(--brand-forest)' }}>{programsEnrolled}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Farmers Enrolled</p>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100 border-t border-gray-100">
+                {programs.slice(0, 4).map(p => (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-2.5">
+                    <p className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                    <BadgeTemplate label={p.status} variant={p.status === 'Active' ? 'success' : p.status === 'Completed' ? 'info' : 'neutral'} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Linked Interventions"
+          action={
+            <Link href="/dashboard/PartnerPortal/Loans"
+              className="flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: 'var(--brand-forest)' }}>
+              View all <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        >
+          {interventions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+              <Zap className="w-7 h-7 text-gray-300" />
+              <p className="text-sm text-gray-400">No interventions assigned yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 p-4">
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-bold" style={{ color: 'var(--brand-forest)' }}>{activeInterventions}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Active</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-bold" style={{ color: 'var(--brand-forest)' }}>{interventions.length}</p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">Total Assigned</p>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-100 border-t border-gray-100">
+                {interventions.slice(0, 4).map(iv => (
+                  <div key={iv.id} className="flex items-center gap-3 px-5 py-2.5">
+                    <p className="flex-1 min-w-0 text-sm font-medium text-gray-800 truncate">{iv.name}</p>
+                    <BadgeTemplate label={iv.status} variant={iv.status === 'Active' ? 'success' : iv.status === 'Suspended' ? 'warning' : 'neutral'} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </SectionCard>
       </div>
 
       {/* KPIs */}

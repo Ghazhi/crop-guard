@@ -38,6 +38,7 @@ const STAFF_NAV: NavItem[] = [
 ]
 
 const PARTNER_NAV: NavItem[] = [
+  { href: '/dashboard/PartnerPortal',           label: 'Overview',             icon: LayoutDashboard, locked: false },
   { section: true, label: 'Partner Dashboard' },
   { href: '/dashboard/PartnerPortal/Farmers',   label: 'Linked Programs',      icon: Building2, locked: false },
   { href: '/dashboard/PartnerPortal/Loans',     label: 'Linked Interventions', icon: Zap,       locked: false },
@@ -67,6 +68,13 @@ const PM_NAV: NavItem[] = [
   { href: '/dashboard/ProgramManager/Reports',           label: 'Reports',               icon: BarChart3,       locked: false },
   { href: '/dashboard/ProgramManager/Settings',          label: 'Settings',              icon: Settings2,       locked: false },
 ]
+
+// root-level portal links (e.g. '/dashboard/PartnerPortal') should only match their
+// exact path — otherwise they'd swallow every sub-route as a prefix match
+function navLinkMatches(pathname: string, href: string): boolean {
+  const isExactOnly = href.endsWith('/ProgramManager') || href.endsWith('/PartnerPortal') || href.endsWith('/FinancePortal')
+  return pathname === href || (!isExactOnly && pathname.startsWith(href + '/'))
+}
 
 const ROLE_META: Record<UserRole, { label: string; color: string; navBg: string }> = {
   staff:   { label: 'Staff Portal',           color: 'var(--brand-forest)', navBg: 'var(--brand-forest)' },
@@ -161,9 +169,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             }
 
             const { href, icon: Icon, label, locked } = item
-            const basePath = href
-            const isExactOnly = href.endsWith('/ProgramManager') || href.endsWith('/PartnerPortal') || href.endsWith('/FinancePortal')
-            const isActive = !locked && (pathname === basePath || (!isExactOnly && pathname.startsWith(basePath + '/')))
+            const isActive = !locked && navLinkMatches(pathname, href)
 
             if (locked) {
               return (
@@ -234,7 +240,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             className="hidden md:flex text-gray-400 hover:text-gray-700" />
           <div className="flex-1">
             <span className="text-sm font-medium text-gray-600">
-              {nav.find(n => !('section' in n) && (pathname === n.href || pathname.startsWith(n.href + '/')))?.label ?? 'Dashboard'}
+              {nav
+                .filter((n): n is NavLink => !('section' in n) && navLinkMatches(pathname, n.href))
+                .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? 'Dashboard'}
             </span>
           </div>
           <div className="flex items-center gap-2">

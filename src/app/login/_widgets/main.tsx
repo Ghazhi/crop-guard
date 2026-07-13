@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react'
 import { login } from '../_logics/functions'
+import { LoaderTemplate } from '@/customComponents/LoaderTemplate'
 
 const BRAND = '#2C5F3F'
 
@@ -113,9 +114,10 @@ export function Main() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-12 rounded-xl text-white text-sm font-semibold transition-opacity disabled:opacity-60 mt-1"
+            className="w-full h-12 rounded-xl text-white text-sm font-semibold transition-opacity disabled:opacity-60 mt-1 flex items-center justify-center gap-2"
             style={{ backgroundColor: BRAND }}
           >
+            {loading && <LoaderTemplate size="sm" className="gap-0" colorClassName="text-white" />}
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

@@ -22,6 +22,8 @@ export interface SheetTemplateProps {
   bodyClassName?: string
   /** If provided, renders a back-arrow button in the header that calls this */
   onBack?: () => void
+  /** Optional content rendered inline with the title (e.g. a status badge + edit button) */
+  headerExtra?: React.ReactNode
 }
 
 const SIZE_MAP: Record<NonNullable<SheetTemplateProps['size']>, string> = {
@@ -40,6 +42,7 @@ export function SheetTemplate({
   footer,
   bodyClassName,
   onBack,
+  headerExtra,
 }: SheetTemplateProps) {
   return (
     <Sheet open={open} onOpenChange={v => !v && onClose()}>
@@ -62,14 +65,19 @@ export function SheetTemplate({
               Back
             </button>
           )}
-          <SheetTitle className="text-sm font-semibold tracking-tight text-gray-900 leading-tight">
-            {title}
-          </SheetTitle>
-          {subtitle && (
-            <p className="text-xs font-medium tracking-tight" style={{ color: 'var(--brand-green)' }}>
-              {subtitle}
-            </p>
-          )}
+          <div className={cn(headerExtra && 'flex items-start justify-between gap-3 pr-6')}>
+            <div className="min-w-0">
+              <SheetTitle className="text-sm font-semibold tracking-tight text-gray-900 leading-tight">
+                {title}
+              </SheetTitle>
+              {subtitle && (
+                <p className="text-xs font-medium tracking-tight" style={{ color: 'var(--brand-green)' }}>
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {headerExtra && <div className="shrink-0 mt-0.5">{headerExtra}</div>}
+          </div>
         </SheetHeader>
 
         <div className={cn('flex-1 overflow-y-auto', bodyClassName)}>

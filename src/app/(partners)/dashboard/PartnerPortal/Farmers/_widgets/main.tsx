@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import {
-  ChevronDown, ChevronRight, Users, GitBranch,
-  Calendar, Wheat, Layers, TrendingUp,
+  ChevronDown, ChevronRight, ChevronUp, Users, GitBranch,
+  Calendar, Wheat, Layers, TrendingUp, Search, X, BarChart2,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { PaginationBar } from '@/customComponents/PaginationBar'
 import { CardTemplate }  from '@/customComponents/CardTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -216,6 +218,10 @@ function ProgramCard({ program }: { program: Program }) {
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function Main() {
   const partnerId = usePartnerId()
+  const [statsOpen, setStatsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const programs = PROGRAMS.filter(p => p.partnerId === partnerId)
 
@@ -223,33 +229,72 @@ export function Main() {
     s + p.cohorts.reduce((cs: number, c: Cohort) => cs + c.enrolledCount, p.enrolledCount), 0)
   const activeCount   = programs.filter(p => p.status === 'Active').length
 
+  const filtered = programs.filter(p => !search.trim() || p.name.toLowerCase().includes(search.toLowerCase()))
+  const paginated = pageSize === 0 ? filtered : filtered.slice((page - 1) * pageSize, page * pageSize)
+
   return (
-    <div className="min-h-screen bg-(--brand-gray) p-6 space-y-5">
+    <div className="min-h-screen bg-(--brand-gray) p-6 space-y-4">
 
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>Linked Programs</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
-          {programs.length} program{programs.length === 1 ? '' : 's'} linked to your organisation
-        </p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>Linked Programs</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
+            {programs.length} program{programs.length === 1 ? '' : 's'} linked to your organisation
+          </p>
+        </div>
+        <ButtonTemplate
+          variant="secondary" size="md"
+          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+          label="Overview"
+          onClick={() => setStatsOpen(v => !v)}
+        />
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <StatCard icon={<Layers className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}    label="Programs"  value={programs.length} />
-        <StatCard icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Active"    value={activeCount} />
-        <StatCard icon={<Users className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}      label="Farmers"   value={totalEnrolled} />
+      {/* Overview stats */}
+      {statsOpen && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <StatCard icon={<Layers className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}    label="Programs"  value={programs.length} />
+          <StatCard icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Active"    value={activeCount} />
+          <StatCard icon={<Users className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}      label="Farmers"   value={totalEnrolled} />
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          className="w-full border border-gray-200 rounded-xl pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors bg-white"
+          placeholder="Search programs…"
+          value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+          </button>
+        )}
       </div>
+
+      {/* Pagination (top) */}
+      {filtered.length > 0 && (
+        <PaginationBar
+          page={page} pageSize={pageSize} total={filtered.length}
+          onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }}
+        />
+      )}
 
       {/* Program cards */}
-      {programs.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-2 text-center">
           <Wheat className="w-8 h-8 text-gray-300" />
-          <p className="text-sm text-gray-400">No programs linked to your organisation</p>
+          <p className="text-sm text-gray-400">
+            {search ? 'No programs match your search.' : 'No programs linked to your organisation'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {programs.map(prog => <ProgramCard key={prog.id} program={prog} />)}
+          {paginated.map(prog => <ProgramCard key={prog.id} program={prog} />)}
         </div>
       )}
     </div>

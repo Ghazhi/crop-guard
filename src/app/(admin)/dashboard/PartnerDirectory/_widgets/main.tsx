@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, Plus, MapPin, Mail, Building2, ChevronRight, Eye, Trash2, Calendar, Layers, Pencil } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Plus, MapPin, Mail, Building2, ChevronRight, ChevronDown, Eye, Trash2, Calendar, Layers, Pencil, CheckCircle2, Clock, X, SlidersHorizontal, Users } from 'lucide-react'
 import Link from 'next/link'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
+import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
+import { CardTemplate } from '@/customComponents/CardTemplate'
+import { PaginationBar } from '@/customComponents/PaginationBar'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet'
 import { PARTNERS } from '@/dataCenter/partners'
 import type { PartnerStatus } from '@/dataCenter/partners'
+import { cn } from '@/lib/utils'
 
 interface Partner {
   id: string; name: string; type: string; region: string
@@ -258,14 +263,94 @@ function Row({ label, value }: { label: string; value: string }) {
 
 // ── View Partner Sheet ────────────────────────────────────────────────────────
 
+const MOCK_LINKED_PROGRAMS = [
+  { id: 'lp1', name: 'Ashanti Maize 2025', season: '2025A', cohorts: [
+      { id: 'lc1', name: 'Kumasi North A', enrolled: 48, target: 50, compliance: 92 },
+      { id: 'lc2', name: 'Kumasi North B', enrolled: 43, target: 50, compliance: 87 },
+    ], totalFarmers: 91, status: 'Active' },
+  { id: 'lp2', name: 'Brong Soy 2025', season: '2025A', cohorts: [
+      { id: 'lc3', name: 'Sunyani Central', enrolled: 62, target: 70, compliance: 78 },
+    ], totalFarmers: 62, status: 'Active' },
+  { id: 'lp3', name: 'Eastern Rice 2024', season: '2024B', cohorts: [
+      { id: 'lc4', name: 'Kwahu West', enrolled: 55, target: 55, compliance: 95 },
+    ], totalFarmers: 55, status: 'Completed' },
+]
+
+const MOCK_INTERVENTIONS = [
+  { id: 'int1', name: 'Input Credit 2025', type: 'Credit', beneficiaries: 91, disbursed: 'GHS 45,600', repaymentRate: 88, status: 'Active' },
+  { id: 'int2', name: 'Fertiliser Subsidy', type: 'Input Support', beneficiaries: 62, disbursed: 'GHS 18,200', repaymentRate: null, status: 'Active' },
+  { id: 'int3', name: 'Rice Loan 2024', type: 'Credit', beneficiaries: 55, disbursed: 'GHS 27,500', repaymentRate: 94, status: 'Completed' },
+]
+
+// farmers spread across cohorts so filter actually reduces the list
+const MOCK_FARMERS = [
+  ...Array.from({ length: 5 }, (_, i) => ({ id: `f${i+1}`,    name: ['Kofi Mensah','Ama Owusu','Kwame Asante','Abena Boateng','Yaw Darko'][i],       community: 'Atwima',  friScore: 62+(i*6)%35, programId:'lp1', cohortId:'lc1' })),
+  ...Array.from({ length: 4 }, (_, i) => ({ id: `f${i+6}`,    name: ['Efua Agyei','Samuel Kusi','Grace Owusu','Daniel Mensah'][i],                    community: 'Kwabre',  friScore: 68+(i*5)%30, programId:'lp1', cohortId:'lc2' })),
+  ...Array.from({ length: 4 }, (_, i) => ({ id: `f${i+10}`,   name: ['Akua Darko','Fiifi Asante','Nana Osei','Abena Kusi'][i],                        community: 'Sunyani', friScore: 71+(i*4)%28, programId:'lp2', cohortId:'lc3' })),
+  ...Array.from({ length: 4 }, (_, i) => ({ id: `f${i+14}`,   name: ['Kwesi Boateng','Mavis Mensah','Eric Asante','Comfort Darko'][i],                community: 'Kwahu',   friScore: 74+(i*3)%25, programId:'lp3', cohortId:'lc4' })),
+]
+
+type ViewTab = 'overview' | 'programs' | 'interventions'
+
+interface FarmersModal {
+  programName: string
+  cohortName?: string
+  fromIntervention?: boolean
+}
+
 function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
   partner: Partner | null; onClose: () => void; onRemove: (p: Partner) => void; onEdit: (p: Partner) => void
 }) {
+  const [tab, setTab] = useState<ViewTab>('overview')
+  const [programFilter, setProgramFilter] = useState('')
+  const [cohortFilter, setCohortFilter] = useState('')
+  const [farmersModal, setFarmersModal] = useState<FarmersModal | null>(null)
+  // farmers modal internal filters — pre-populated from the clicked cohort/program
+  const [fmProgram, setFmProgram] = useState('')
+  const [fmCohort,  setFmCohort]  = useState('')
+
+  // reset all state whenever a different partner is selected
+  const prevPartnerId = useRef<string | null>(null)
+  useEffect(() => {
+    if (partner && partner.id !== prevPartnerId.current) {
+      prevPartnerId.current = partner.id
+      setTab('overview')
+      setProgramFilter('')
+      setCohortFilter('')
+      setFarmersModal(null)
+      setFmProgram('')
+      setFmCohort('')
+    }
+  }, [partner])
+
   if (!partner) return null
   const p = partner
+
+  // Overview quick stats
+  const totalFarmers = MOCK_LINKED_PROGRAMS.reduce((sum, prog) => sum + prog.totalFarmers, 0)
+  const activePrograms = MOCK_LINKED_PROGRAMS.filter(prog => prog.status === 'Active').length
+  const repaymentRates = MOCK_INTERVENTIONS.map(i => i.repaymentRate).filter((r): r is number => r !== null)
+  const avgRepayment = repaymentRates.length > 0
+    ? Math.round(repaymentRates.reduce((a, b) => a + b, 0) / repaymentRates.length)
+    : 0
+
+  // Programs tab filtering
+  const filteredPrograms = MOCK_LINKED_PROGRAMS
+    .filter(prog => !programFilter || prog.name === programFilter)
+    .map(prog => ({
+      ...prog,
+      cohorts: prog.cohorts.filter(c => !cohortFilter || c.name === cohortFilter),
+    }))
+    .filter(prog => prog.cohorts.length > 0)
+
+  // Cohort options for filter
+  const cohortOptions = programFilter
+    ? (MOCK_LINKED_PROGRAMS.find(prog => prog.name === programFilter)?.cohorts ?? [])
+    : MOCK_LINKED_PROGRAMS.flatMap(prog => prog.cohorts)
+
   return (
-    <Sheet open={!!partner} onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
+    <Sheet open={!!partner} onOpenChange={open => { if (!open) { onClose(); setTab('overview'); setProgramFilter(''); setCohortFilter(''); setFarmersModal(null) } }}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <PersonAvatar name={p.name} size={40} shape="square" />
@@ -276,48 +361,194 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
           </div>
         </SheetHeader>
 
-        <div className="flex justify-end px-6 pt-4 pb-2">
-          <button
-            onClick={() => { onClose(); onEdit(p) }}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" /> Edit
-          </button>
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mx-6 mt-4 mb-2">
+          {(['overview', 'programs', 'interventions'] as ViewTab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)} className={cn('flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize', tab === t ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700')}>
+              {t === 'programs' ? 'Linked Programs' : t === 'interventions' ? 'Linked Interventions' : 'Overview'}
+            </button>
+          ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-5 space-y-5">
-          {/* Status badge */}
-          <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full border ${statusCls(p.status)}`}>{p.status}</span>
+        <div className="flex-1 overflow-y-auto px-6 pb-5">
 
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { icon: MapPin,    label: 'Region',   value: p.region },
-              { icon: Calendar,  label: 'Partner since', value: p.since },
-              { icon: Layers,    label: 'Programs', value: String(p.programs) },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{label}</p>
-                <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
-                  <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />{value}
-                </p>
+          {/* ── OVERVIEW TAB ── */}
+          {tab === 'overview' && (
+            <div className="space-y-5 pt-3">
+              {/* Quick stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                  <p className="text-lg font-bold text-gray-900">{totalFarmers}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Total Farmers</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                  <p className="text-lg font-bold text-gray-900">{activePrograms}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Active Programs</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-3 text-center">
+                  <p className="text-lg font-bold text-gray-900">{avgRepayment}%</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Avg Repayment</p>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {/* Primary contact */}
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Primary Contact</p>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 space-y-2.5">
-              <div className="flex items-center gap-3">
-                <PersonAvatar name={p.contact} size={36} />
-                <p className="font-semibold text-gray-900">{p.contact}</p>
+              {/* Status badge */}
+              <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full border ${statusCls(p.status)}`}>{p.status}</span>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { icon: MapPin,    label: 'Region',        value: p.region },
+                  { icon: Calendar,  label: 'Partner since', value: p.since },
+                  { icon: Layers,    label: 'Programs',      value: String(p.programs) },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">{label}</p>
+                    <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5 text-gray-400 shrink-0" />{value}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <a href={`mailto:${p.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors">
-                <Mail className="w-3.5 h-3.5 shrink-0 text-gray-400" />{p.email}
-              </a>
+
+              {/* Primary contact */}
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Primary Contact</p>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <PersonAvatar name={p.contact} size={36} />
+                    <p className="font-semibold text-gray-900">{p.contact}</p>
+                  </div>
+                  <a href={`mailto:${p.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors">
+                    <Mail className="w-3.5 h-3.5 shrink-0 text-gray-400" />{p.email}
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── LINKED PROGRAMS TAB ── */}
+          {tab === 'programs' && (
+            <div className="pt-3 space-y-3">
+              {/* Filters */}
+              <div className="flex gap-2">
+                <select
+                  value={programFilter}
+                  onChange={e => { setProgramFilter(e.target.value); setCohortFilter('') }}
+                  className="h-8 flex-1 border border-gray-200 rounded-lg px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-300"
+                >
+                  <option value="">All Programs</option>
+                  {MOCK_LINKED_PROGRAMS.map(prog => <option key={prog.id}>{prog.name}</option>)}
+                </select>
+                <select
+                  value={cohortFilter}
+                  onChange={e => setCohortFilter(e.target.value)}
+                  className="h-8 flex-1 border border-gray-200 rounded-lg px-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-green-300"
+                >
+                  <option value="">All Cohorts</option>
+                  {cohortOptions.map(c => <option key={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              {/* Program cards — matches admin ProgramsSetup card language */}
+              {filteredPrograms.map(prog => {
+                const totalEnrolled = prog.cohorts.reduce((s, c) => s + c.enrolled, 0)
+                const totalTarget   = prog.cohorts.reduce((s, c) => s + c.target, 0)
+                const filled = totalTarget > 0 ? Math.min(100, Math.round((totalEnrolled / totalTarget) * 100)) : 0
+                const statusVariant = prog.status === 'Active' ? 'success' : 'neutral'
+                return (
+                  <CardTemplate key={prog.id} noPadding className="overflow-hidden">
+                    <div className="px-6 pt-4 pb-3">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <h3 className="text-base font-bold truncate" style={{ color: 'var(--brand-forest)' }}>{prog.name}</h3>
+                        <BadgeTemplate label={prog.status} variant={statusVariant} size="sm" />
+                      </div>
+                      <p className="pl-0 text-xs text-gray-400 mb-3">{prog.season}</p>
+
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--brand-dark)' }}>
+                          <Users className="w-3.5 h-3.5" />
+                          {totalEnrolled} / {totalTarget}
+                        </span>
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+                        </div>
+                        <span className="text-xs text-gray-400 tabular-nums shrink-0">{filled}%</span>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100">
+                      {prog.cohorts.map(cohort => (
+                        <div key={cohort.id} className="flex items-center justify-between px-6 py-2.5 border-b border-gray-50 last:border-b-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-700">{cohort.name}</span>
+                            <button
+                              onClick={() => {
+                                setFmProgram(prog.id)
+                                setFmCohort(cohort.id)
+                                setFarmersModal({ programName: prog.name, cohortName: cohort.name, fromIntervention: false })
+                              }}
+                              className="text-xs text-green-700 underline cursor-pointer font-medium hover:text-green-900 transition-colors"
+                            >
+                              {cohort.enrolled} farmers
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <BadgeTemplate
+                              label={`${cohort.compliance}%`}
+                              variant={cohort.compliance >= 90 ? 'success' : cohort.compliance >= 75 ? 'warning' : 'danger'}
+                              size="sm"
+                            />
+                            <span className="text-xs text-gray-400 tabular-nums">{cohort.enrolled}/{cohort.target}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardTemplate>
+                )
+              })}
+
+              {filteredPrograms.length === 0 && (
+                <div className="text-center py-10 text-gray-400 text-sm">No programs match the selected filters</div>
+              )}
+            </div>
+          )}
+
+          {/* ── LINKED INTERVENTIONS TAB ── */}
+          {tab === 'interventions' && (
+            <div className="pt-3 space-y-3">
+              {MOCK_INTERVENTIONS.map(intervention => (
+                <div key={intervention.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 text-sm">{intervention.name}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-medium">{intervention.type}</span>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${intervention.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                      {intervention.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                    <span><span className="font-semibold text-gray-800">{intervention.beneficiaries}</span> Beneficiaries</span>
+                    <span><span className="font-semibold text-gray-800">{intervention.disbursed}</span> Disbursed</span>
+                    <span>
+                      Repayment: <span className="font-semibold text-gray-800">{intervention.repaymentRate !== null ? `${intervention.repaymentRate}%` : 'N/A'}</span>
+                    </span>
+                  </div>
+                  <ButtonTemplate
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFmProgram('')
+                      setFmCohort('')
+                      setFarmersModal({ programName: intervention.name, fromIntervention: true })
+                    }}
+                  >
+                    View Farmers
+                  </ButtonTemplate>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <SheetFooter className="px-6 pb-6 pt-4 border-t border-gray-100 flex-row gap-3">
@@ -327,12 +558,86 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
           >
             <Trash2 className="w-3.5 h-3.5" /> Remove
           </button>
+          <button
+            onClick={() => { onClose(); onEdit(p) }}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
           <button onClick={onClose}
             className="flex-1 h-9 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: 'var(--brand-forest)' }}>
             Close
           </button>
         </SheetFooter>
+
+        {/* Farmers Modal */}
+        {farmersModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setFarmersModal(null)}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div>
+                  <p className="font-semibold text-gray-900">{farmersModal.programName}</p>
+                  {farmersModal.cohortName && <p className="text-xs text-gray-400 mt-0.5">{farmersModal.cohortName}</p>}
+                </div>
+                <button onClick={() => setFarmersModal(null)}><X className="w-4 h-4 text-gray-400 hover:text-gray-700" /></button>
+              </div>
+
+              {/* Only show program/cohort filters when NOT fromIntervention */}
+              {!farmersModal.fromIntervention && (
+                <div className="flex gap-2 px-5 py-3 border-b border-gray-100">
+                  <select
+                    value={fmProgram}
+                    onChange={e => { setFmProgram(e.target.value); setFmCohort('') }}
+                    className="h-8 flex-1 border border-gray-200 rounded-lg px-2 text-xs bg-white"
+                  >
+                    <option value="">All Programs</option>
+                    {MOCK_LINKED_PROGRAMS.map(prog => <option key={prog.id} value={prog.id}>{prog.name}</option>)}
+                  </select>
+                  <select
+                    value={fmCohort}
+                    onChange={e => setFmCohort(e.target.value)}
+                    className="h-8 flex-1 border border-gray-200 rounded-lg px-2 text-xs bg-white"
+                  >
+                    <option value="">All Cohorts</option>
+                    {(fmProgram
+                      ? MOCK_LINKED_PROGRAMS.find(p => p.id === fmProgram)?.cohorts ?? []
+                      : MOCK_LINKED_PROGRAMS.flatMap(p => p.cohorts)
+                    ).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
+                    <tr>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-2.5">Farmer</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Community</th>
+                      <th className="text-right text-xs font-semibold text-gray-500 px-5 py-2.5">FRI Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MOCK_FARMERS
+                      .filter(f =>
+                        (!fmProgram || f.programId === fmProgram) &&
+                        (!fmCohort  || f.cohortId  === fmCohort)
+                      )
+                      .map(f => (
+                      <tr key={f.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                        <td className="px-5 py-2.5 font-medium text-gray-800">{f.name}</td>
+                        <td className="px-4 py-2.5 text-gray-500">{f.community}</td>
+                        <td className="px-5 py-2.5 text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${f.friScore >= 75 ? 'bg-green-100 text-green-700' : f.friScore >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{f.friScore}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   )
@@ -419,19 +724,34 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
 export function Main() {
   const [partners,       setPartners]       = useState<Partner[]>(INITIAL_PARTNERS)
   const [search,         setSearch]         = useState('')
+  const [filtersOpen,    setFiltersOpen]    = useState(false)
   const [typeFilter,     setTypeFilter]     = useState('')
+  const [statusFilter,   setStatusFilter]   = useState('')
+  const [page,           setPage]           = useState(1)
+  const [pageSize,       setPageSize]       = useState(25)
   const [sheetOpen,      setSheetOpen]      = useState(false)
   const [viewPartner,    setViewPartner]    = useState<Partner | null>(null)
   const [editPartner,    setEditPartner]    = useState<Partner | null>(null)
   const [editOpen,       setEditOpen]       = useState(false)
   const [removeTarget,   setRemoveTarget]   = useState<Partner | null>(null)
 
+  const activeFilterCount = [typeFilter, statusFilter].filter(Boolean).length
   const types     = [...new Set(partners.map(p => p.type))]
-  const displayed = partners.filter(p =>
-    (!search     || p.name.toLowerCase().includes(search.toLowerCase()) ||
-                    p.contact.toLowerCase().includes(search.toLowerCase())) &&
-    (!typeFilter || p.type === typeFilter)
+  const filtered = partners.filter(p =>
+    (!search       || p.name.toLowerCase().includes(search.toLowerCase()) ||
+                      p.contact.toLowerCase().includes(search.toLowerCase())) &&
+    (!typeFilter   || p.type === typeFilter) &&
+    (!statusFilter || p.status === statusFilter)
   )
+  const displayed = pageSize > 0
+    ? filtered.slice((page - 1) * pageSize, page * pageSize)
+    : filtered
+
+  // Overview stats
+  const totalPartners  = partners.length
+  const activeCount    = partners.filter(p => p.status === 'Active').length
+  const pendingCount   = partners.filter(p => p.status === 'Pending').length
+  const totalPrograms  = partners.reduce((sum, p) => sum + p.programs, 0)
 
   function handleAdd(p: Partner) { setPartners(prev => [p, ...prev]) }
 
@@ -451,26 +771,98 @@ export function Main() {
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-52">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className="w-full h-9 pl-9 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-300"
-            placeholder="Search partners or contacts…"
-            value={search} onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className="h-9 px-3 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none"
-          value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-          <option value="">All Types</option>
-          {types.map(t => <option key={t}>{t}</option>)}
-        </select>
+      {/* Overview stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+        {[
+          { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
+          { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
+          { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
+          { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
+        ].map(({ icon: Icon, bg, color, value, label }) => (
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
+              <Icon className={`w-4 h-4 ${color}`} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Table */}
+      {/* Filters */}
+      {/* Filters + Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+        {/* Search + filter toggle */}
+        <div className="px-5 py-4 border-b border-gray-100 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors"
+                placeholder="Search partners or contacts…"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1) }}
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 h-10 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0',
+                filtersOpen || activeFilterCount > 0
+                  ? 'border-(--brand-green) text-(--brand-green) bg-green-50'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700',
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ backgroundColor: 'var(--brand-green)' }}>
+                  {activeFilterCount}
+                </span>
+              )}
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', filtersOpen && 'rotate-180')} />
+            </button>
+          </div>
+
+          {filtersOpen && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 pt-1 border-t border-gray-100">
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Type</p>
+                <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1) }}
+                  className="h-8 w-full border border-gray-200 rounded-lg px-2.5 text-xs focus:outline-none bg-white">
+                  <option value="">All types</option>
+                  {types.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Status</p>
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+                  className="h-8 w-full border border-gray-200 rounded-lg px-2.5 text-xs focus:outline-none bg-white">
+                  <option value="">All statuses</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Pagination row */}
+        <div className="px-5 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <p className="text-xs text-gray-400">{filtered.length} partner{filtered.length !== 1 ? 's' : ''}</p>
+          <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -487,12 +879,12 @@ export function Main() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {displayed.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={p.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-5 py-3.5">
-                    <Link href={`/dashboard/PartnerDirectory/${p.id}`} className="flex items-center gap-3 group">
+                    <button onClick={() => setViewPartner(p)} className="flex items-center gap-3 group/link text-left">
                       <PersonAvatar name={p.name} size={32} shape="square" />
-                      <span className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{p.name}</span>
-                    </Link>
+                      <span className="font-medium text-gray-900 group-hover/link:text-green-700 transition-colors">{p.name}</span>
+                    </button>
                   </td>
                   <td className="px-4 py-3.5">
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{p.type}</span>
@@ -516,14 +908,11 @@ export function Main() {
                   </td>
                   <td className="px-4 py-3.5 text-center text-xs text-gray-400">{p.since}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end">
                       <button onClick={() => setViewPartner(p)}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
-                      <button onClick={() => setRemoveTarget(p)}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
+                        title="View"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>

@@ -523,15 +523,14 @@ export function Main() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-white border border-gray-200 w-fit">
+      <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {TABS.map(t => {
           const Icon     = t.icon
           const isActive = activeTab === t.id
           return (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={['flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all',
-                isActive ? 'shadow-sm text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'].join(' ')}
-              style={isActive ? { backgroundColor: FOREST } : {}}>
+              className={['flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+                isActive ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'].join(' ')}>
               <Icon className="w-3.5 h-3.5" />
               {t.label}
             </button>

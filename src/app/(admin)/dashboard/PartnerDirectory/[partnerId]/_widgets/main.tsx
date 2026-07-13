@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, MapPin, Mail, Calendar, Building2,
   Users, Search, Layers, Zap, Plus, X, Check,
-  ExternalLink, FileText,
+  ExternalLink, FileText, Wallet, Pencil, Trash2,
 } from 'lucide-react'
 import Link from 'next/link'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
+import { CardTemplate } from '@/customComponents/CardTemplate'
 import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from '@/components/ui/sheet'
@@ -19,6 +21,7 @@ import { PARTNERS } from '@/dataCenter/partners'
 import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { PROGRAMS } from '@/dataCenter/programs'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
+import { BASELINE_SEED } from '@/dataCenter/checkinConfig'
 import type { Intervention, EnrolledCohort } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/interface'
@@ -28,10 +31,20 @@ import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/inte
 const TABS = [
   { id: 'programs',      label: 'Linked Programs',      icon: Layers    },
   { id: 'interventions', label: 'Linked Interventions', icon: Zap       },
+  { id: 'p4baseline',    label: 'P4: Farm Enterprise',  icon: Wallet    },
   { id: 'risk',          label: 'Risk & Performance',   icon: Users     },
-  { id: 'reports',       label: 'Reports',              icon: FileText  },
+  { id: 'reports',       label: 'Reports',               icon: FileText },
 ] as const
 type Tab = typeof TABS[number]['id']
+
+// ─── Types: P4 baseline ───────────────────────────────────────────────────────
+
+interface PartnerP4Question {
+  id:     string
+  label:  string
+  desc:   string
+  active: boolean
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -449,9 +462,12 @@ function AssignSheet({ open, onClose, assignedIds, onAssign }: {
 // ─── Tab: Linked Programs ─────────────────────────────────────────────────────
 
 function LinkedProgramsTab({ opportunities }: { opportunities: { intervention: Intervention; cohorts: EnrolledCohort[] }[] }) {
-  interface ProgRow { id: string; name: string; status: string; crops: string; period: string; cohorts: number; farmers: number }
+  interface ProgCard {
+    id: string; name: string; status: Program['status']; crops: string[]
+    period: string; cohortCount: number; enrolled: number; target: number
+  }
 
-  const rows = useMemo<ProgRow[]>(() => {
+  const cards = useMemo<ProgCard[]>(() => {
     const seen = new Map<string, { cohortIds: Set<string> }>()
     opportunities.forEach(({ cohorts }) =>
       cohorts.forEach((ec: EnrolledCohort) => {
@@ -466,63 +482,68 @@ function LinkedProgramsTab({ opportunities }: { opportunities: { intervention: I
         f.enrollment?.programId === programId && cohortIds.has(f.enrollment?.cohortId ?? '')
       ).length
       return {
-        id:      programId,
-        name:    program?.name ?? (ec0?.programName ?? programId),
-        status:  program?.status ?? 'Active',
-        crops:   program?.crops.join(', ') ?? '—',
-        period:  program ? `${program.startDate} → ${program.endDate}` : '—',
-        cohorts: cohortIds.size,
-        farmers,
+        id:          programId,
+        name:        program?.name ?? (ec0?.programName ?? programId),
+        status:      program?.status ?? 'Active',
+        crops:       program?.crops ?? [],
+        period:      program ? `${program.startDate} → ${program.endDate}` : '—',
+        cohortCount: cohortIds.size,
+        enrolled:    farmers,
+        target:      program?.targetCount ?? farmers,
       }
     })
   }, [opportunities])
 
-  const columns: DatagridColumn<ProgRow>[] = [
-    {
-      key: 'name',
-      label: 'Programme',
-      render: val => <span className="text-sm font-semibold text-gray-900">{String(val)}</span>,
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: val => <BadgeTemplate label={String(val)} variant={progStatus(String(val) as Program['status'])} size="sm" />,
-    },
-    { key: 'crops',  label: 'Crops'  },
-    { key: 'period', label: 'Period' },
-    {
-      key: 'cohorts',
-      label: 'Cohorts',
-      render: val => (
-        <span className="flex items-center gap-1.5 text-gray-600">
-          <Layers className="w-3.5 h-3.5 text-gray-400" />{String(val)}
-        </span>
-      ),
-    },
-    {
-      key: 'farmers',
-      label: 'Farmers',
-      render: val => (
-        <span className="flex items-center gap-1.5 text-gray-600">
-          <Users className="w-3.5 h-3.5 text-gray-400" />{String(val)}
-        </span>
-      ),
-    },
-  ]
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-        Programmes ({rows.length})
+        Programmes ({cards.length})
       </p>
-      <DatagridTemplate<ProgRow>
-        columns={columns}
-        data={rows}
-        rowKey="id"
-        defaultPageSize={10}
-        pageSizeOptions={[10, 25, 50]}
-        emptyLabel="No programmes linked yet."
-      />
+
+      {cards.length === 0 ? (
+        <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+          <Layers className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">No programmes linked yet.</p>
+        </div>
+      ) : (
+        cards.map(prog => {
+          const filled = prog.target > 0 ? Math.min(100, Math.round((prog.enrolled / prog.target) * 100)) : 0
+          return (
+            <CardTemplate key={prog.id} noPadding className="overflow-hidden">
+              <div className="px-6 pt-4 pb-3">
+                <div className="flex items-start justify-between gap-3 mb-1">
+                  <h3 className="text-base font-bold truncate" style={{ color: 'var(--brand-forest)' }}>{prog.name}</h3>
+                  <BadgeTemplate label={prog.status} variant={progStatus(prog.status)} size="sm" />
+                </div>
+
+                <p className="text-xs text-gray-400 mb-2">{prog.period}</p>
+
+                {prog.crops.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {prog.crops.map(crop => (
+                      <BadgeTemplate key={crop} label={crop} variant="success" size="sm" />
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1 text-xs shrink-0 text-gray-500">
+                    <Layers className="w-3.5 h-3.5 text-gray-400" />{prog.cohortCount} cohort{prog.cohortCount !== 1 ? 's' : ''}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--brand-dark)' }}>
+                    <Users className="w-3.5 h-3.5" />
+                    {prog.enrolled} / {prog.target}
+                  </span>
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${filled}%`, backgroundColor: 'var(--brand-green)' }} />
+                  </div>
+                  <span className="text-xs text-gray-400 tabular-nums shrink-0">{filled}%</span>
+                </div>
+              </div>
+            </CardTemplate>
+          )
+        })
+      )}
     </div>
   )
 }
@@ -766,6 +787,191 @@ function RiskPerformanceTab({ opportunities }: { opportunities: { intervention: 
   )
 }
 
+// ─── Tab: P4 Baseline (Farm Enterprise Discipline) ────────────────────────────
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 shrink-0 ${
+        checked ? 'bg-(--brand-green)' : 'bg-gray-200'
+      }`}
+    >
+      <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+  )
+}
+
+function P4BaselineTab({
+  assigned, onToggleAssign, questions, onAdd, onEdit, onDelete, onToggleActive,
+}: {
+  assigned:       boolean
+  onToggleAssign: (v: boolean) => void
+  questions:      PartnerP4Question[]
+  onAdd:          (label: string, desc: string) => void
+  onEdit:         (id: string, label: string, desc: string) => void
+  onDelete:       (id: string) => void
+  onToggleActive: (id: string) => void
+}) {
+  const [adding,    setAdding]    = useState(false)
+  const [newLabel,  setNewLabel]  = useState('')
+  const [newDesc,   setNewDesc]   = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editDesc,  setEditDesc]  = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<PartnerP4Question | null>(null)
+
+  function submitAdd() {
+    if (!newLabel.trim()) return
+    onAdd(newLabel.trim(), newDesc.trim())
+    setNewLabel(''); setNewDesc(''); setAdding(false)
+  }
+
+  function startEdit(q: PartnerP4Question) {
+    setEditingId(q.id); setEditLabel(q.label); setEditDesc(q.desc)
+  }
+
+  function submitEdit() {
+    if (!editingId || !editLabel.trim()) return
+    onEdit(editingId, editLabel.trim(), editDesc.trim())
+    setEditingId(null)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* assignment toggle */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Assign to P4: Farm Enterprise Discipline</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Once assigned, this partner gets its own set of P4 baseline questions — independent of every other partner.
+          </p>
+        </div>
+        <Toggle checked={assigned} onChange={onToggleAssign} />
+      </div>
+
+      {!assigned ? (
+        <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+          <Wallet className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">Not assigned to P4 yet.</p>
+          <p className="text-xs mt-1">Toggle it on above to give this partner its own Farm Enterprise Discipline questions.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              Questions ({questions.length})
+            </p>
+            <button
+              onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}
+              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+              style={{ background: 'var(--brand-forest)' }}
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Question
+            </button>
+          </div>
+
+          {questions.length === 0 && !adding && (
+            <p className="text-sm text-gray-400 py-10 text-center">No P4 questions yet for this partner.</p>
+          )}
+
+          {questions.map(q => (
+            editingId === q.id ? (
+              <div key={q.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-2.5">
+                <input
+                  type="text"
+                  value={editLabel}
+                  onChange={e => setEditLabel(e.target.value)}
+                  placeholder="Question statement..."
+                  className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+                />
+                <input
+                  type="text"
+                  value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)}
+                  placeholder="Description"
+                  className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+                />
+                <div className="flex items-center gap-2">
+                  <button onClick={submitEdit}
+                    className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                    style={{ background: '#4b5563' }}>
+                    <Check className="w-3.5 h-3.5" /> Save
+                  </button>
+                  <button onClick={() => setEditingId(null)}
+                    className="flex items-center gap-1 h-8 px-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                    <X className="w-3 h-3" /> Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={q.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium leading-tight ${q.active ? 'text-gray-800' : 'text-gray-400'}`}>{q.label}</p>
+                  {q.desc && <p className="text-xs text-gray-400 mt-0.5">{q.desc}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Toggle checked={q.active} onChange={() => onToggleActive(q.id)} />
+                  <button onClick={() => startEdit(q)}
+                    className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => setDeleteTarget(q)}
+                    className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )
+          ))}
+
+          {adding && (
+            <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-2.5">
+              <input
+                autoFocus
+                type="text"
+                value={newLabel}
+                onChange={e => setNewLabel(e.target.value)}
+                placeholder="Question statement..."
+                className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+              />
+              <input
+                type="text"
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                placeholder="Description"
+                className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+              />
+              <div className="flex items-center gap-2">
+                <button onClick={submitAdd}
+                  className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                  style={{ background: 'var(--brand-forest)' }}>
+                  <Check className="w-3.5 h-3.5" /> Save
+                </button>
+                <button onClick={() => setAdding(false)}
+                  className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
+                  <X className="w-3.5 h-3.5" /> Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete question?"
+        message={`"${deleteTarget?.label ?? 'This question'}" will be permanently removed from this partner's P4 baseline.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) onDelete(deleteTarget.id); setDeleteTarget(null) }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </div>
+  )
+}
+
 // ─── Tab: Reports ─────────────────────────────────────────────────────────────
 
 function ReportsTab() {
@@ -794,6 +1000,28 @@ export function Main({ partnerId }: { partnerId: string }) {
       return pa ? [{ interventionId: i.id, cohorts: pa.cohorts }] : []
     })
   )
+
+  // ── P4: Farm Enterprise Discipline — per-partner baseline questions ─────────
+  const [p4Assigned,  setP4Assigned]  = useState(false)
+  const [p4Questions, setP4Questions] = useState<PartnerP4Question[]>(() =>
+    BASELINE_SEED.filter(a => a.pillar === 'p4').map(a => ({ id: a.id, label: a.label, desc: a.desc, active: true }))
+  )
+
+  function addP4Question(label: string, desc: string) {
+    setP4Questions(prev => [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }])
+  }
+
+  function editP4Question(id: string, label: string, desc: string) {
+    setP4Questions(prev => prev.map(q => q.id !== id ? q : { ...q, label, desc }))
+  }
+
+  function deleteP4Question(id: string) {
+    setP4Questions(prev => prev.filter(q => q.id !== id))
+  }
+
+  function toggleP4QuestionActive(id: string) {
+    setP4Questions(prev => prev.map(q => q.id !== id ? q : { ...q, active: !q.active }))
+  }
 
   const assignedIds = useMemo(() => new Set(assignments.map(a => a.interventionId)), [assignments])
 
@@ -909,6 +1137,17 @@ export function Main({ partnerId }: { partnerId: string }) {
           onRemove={handleRemove}
           onAssign={() => setAssignOpen(true)}
           onDetail={setDetailTarget}
+        />
+      )}
+      {activeTab === 'p4baseline' && (
+        <P4BaselineTab
+          assigned={p4Assigned}
+          onToggleAssign={setP4Assigned}
+          questions={p4Questions}
+          onAdd={addP4Question}
+          onEdit={editP4Question}
+          onDelete={deleteP4Question}
+          onToggleActive={toggleP4QuestionActive}
         />
       )}
       {activeTab === 'risk' && (

@@ -10,6 +10,7 @@ import {
   Handshake, FileText, PieChart,
   BookOpen, ClipboardList, AlertTriangle,
   CalendarDays, Target, BarChart3, Settings2, Activity, ClipboardCheck,
+  FolderKanban, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -53,16 +54,18 @@ const FINANCE_NAV = [
 ]
 
 const PM_NAV: NavItem[] = [
-  { href: '/dashboard/ProgramManager',               label: 'Overview',        icon: LayoutDashboard, locked: false },
-  { href: '/dashboard/ProgramManager/Farmers',       label: 'Farmers',         icon: Users,           locked: false },
-  { href: '/dashboard/ProgramManager/Cohorts',       label: 'Cohorts',         icon: CalendarDays,    locked: false },
-  { href: '/dashboard/ProgramManager/Partners',      label: 'Partners',        icon: Handshake,       locked: false },
-  { href: '/dashboard/ProgramManager/Staff',         label: 'Staff',           icon: UserCog,         locked: false },
-  { href: '/dashboard/ProgramManager/WeeklyProgress',label: 'Weekly Progress', icon: Activity,        locked: false },
-  { href: '/dashboard/ProgramManager/FRIPerformance',label: 'FRI Performance', icon: Target,          locked: false },
-  { href: '/dashboard/ProgramManager/Interventions', label: 'Interventions',   icon: Zap,             locked: false },
-  { href: '/dashboard/ProgramManager/Reports',       label: 'Reports',         icon: BarChart3,       locked: false },
-  { href: '/dashboard/ProgramManager/Settings',      label: 'Settings',        icon: Settings2,       locked: false },
+  { href: '/dashboard/ProgramManager',                   label: 'Overview',              icon: LayoutDashboard, locked: false },
+  { section: true, label: 'Programs' },
+  { href: '/dashboard/ProgramManager/Programs',          label: 'Programs & Cohorts',    icon: FolderKanban,    locked: false },
+  { href: '/dashboard/ProgramManager/Farmers',           label: 'Farmer Management',     icon: Users,           locked: false },
+  { href: '/dashboard/ProgramManager/Partners',          label: 'Partners',              icon: Handshake,       locked: false },
+  { section: true, label: 'Quality' },
+  { href: '/dashboard/ProgramManager/Verification',      label: 'Verification & Review', icon: ShieldCheck,     locked: false },
+  { href: '/dashboard/ProgramManager/FRIPerformance',    label: 'FRI & Performance',     icon: Target,          locked: false },
+  { section: true, label: 'Operations' },
+  { href: '/dashboard/ProgramManager/Interventions',     label: 'Interventions',         icon: Zap,             locked: false },
+  { href: '/dashboard/ProgramManager/Reports',           label: 'Reports',               icon: BarChart3,       locked: false },
+  { href: '/dashboard/ProgramManager/Settings',          label: 'Settings',              icon: Settings2,       locked: false },
 ]
 
 const ROLE_META: Record<UserRole, { label: string; color: string; navBg: string }> = {
@@ -159,7 +162,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             const { href, icon: Icon, label, locked } = item
             const basePath = href
-            const isActive = !locked && (pathname === basePath || pathname.startsWith(basePath + '/'))
+            const isExactOnly = href.endsWith('/ProgramManager') || href.endsWith('/PartnerPortal') || href.endsWith('/FinancePortal')
+            const isActive = !locked && (pathname === basePath || (!isExactOnly && pathname.startsWith(basePath + '/')))
 
             if (locked) {
               return (

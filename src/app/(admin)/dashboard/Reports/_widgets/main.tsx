@@ -163,7 +163,7 @@ export function Main() {
   }
 
   return (
-    <div className="p-6 max-w-[1200px] mx-auto">
+    <div className="p-6 max-w-300 mx-auto">
 
       {/* header */}
       <div className="flex items-start justify-between mb-5">

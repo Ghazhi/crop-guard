@@ -7,19 +7,26 @@ import { useState, useEffect, useCallback } from 'react'
  * State survives navigation within the same tab but clears on new sessions.
  */
 export function usePersistedState<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {
-  const [value, setRaw] = useState<T>(() => {
-    if (typeof window === 'undefined') return initial
-    try {
-      const stored = sessionStorage.getItem(key)
-      return stored !== null ? (JSON.parse(stored) as T) : initial
-    } catch {
-      return initial
-    }
-  })
+  // always start from `initial` so the first client render matches the server —
+  // sessionStorage is only read after mount, then applied (see effect below)
+  const [value, setRaw] = useState<T>(initial)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(key)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored !== null) setRaw(JSON.parse(stored) as T)
+    } catch {}
+    setHydrated(true)
+  }, [key])
+
+  // hydrated flips in the same batch as the restored value, so this never
+  // clobbers a just-read stored value with the pre-hydration default
+  useEffect(() => {
+    if (!hydrated) return
     try { sessionStorage.setItem(key, JSON.stringify(value)) } catch {}
-  }, [key, value])
+  }, [key, hydrated, value])
 
   const set = useCallback((v: T | ((prev: T) => T)) => {
     setRaw(prev => {

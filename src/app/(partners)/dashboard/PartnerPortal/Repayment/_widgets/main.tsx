@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import {
   TrendingUp, Users, AlertTriangle, ShieldCheck,
-  ArrowUp, ArrowDown, Minus, Search,
+  ArrowUp, ArrowDown, Minus, Search, X,
+  SlidersHorizontal, ChevronDown, ChevronUp, BarChart2,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import {
   ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -98,6 +101,8 @@ const FARMER_COLS: DatagridColumn<FarmerRow>[] = [
 // ── main ───────────────────────────────────────────────────────────────────────
 export function Main() {
   const partnerId                        = usePartnerId()
+  const [statsOpen,    setStatsOpen]     = useState(false)
+  const [filtersOpen,  setFiltersOpen]   = useState(false)
   const [filterCohort, setFilterCohort]  = useState('')
   const [filterRisk,   setFilterRisk]    = useState('')
   const [search,       setSearch]        = useState('')
@@ -223,24 +228,35 @@ export function Main() {
     <div className="min-h-screen bg-(--brand-gray) p-6 space-y-5">
 
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: FOREST }}>Risk & Performance</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
-          Farmer resilience scores and risk profile across your assigned cohorts
-        </p>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: FOREST }}>Risk & Performance</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
+            Farmer resilience scores and risk profile across your assigned cohorts
+          </p>
+        </div>
+        <ButtonTemplate
+          variant="secondary" size="md"
+          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+          label="Overview"
+          onClick={() => setStatsOpen(v => !v)}
+        />
       </div>
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard icon={<Users className="w-5 h-5" style={{ color: FOREST }} />}
-          label="Total Farmers" value={myFarmers.length} sub={`${scored.length} scored`} />
-        <StatCard icon={<TrendingUp className="w-5 h-5" style={{ color: FOREST }} />}
-          label="Avg FRI Score" value={scored.length ? avgFri.toFixed(1) : '—'} sub="across scored farmers" />
-        <StatCard icon={<ShieldCheck className="w-5 h-5" style={{ color: '#15803d' }} />}
-          label="Leaders" value={leaders} sub="FRI ≥ 75" accent="#f0fdf4" />
-        <StatCard icon={<AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} />}
-          label="High Risk" value={highRisk} sub="FRI below 50" accent="#fef2f2" />
-      </div>
+      {statsOpen && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard icon={<Users className="w-5 h-5" style={{ color: FOREST }} />}
+            label="Total Farmers" value={myFarmers.length} sub={`${scored.length} scored`} />
+          <StatCard icon={<TrendingUp className="w-5 h-5" style={{ color: FOREST }} />}
+            label="Avg FRI Score" value={scored.length ? avgFri.toFixed(1) : '—'} sub="across scored farmers" />
+          <StatCard icon={<ShieldCheck className="w-5 h-5" style={{ color: '#15803d' }} />}
+            label="Leaders" value={leaders} sub="FRI ≥ 75" accent="#f0fdf4" />
+          <StatCard icon={<AlertTriangle className="w-5 h-5" style={{ color: '#dc2626' }} />}
+            label="High Risk" value={highRisk} sub="FRI below 50" accent="#fef2f2" />
+        </div>
+      )}
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -337,29 +353,55 @@ export function Main() {
           Farmer Risk Register — sorted by highest risk first
         </p>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-            <input
-              type="text" placeholder="Search farmer…" value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-9 pl-9 pr-3 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 placeholder:text-gray-400 w-44"
-            />
-          </div>
-          <SelectTemplate
-            options={cohortOptions} value={filterCohort} size="sm"
-            onChange={e => setFilterCohort(e.currentTarget.value)}
-          />
-          <SelectTemplate
-            options={riskOptions} value={filterRisk} size="sm"
-            onChange={e => setFilterRisk(e.currentTarget.value)}
-          />
-          {(filterCohort || filterRisk || search) && (
-            <button onClick={() => { setFilterCohort(''); setFilterRisk(''); setSearch('') }}
-              className="text-xs text-gray-400 hover:text-gray-600 underline">
-              Clear filters
+        {/* Filters card */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text" placeholder="Search farmer…" value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors bg-white"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 h-10 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0',
+                filtersOpen || filterCohort || filterRisk
+                  ? 'border-(--brand-green) text-(--brand-green) bg-green-50'
+                  : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700',
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filters
+              {[filterCohort, filterRisk].filter(Boolean).length > 0 && (
+                <span className="ml-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ backgroundColor: 'var(--brand-green)' }}>
+                  {[filterCohort, filterRisk].filter(Boolean).length}
+                </span>
+              )}
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', filtersOpen && 'rotate-180')} />
             </button>
+          </div>
+          {filtersOpen && (
+            <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+              <SelectTemplate
+                label="Cohort" labelVariant="compact"
+                options={cohortOptions} value={filterCohort} size="sm"
+                onChange={e => setFilterCohort(e.currentTarget.value)}
+              />
+              <SelectTemplate
+                label="Risk Level" labelVariant="compact"
+                options={riskOptions} value={filterRisk} size="sm"
+                onChange={e => setFilterRisk(e.currentTarget.value)}
+              />
+            </div>
           )}
         </div>
 

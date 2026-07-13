@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import {
   ChevronDown, ChevronUp, Package, AlertCircle, UserPlus,
   Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle,
+  X, SlidersHorizontal, BarChart2,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { PaginationBar } from '@/customComponents/PaginationBar'
 import { SheetTemplate }  from '@/customComponents/SheetTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
@@ -453,8 +456,13 @@ const STATUSES = ['Active', 'Suspended', 'Draft'] as const
 
 export function Main() {
   const partnerId                        = usePartnerId()
+  const [statsOpen,    setStatsOpen]     = useState(false)
+  const [search,       setSearch]        = useState('')
+  const [filtersOpen,  setFiltersOpen]   = useState(false)
   const [filterProg,   setFilterProg]    = useState('')
   const [filterStatus, setFilterStatus]  = useState('')
+  const [page,         setPage]          = useState(1)
+  const [pageSize,     setPageSize]      = useState(10)
   const [enrollTarget, setEnrollTarget]  = useState<Intervention | null>(null)
 
   const myInterventions = INTERVENTIONS.filter(iv =>
@@ -465,8 +473,12 @@ export function Main() {
     const pa = iv.partnerAssignments?.find((a: { partnerId: string; cohorts: EnrolledCohort[] }) => a.partnerId === partnerId)
     if (filterProg && !pa?.cohorts.some((c: EnrolledCohort) => c.programId === filterProg)) return false
     if (filterStatus && iv.status !== filterStatus) return false
+    if (search.trim() && !iv.name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
+
+  const paginated = pageSize === 0 ? filtered : filtered.slice((page - 1) * pageSize, page * pageSize)
+  const activeFilterCount = [filterProg, filterStatus].filter(Boolean).length
 
   function getPartnerCohorts(iv: Intervention): EnrolledCohort[] {
     return iv.partnerAssignments?.find(pa => pa.partnerId === partnerId)?.cohorts ?? []
@@ -478,39 +490,101 @@ export function Main() {
   const enrollTargetCohorts = enrollTarget ? getPartnerCohorts(enrollTarget) : []
 
   return (
-    <div className="min-h-screen bg-(--brand-gray) p-6 space-y-5">
+    <div className="min-h-screen bg-(--brand-gray) p-6 space-y-4">
 
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>Linked Interventions</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
-          {myInterventions.length} opportunit{myInterventions.length === 1 ? 'y' : 'ies'} assigned to your organisation
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <StatCard icon={<Layers className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}    label="Total"    value={myInterventions.length} />
-        <StatCard icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Active"   value={activeCount} />
-        <StatCard icon={<Users className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}      label="Cohorts"  value={cohortCount} />
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <SelectTemplate
-          options={[
-            { value: '', label: 'All programs' },
-            ...INTERVENTION_PROGRAM_OPTIONS.map(p => ({ value: p.id, label: p.name })),
-          ]}
-          value={filterProg} size="sm"
-          onChange={e => setFilterProg(e.currentTarget.value)}
-        />
-        <SelectTemplate
-          options={[{ value: '', label: 'All statuses' }, ...STATUSES.map(s => ({ value: s, label: s }))]}
-          value={filterStatus} size="sm"
-          onChange={e => setFilterStatus(e.currentTarget.value)}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>Linked Interventions</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
+            {myInterventions.length} opportunit{myInterventions.length === 1 ? 'y' : 'ies'} assigned to your organisation
+          </p>
+        </div>
+        <ButtonTemplate
+          variant="secondary" size="md"
+          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+          label="Overview"
+          onClick={() => setStatsOpen(v => !v)}
         />
       </div>
+
+      {/* Overview stats */}
+      {statsOpen && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <StatCard icon={<Layers className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}    label="Total"    value={myInterventions.length} />
+          <StatCard icon={<TrendingUp className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />} label="Active"   value={activeCount} />
+          <StatCard icon={<Users className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />}      label="Cohorts"  value={cohortCount} />
+        </div>
+      )}
+
+      {/* Filters card */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors bg-white"
+              placeholder="Search interventions…"
+              value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(v => !v)}
+            className={cn(
+              'flex items-center gap-1.5 h-10 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0',
+              filtersOpen || activeFilterCount > 0
+                ? 'border-(--brand-green) text-(--brand-green) bg-green-50'
+                : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700',
+            )}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-0.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white" style={{ backgroundColor: 'var(--brand-green)' }}>
+                {activeFilterCount}
+              </span>
+            )}
+            <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', filtersOpen && 'rotate-180')} />
+          </button>
+        </div>
+
+        {filtersOpen && (
+          <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+            <SelectTemplate
+              label="Program"
+              labelVariant="compact"
+              options={[
+                { value: '', label: 'All programs' },
+                ...INTERVENTION_PROGRAM_OPTIONS.map(p => ({ value: p.id, label: p.name })),
+              ]}
+              value={filterProg} size="sm"
+              onChange={e => { setFilterProg(e.currentTarget.value); setPage(1) }}
+            />
+            <SelectTemplate
+              label="Status"
+              labelVariant="compact"
+              options={[{ value: '', label: 'All statuses' }, ...STATUSES.map(s => ({ value: s, label: s }))]}
+              value={filterStatus} size="sm"
+              onChange={e => { setFilterStatus(e.currentTarget.value); setPage(1) }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Pagination (top) */}
+      {filtered.length > 0 && (
+        <PaginationBar
+          page={page} pageSize={pageSize} total={filtered.length}
+          onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }}
+        />
+      )}
 
       {/* Grid */}
       {filtered.length === 0 ? (
@@ -520,7 +594,7 @@ export function Main() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {filtered.map(iv => (
+          {paginated.map(iv => (
             <InterventionCard
               key={iv.id}
               intervention={iv}

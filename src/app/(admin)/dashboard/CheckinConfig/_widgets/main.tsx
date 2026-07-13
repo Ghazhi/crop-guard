@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check } from 'lucide-react'
+import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check, CalendarDays, Eye } from 'lucide-react'
 import { MultiSelectTabsTemplate } from '@/customComponents/MultiSelectTabsTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
+import { SheetTemplate } from '@/customComponents/SheetTemplate'
+import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { MultiSelectTemplate } from '@/customComponents/MultiSelectTemplate'
 
-import type { Pillar, Section, CropDef, Org, Question, Week, BaselineActivity, OrgConfig } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
+import type { Pillar, Section, CropDef, Org, Question, Week, BaselineActivity, OrgConfig, CohortSchedule } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
 import {
   ORGS,
   BUILT_IN_CROPS,
@@ -107,6 +110,12 @@ export function Main() {
   const [newHint,    setNewHint]    = useState('')
   const [newActive,  setNewActive]  = useState(true)
 
+  const [editingQ,     setEditingQ]     = useState<{ weekNum: number; qId: string } | null>(null)
+  const [editPillar,    setEditPillar]  = useState<Pillar>('agronomy')
+  const [editLabel,     setEditLabel]   = useState('')
+  const [editHint,      setEditHint]    = useState('')
+  const [editActive,    setEditActive]  = useState(true)
+
   const weeks    = cfg.cropWeeks[crop] ?? []
   const setWeeks = (u: WeekUpdater) => setWeeksForCrop(crop, u)
 
@@ -137,6 +146,27 @@ export function Main() {
     ))
   }
 
+  function startEditQuestion(weekNum: number, question: Question) {
+    setEditingQ({ weekNum, qId: question.id })
+    setEditPillar(question.pillar)
+    setEditLabel(question.label)
+    setEditHint(question.hint ?? '')
+    setEditActive(question.active)
+  }
+
+  function handleSaveEdit() {
+    if (!editingQ || !editLabel.trim()) return
+    const { weekNum, qId } = editingQ
+    setWeeks(prev => prev.map(w =>
+      w.week !== weekNum ? w : {
+        ...w, questions: w.questions.map(q2 =>
+          q2.id !== qId ? q2 : { ...q2, pillar: editPillar, label: editLabel.trim(), hint: editHint.trim() || undefined, active: editActive }
+        )
+      }
+    ))
+    setEditingQ(null)
+  }
+
   function handleAdd(weekNum: number) {
     if (!newLabel.trim()) return
     const id = `${crop[0]}${weekNum}q${Date.now()}`
@@ -155,8 +185,100 @@ export function Main() {
     setNewPillar('agronomy')
   }
 
+  // ── cohort schedule state ────────────────────────────────────────────────────
+  const MOCK_PROGRAMS = [
+    { id: 'p1', name: 'Ashanti Maize 2025', cohorts: [
+      { id: 'c1', name: 'Kumasi North A' }, { id: 'c2', name: 'Kumasi North B' }, { id: 'c3', name: 'Ejisu East' },
+    ]},
+    { id: 'p2', name: 'Brong Soy 2025', cohorts: [
+      { id: 'c4', name: 'Sunyani Central' }, { id: 'c5', name: 'Techiman South' },
+    ]},
+    { id: 'p3', name: 'Eastern Rice 2025', cohorts: [
+      { id: 'c6', name: 'Kwahu West' }, { id: 'c7', name: 'New Juaben' },
+    ]},
+  ]
+  const BASELINE_OPTIONS = [
+    { id: 'standard',   label: 'Standard Baseline (All Pillars)' },
+    { id: 'agronomy',   label: 'Agronomy Focus Baseline'         },
+    { id: 'enterprise', label: 'Enterprise Focus Baseline'       },
+  ]
+  const checkInListOptions = crops.map(c => ({ id: c.id, label: c.season ? `${c.name} ${c.season}` : c.name }))
+
+  const [schedules,      setSchedules]      = useState<CohortSchedule[]>([])
+  const [scheduleSheet,  setScheduleSheet]  = useState(false)
+  const [viewSchedule,   setViewSchedule]   = useState<CohortSchedule | null>(null)
+  const [editingSchId,   setEditingSchId]   = useState<string | null>(null)
+  const [schMode,        setSchMode]        = useState<'start_now' | 'scheduled'>('start_now')
+  const [schProgramId,   setSchProgramId]   = useState('')
+  const [schCohortId,    setSchCohortId]    = useState('')
+  const [schDate,        setSchDate]        = useState('')
+  const [schEndDate,     setSchEndDate]     = useState('')
+  const [schBaselineId,  setSchBaselineId]  = useState('standard')
+  const [schCheckInIds,  setSchCheckInIds]  = useState<string[]>(crops[0] ? [crops[0].id] : [])
+
+  function openNewSchedule() {
+    setEditingSchId(null)
+    setSchMode('start_now'); setSchProgramId(''); setSchCohortId(''); setSchDate(''); setSchEndDate('')
+    setSchBaselineId('standard'); setSchCheckInIds(crops[0] ? [crops[0].id] : [])
+    setScheduleSheet(true)
+  }
+
+  function openEditSchedule(s: CohortSchedule) {
+    setEditingSchId(s.id)
+    setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId)
+    setSchDate(s.scheduledDate ?? ''); setSchEndDate(s.endDate ?? '')
+    setSchBaselineId(s.baselineId); setSchCheckInIds(s.checkInListIds)
+    setScheduleSheet(true)
+  }
+
+  function handleSaveSchedule() {
+    const prog = MOCK_PROGRAMS.find(p => p.id === schProgramId)
+    const coh  = prog?.cohorts.find(c => c.id === schCohortId)
+    if (!prog || !coh) return
+
+    if (editingSchId) {
+      setSchedules(prev => prev.map(s => s.id !== editingSchId ? s : {
+        ...s,
+        programId:      schProgramId,
+        programName:    prog.name,
+        cohortId:       schCohortId,
+        cohortName:     coh.name,
+        mode:           schMode,
+        scheduledDate:  schMode === 'scheduled' ? schDate : undefined,
+        endDate:        schEndDate || undefined,
+        baselineId:     schBaselineId,
+        checkInListIds: schCheckInIds,
+      }))
+    } else {
+      const newSch: CohortSchedule = {
+        id:            `sch-${Date.now()}`,
+        programId:     schProgramId,
+        programName:   prog.name,
+        cohortId:      schCohortId,
+        cohortName:    coh.name,
+        mode:          schMode,
+        scheduledDate: schMode === 'scheduled' ? schDate : undefined,
+        endDate:       schEndDate || undefined,
+        baselineId:    schBaselineId,
+        checkInListIds: schCheckInIds,
+        status:        schMode === 'start_now' ? 'active' : 'pending',
+      }
+      setSchedules(prev => [...prev, newSch])
+    }
+    setScheduleSheet(false)
+    setEditingSchId(null)
+  }
+
+  const schProgCohorts = MOCK_PROGRAMS.find(p => p.id === schProgramId)?.cohorts ?? []
+
+  const STATUS_BADGE: Record<CohortSchedule['status'], string> = {
+    pending:   'bg-amber-100 text-amber-700',
+    active:    'bg-green-100 text-green-700',
+    completed: 'bg-gray-100 text-gray-600',
+  }
+
   const SECTION_NAV = [
-    { id: 'weekly'   as Section, Icon: ClipboardCheck, label: 'Weekly Questions',   sub: 'Crop-specific check-in questions per week' },
+    { id: 'weekly'   as Section, Icon: ClipboardCheck, label: 'Weekly Check-ins',   sub: 'Crop-specific check-in questions per week' },
     { id: 'cohort'   as Section, Icon: Calendar,       label: 'Cohort Schedules',   sub: 'Configure timing windows per cohort'        },
     { id: 'baseline' as Section, Icon: Layers,         label: 'Baseline Activities',sub: 'Pillar activities for baseline assessment'  },
     { id: 'crops'    as Section, Icon: Sprout,         label: 'Crops',              sub: 'Add and manage crop types'                  },
@@ -215,10 +337,11 @@ export function Main() {
 
               {/* crop tabs */}
               <MultiSelectTabsTemplate
-                options={crops.map(c => ({ id: c.id, label: c.name }))}
+                options={crops.map(c => ({ id: c.id, label: c.season ? `${c.name} ${c.season}` : c.name }))}
                 value={crop}
                 onChange={setCrop}
                 visibleCount={4}
+                storageKey="checkinConfig.weeklyCropTabs"
               />
 
               {/* stats */}
@@ -279,32 +402,92 @@ export function Main() {
                                 </div>
                                 {/* questions */}
                                 {qs.map(question => (
-                                  <div key={question.id} className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
-                                    <div className="flex-1 min-w-0">
-                                      <p className={`text-sm ${question.hint ? 'font-medium text-gray-800' : 'text-gray-700'}`}>{question.label}</p>
-                                      {question.hint && (
-                                        <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{question.hint}</p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0 mt-0.5">
-                                      <Toggle
-                                        checked={question.active}
-                                        onChange={() => toggleQuestion(w.week, question.id)}
+                                  editingQ?.weekNum === w.week && editingQ.qId === question.id ? (
+                                    <div key={question.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-3">
+                                      {/* pillar selector */}
+                                      <div className="flex flex-wrap gap-2">
+                                        {PILLARS.map(pll2 => (
+                                          <button
+                                            key={pll2.id}
+                                            type="button"
+                                            onClick={() => setEditPillar(pll2.id)}
+                                            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+                                              editPillar === pll2.id
+                                                ? 'border-gray-400 bg-gray-100 text-gray-800'
+                                                : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                                            }`}
+                                          >
+                                            {pll2.shortLabel}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      {/* inputs */}
+                                      <input
+                                        type="text"
+                                        value={editLabel}
+                                        onChange={e => setEditLabel(e.target.value)}
+                                        placeholder="Question statement..."
+                                        className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
                                       />
-                                      <button
-                                        onClick={() => {}}
-                                        className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => setDeleteQTarget({ weekNum: w.week, qId: question.id, qText: question.label })}
-                                        className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
+                                      <input
+                                        type="text"
+                                        value={editHint}
+                                        onChange={e => setEditHint(e.target.value)}
+                                        placeholder="Optional hint for agent"
+                                        className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+                                      />
+                                      {/* active toggle row */}
+                                      <div className="flex items-center gap-2">
+                                        <Toggle checked={editActive} onChange={setEditActive} />
+                                        <span className="text-sm text-gray-600">Active</span>
+                                      </div>
+                                      {/* actions */}
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={handleSaveEdit}
+                                          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                                          style={{ background: '#4b5563' }}
+                                        >
+                                          <span className="text-sm">⊙</span>
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingQ(null)}
+                                          className="flex items-center gap-1 h-8 px-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                                        >
+                                          <X className="w-3 h-3" />
+                                          Cancel
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <div key={question.id} className="flex items-start gap-3 px-4 py-2.5 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+                                      <div className="flex-1 min-w-0">
+                                        <p className={`text-sm ${question.hint ? 'font-medium text-gray-800' : 'text-gray-700'}`}>{question.label}</p>
+                                        {question.hint && (
+                                          <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{question.hint}</p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                                        <Toggle
+                                          checked={question.active}
+                                          onChange={() => toggleQuestion(w.week, question.id)}
+                                        />
+                                        <button
+                                          onClick={() => startEditQuestion(w.week, question)}
+                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={() => setDeleteQTarget({ weekNum: w.week, qId: question.id, qText: question.label })}
+                                          className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )
                                 ))}
                               </div>
                             )
@@ -480,14 +663,239 @@ export function Main() {
           {/* ── Cohort Schedules ── */}
           {section === 'cohort' && (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
-                <h2 className="text-base font-bold text-gray-900">Cohort Schedules</h2>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
+                  <h2 className="text-base font-bold text-gray-900">Cohort Schedules</h2>
+                </div>
+                <ButtonTemplate
+                  variant="primary"
+                  label="New Schedule"
+                  size="sm"
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                  onClick={openNewSchedule}
+                />
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
-                <Calendar className="w-8 h-8 text-gray-200" />
-                <p className="text-sm text-gray-400">Cohort schedule configuration coming soon.</p>
-              </div>
+
+              {schedules.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                  <CalendarDays className="w-8 h-8 text-gray-200" />
+                  <p className="text-sm font-medium text-gray-400">No cohort schedules yet</p>
+                  <p className="text-xs text-gray-300">Click "New Schedule" to assign a check-in list to a cohort.</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 bg-gray-50">
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Program</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Cohort</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Check-in List</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Start</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">End</th>
+                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Status</th>
+                        <th className="px-4 py-2.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {schedules.map(s => {
+                        const listLabel = s.checkInListIds.map(id => checkInListOptions.find(o => o.id === id)?.label ?? id).join(', ')
+                        return (
+                          <tr key={s.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                            <td className="px-4 py-3 text-gray-800 font-medium">{s.programName}</td>
+                            <td className="px-4 py-3 text-gray-600">{s.cohortName}</td>
+                            <td className="px-4 py-3 text-gray-600">{listLabel}</td>
+                            <td className="px-4 py-3 text-gray-500 text-xs">
+                              {s.mode === 'start_now' ? 'Immediate' : (s.scheduledDate ?? '—')}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 text-xs">{s.endDate ?? '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[s.status]}`}>
+                                {s.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5">
+                                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View"
+                                  leftIcon={<Eye className="w-3.5 h-3.5" />}
+                                  onClick={() => setViewSchedule(s)} />
+                                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
+                                  leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                                  onClick={() => openEditSchedule(s)} />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <SheetTemplate
+                open={scheduleSheet}
+                onClose={() => setScheduleSheet(false)}
+                title={editingSchId ? 'Edit Cohort Schedule' : 'New Cohort Schedule'}
+                size="md"
+                footer={
+                  <>
+                    <ButtonTemplate variant="outline" label="Cancel" onClick={() => setScheduleSheet(false)} />
+                    <ButtonTemplate
+                      variant="primary"
+                      label={editingSchId ? 'Save Changes' : 'Save Schedule'}
+                      onClick={handleSaveSchedule}
+                      isDisabled={!schProgramId || !schCohortId || (schMode === 'scheduled' && !schDate) || schCheckInIds.length === 0}
+                    />
+                  </>
+                }
+              >
+                <div className="flex flex-col gap-5 p-5">
+
+                  {/* mode toggle */}
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Start type</p>
+                    <div className="flex gap-2">
+                      {(['start_now', 'scheduled'] as const).map(m => (
+                        <button key={m} type="button"
+                          onClick={() => setSchMode(m)}
+                          className={`flex-1 h-9 rounded-lg border text-sm font-medium transition-colors ${
+                            schMode === m
+                              ? 'text-white border-transparent'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}
+                          style={schMode === m ? { backgroundColor: 'var(--brand-forest)' } : {}}
+                        >
+                          {m === 'start_now' ? 'Start now' : 'Schedule a date'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* program */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program</label>
+                    <select
+                      value={schProgramId}
+                      onChange={e => { setSchProgramId(e.target.value); setSchCohortId('') }}
+                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) bg-white"
+                    >
+                      <option value="">Select program…</option>
+                      {MOCK_PROGRAMS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* cohort */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cohort</label>
+                    <select
+                      value={schCohortId}
+                      onChange={e => setSchCohortId(e.target.value)}
+                      disabled={!schProgramId}
+                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select cohort…</option>
+                      {schProgCohorts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* date — only when scheduled */}
+                  {schMode === 'scheduled' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Start date</label>
+                      <input
+                        type="date"
+                        value={schDate}
+                        onChange={e => setSchDate(e.target.value)}
+                        className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
+                      />
+                    </div>
+                  )}
+
+                  {/* end date — optional, applies to any schedule */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">End date <span className="normal-case text-gray-400 font-normal">(optional)</span></label>
+                    <input
+                      type="date"
+                      value={schEndDate}
+                      min={schMode === 'scheduled' ? schDate || undefined : undefined}
+                      onChange={e => setSchEndDate(e.target.value)}
+                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
+                    />
+                  </div>
+
+                  {/* baseline */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assign baseline</label>
+                    <select
+                      value={schBaselineId}
+                      onChange={e => setSchBaselineId(e.target.value)}
+                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) bg-white"
+                    >
+                      {BASELINE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                  </div>
+
+                  {/* check-in list — multiselect */}
+                  <MultiSelectTemplate
+                    label="Assign check-in list"
+                    placeholder="Select check-in lists…"
+                    options={checkInListOptions.map(o => ({ value: o.id, label: o.label }))}
+                    value={schCheckInIds}
+                    onChange={setSchCheckInIds}
+                  />
+
+                </div>
+              </SheetTemplate>
+
+              {/* View schedule sheet */}
+              <SheetTemplate
+                open={!!viewSchedule}
+                onClose={() => setViewSchedule(null)}
+                title={viewSchedule ? `${viewSchedule.cohortName} — Schedule` : ''}
+                subtitle={viewSchedule?.programName ?? ''}
+                size="md"
+                footer={
+                  viewSchedule && (
+                    <ButtonTemplate
+                      variant="primary"
+                      label="Edit"
+                      leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                      onClick={() => { openEditSchedule(viewSchedule); setViewSchedule(null) }}
+                    />
+                  )
+                }
+              >
+                {viewSchedule && (
+                  <div className="flex flex-col gap-3 p-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        ['Program', viewSchedule.programName],
+                        ['Cohort', viewSchedule.cohortName],
+                        ['Start type', viewSchedule.mode === 'start_now' ? 'Immediate' : 'Scheduled'],
+                        ['Start date', viewSchedule.mode === 'start_now' ? 'Immediate' : (viewSchedule.scheduledDate ?? '—')],
+                        ['End date', viewSchedule.endDate ?? '—'],
+                        ['Baseline', BASELINE_OPTIONS.find(o => o.id === viewSchedule.baselineId)?.label ?? viewSchedule.baselineId],
+                        ['Status', <span key="st" className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[viewSchedule.status]}`}>{viewSchedule.status}</span>],
+                      ].map(([label, val]) => (
+                        <div key={String(label)} className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-xs text-gray-400 mb-1">{label}</p>
+                          <div className="text-sm font-medium text-gray-800">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-2">Check-in Lists</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {viewSchedule.checkInListIds.map(id => (
+                          <span key={id} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
+                            {checkInListOptions.find(o => o.id === id)?.label ?? id}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </SheetTemplate>
             </div>
           )}
 

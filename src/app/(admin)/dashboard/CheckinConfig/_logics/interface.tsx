@@ -4,7 +4,22 @@ export type Section = 'weekly' | 'cohort' | 'baseline' | 'crops'
 export interface CropDef {
   id:       string
   name:     string
+  season?:  string
   builtIn?: boolean
+}
+
+export interface CohortSchedule {
+  id:             string
+  programId:      string
+  programName:    string
+  cohortId:       string
+  cohortName:     string
+  mode:           'start_now' | 'scheduled'
+  scheduledDate?: string
+  endDate?:       string
+  baselineId:     string
+  checkInListIds: string[]
+  status:         'pending' | 'active' | 'completed'
 }
 
 export interface Org {

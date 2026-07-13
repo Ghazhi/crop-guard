@@ -273,14 +273,14 @@ export const TOMATO_SEED: Week[] = [
 // ─── built-in crops ───────────────────────────────────────────────────────────
 
 export const BUILT_IN_CROPS: CropDef[] = [
-  { id: 'maize',     name: 'Maize',     builtIn: true },
-  { id: 'soybean',   name: 'Soybeans',  builtIn: true },
-  { id: 'rice',      name: 'Rice',      builtIn: true },
-  { id: 'cassava',   name: 'Cassava',   builtIn: true },
-  { id: 'yam',       name: 'Yam',       builtIn: true },
-  { id: 'groundnut', name: 'Groundnut', builtIn: true },
-  { id: 'cowpea',    name: 'Cowpea',    builtIn: true },
-  { id: 'tomato',    name: 'Tomato',    builtIn: true },
+  { id: 'maize',     name: 'Maize',     season: '2025', builtIn: true },
+  { id: 'soybean',   name: 'Soybeans',  season: '2025', builtIn: true },
+  { id: 'rice',      name: 'Rice',      season: '2025', builtIn: true },
+  { id: 'cassava',   name: 'Cassava',   season: '2025', builtIn: true },
+  { id: 'yam',       name: 'Yam',       season: '2025', builtIn: true },
+  { id: 'groundnut', name: 'Groundnut', season: '2025', builtIn: true },
+  { id: 'cowpea',    name: 'Cowpea',    season: '2025', builtIn: true },
+  { id: 'tomato',    name: 'Tomato',    season: '2025', builtIn: true },
 ]
 
 export const BUILT_IN_SEED_MAP: Record<string, Week[]> = {

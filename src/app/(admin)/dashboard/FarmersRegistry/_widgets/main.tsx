@@ -1694,7 +1694,7 @@ export function Main() {
           </div>
 
           <div className="divide-y divide-gray-100 min-w-max">
-            {paginated.map(f => {
+            {paginated.map((f, i) => {
               const isSelected = selected.has(f.id)
               const enr = f.enrollment
               const stageDef = WORKFLOW_STAGES.find(s => s.stage === (enr?.currentStage ?? 0))
@@ -1702,7 +1702,7 @@ export function Main() {
               return (
                 <div key={f.id} className={cn(
                   'flex items-stretch transition-colors',
-                  isSelected ? 'bg-blue-50' : 'hover:bg-gray-50/60'
+                  isSelected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'
                 )}>
                   {/* Checkbox + Avatar */}
                   <div className="flex items-center gap-3 py-4 pl-4 pr-2 w-20 shrink-0">
@@ -1805,7 +1805,7 @@ export function Main() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center py-4 px-3 shrink-0 gap-1.5">
+                  <div className="flex items-center py-4 px-3 w-28 shrink-0 gap-1.5">
                     <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Enrol"
                       leftIcon={<UserPlus className="w-3 h-3" />}
                       onClick={() => { setFocusFarmer(f); setEnrollOpen(true) }} />

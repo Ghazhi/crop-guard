@@ -114,8 +114,8 @@ export function DatagridTemplate<T>({
         key={String(row[rowKey])}
         onClick={onRowClick ? () => onRowClick(row) : undefined}
         className={cn(
-          'group border-b border-gray-50 transition-colors hover:bg-gray-50/80',
-          i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30',
+          'group border-b border-gray-100 transition-colors hover:bg-gray-200',
+          i % 2 === 0 ? 'bg-white' : 'bg-gray-50',
           onRowClick && 'cursor-pointer',
         )}
       >

@@ -17,7 +17,7 @@ export interface CohortSchedule {
   mode:           'start_now' | 'scheduled'
   scheduledDate?: string
   endDate?:       string
-  baselineId:     string
+  baselineIds:    string[]
   checkInListIds: string[]
   status:         'pending' | 'active' | 'completed'
 }

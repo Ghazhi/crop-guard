@@ -8,6 +8,8 @@ import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { CardTemplate } from '@/customComponents/CardTemplate'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet'
@@ -296,6 +298,22 @@ interface ScopedFarmer {
   id: string; name: string; community: string; friScore: number
   programId: string; cohortId: string | null
 }
+
+const SCOPED_FARMER_COLUMNS: DatagridColumn<ScopedFarmer>[] = [
+  { key: 'name', label: 'Farmer', render: v => <span className="font-medium text-gray-800">{String(v)}</span> },
+  { key: 'community', label: 'Community', render: v => <span className="text-gray-500">{String(v)}</span> },
+  {
+    key: 'friScore', label: 'FRI Score',
+    render: v => {
+      const score = Number(v)
+      return (
+        <span className={`block text-right px-2 py-0.5 rounded-full text-xs font-medium ${score >= 75 ? 'bg-green-100 text-green-700' : score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+          {score}
+        </span>
+      )
+    },
+  },
+]
 
 function cohortCompliance(cohortId: string): number {
   const members = PM_FARMERS.filter(f => f.enrollment?.cohortId === cohortId)
@@ -682,32 +700,17 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
-                    <tr>
-                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-2.5">Farmer</th>
-                      <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Community</th>
-                      <th className="text-right text-xs font-semibold text-gray-500 px-5 py-2.5">FRI Score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {partnerFarmers
-                      .filter(f =>
-                        (!fmProgram || f.programId === fmProgram) &&
-                        (!fmCohort  || f.cohortId  === fmCohort)
-                      )
-                      .map(f => (
-                      <tr key={f.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                        <td className="px-5 py-2.5 font-medium text-gray-800">{f.name}</td>
-                        <td className="px-4 py-2.5 text-gray-500">{f.community}</td>
-                        <td className="px-5 py-2.5 text-right">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${f.friScore >= 75 ? 'bg-green-100 text-green-700' : f.friScore >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{f.friScore}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex-1 overflow-y-auto px-5 py-3">
+                <DatagridTemplate<ScopedFarmer>
+                  columns={SCOPED_FARMER_COLUMNS}
+                  data={partnerFarmers.filter(f =>
+                    (!fmProgram || f.programId === fmProgram) &&
+                    (!fmCohort  || f.cohortId  === fmCohort)
+                  )}
+                  rowKey="id"
+                  defaultPageSize={0}
+                  pageSizeOptions={[0]}
+                />
               </div>
             </div>
           </div>
@@ -829,6 +832,72 @@ export function Main() {
 
   function handleAdd(p: Partner) { setPartners(prev => [p, ...prev]) }
 
+  const PARTNER_COLUMNS: DatagridColumn<Partner>[] = [
+    {
+      key: 'name', label: 'Organisation',
+      render: (v, p) => (
+        <button onClick={() => setViewPartner(p)} className="flex items-center gap-3 group text-left">
+          <PersonAvatar name={p.name} size={32} shape="square" />
+          <span className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{String(v)}</span>
+        </button>
+      ),
+    },
+    {
+      key: 'type', label: 'Type',
+      render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{String(v)}</span>,
+    },
+    {
+      key: 'contact', label: 'Primary Contact',
+      render: (v, p) => (
+        <>
+          <p className="font-medium text-gray-800">{String(v)}</p>
+          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+            <Mail className="w-3 h-3" />{p.email}
+          </p>
+        </>
+      ),
+    },
+    {
+      key: 'region', label: 'Region',
+      render: v => (
+        <span className="text-xs text-gray-600 flex items-center gap-1">
+          <MapPin className="w-3 h-3 shrink-0" />{String(v)}
+        </span>
+      ),
+    },
+    {
+      key: 'programs', label: 'Programs',
+      render: v => <span className="block text-center text-sm font-bold text-gray-700">{String(v)}</span>,
+    },
+    {
+      key: 'status', label: 'Status',
+      render: v => <span className={`block text-center text-xs font-semibold px-2 py-0.5 rounded-full border ${statusCls(v as PartnerStatus)}`}>{String(v)}</span>,
+    },
+    {
+      key: 'since', label: 'Since',
+      render: v => <span className="block text-center text-xs text-gray-400">{String(v)}</span>,
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: (_, p) => (
+        <div className="flex items-center justify-end gap-1">
+          <button onClick={() => setViewPartner(p)}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+            <Eye className="w-3.5 h-3.5" /> View
+          </button>
+          <button onClick={() => { setEditPartner(p); setEditOpen(true) }}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+            <Pencil className="w-3.5 h-3.5" /> Edit
+          </button>
+          <button onClick={() => setRemoveTarget(p)}
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors">
+            <Trash2 className="w-3.5 h-3.5" /> Remove
+          </button>
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="p-6 space-y-5">
 
@@ -937,76 +1006,20 @@ export function Main() {
           <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Organisation</th>
-                <th className="text-left px-4 py-3">Type</th>
-                <th className="text-left px-4 py-3">Primary Contact</th>
-                <th className="text-left px-4 py-3">Region</th>
-                <th className="text-center px-4 py-3">Programs</th>
-                <th className="text-center px-4 py-3">Status</th>
-                <th className="text-center px-4 py-3">Since</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {displayed.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <button onClick={() => setViewPartner(p)} className="flex items-center gap-3 group text-left">
-                      <PersonAvatar name={p.name} size={32} shape="square" />
-                      <span className="font-medium text-gray-900 group-hover:text-green-700 transition-colors">{p.name}</span>
-                    </button>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{p.type}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <p className="font-medium text-gray-800">{p.contact}</p>
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                      <Mail className="w-3 h-3" />{p.email}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-xs text-gray-600 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 shrink-0" />{p.region}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-sm font-bold text-gray-700">{p.programs}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusCls(p.status)}`}>{p.status}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center text-xs text-gray-400">{p.since}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => setViewPartner(p)}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
-                      <button onClick={() => { setEditPartner(p); setEditOpen(true) }}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors">
-                        <Pencil className="w-3.5 h-3.5" /> Edit
-                      </button>
-                      <button onClick={() => setRemoveTarget(p)}
-                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {displayed.length === 0 && (
+        {displayed.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-gray-400">
             <Building2 className="w-8 h-8 opacity-30" />
             <p className="text-sm">No partners found</p>
+          </div>
+        ) : (
+          <div className="px-5 py-4">
+            <DatagridTemplate<Partner>
+              columns={PARTNER_COLUMNS}
+              data={displayed}
+              rowKey="id"
+              defaultPageSize={0}
+              pageSizeOptions={[0]}
+            />
           </div>
         )}
       </div>

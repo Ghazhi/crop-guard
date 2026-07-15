@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown } from 'lucide-react'
 
 export interface DatagridColumn<T> {
-  /** Unique key matching a field in the row data */
+  /** Field in the row data this column reads by default (also used as the React key unless `id` is set) */
   key: keyof T
   /** Column header label */
   label: string
@@ -13,6 +13,8 @@ export interface DatagridColumn<T> {
   render?: (value: T[keyof T], row: T) => React.ReactNode
   /** Column width (e.g. '120px', '1fr') */
   width?: string
+  /** Overrides the React key when two columns share the same `key` (e.g. both derive from the same field via `render`) */
+  id?: string
 }
 
 export interface DatagridTemplateProps<T> {
@@ -94,7 +96,7 @@ export function DatagridTemplate<T>({
     Array.from({ length: Math.min(pageSize || 5, 5) }).map((_, i) => (
       <tr key={i} className="border-b border-gray-50 animate-pulse">
         {columns.map(col => (
-          <td key={String(col.key)} className="px-4 py-3">
+          <td key={col.id ?? String(col.key)} className="px-4 py-3">
             <div className="h-4 bg-gray-100 rounded w-3/4" />
           </td>
         ))}
@@ -112,13 +114,13 @@ export function DatagridTemplate<T>({
         key={String(row[rowKey])}
         onClick={onRowClick ? () => onRowClick(row) : undefined}
         className={cn(
-          'border-b border-gray-50 transition-colors hover:bg-gray-50/80',
+          'group border-b border-gray-50 transition-colors hover:bg-gray-50/80',
           i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30',
           onRowClick && 'cursor-pointer',
         )}
       >
         {columns.map(col => (
-          <td key={String(col.key)} className="px-4 py-3 text-sm text-gray-700">
+          <td key={col.id ?? String(col.key)} className="px-4 py-3 text-sm text-gray-700">
             {col.render ? col.render(row[col.key], row) : String(row[col.key] ?? '—')}
           </td>
         ))}
@@ -131,11 +133,11 @@ export function DatagridTemplate<T>({
 
       {/* ── Paginate footer ──────────────────────────────────────────────────── */}
       {mode === 'paginate' && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-xs text-gray-500">
 
           {/* Left: rows per page */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">Rows per page</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-gray-400 whitespace-nowrap">Per page</span>
             <select
               value={pageSize}
               onChange={handlePageSize}
@@ -146,7 +148,7 @@ export function DatagridTemplate<T>({
                 <option key={n} value={n}>{n === 0 ? 'All' : n}</option>
               ))}
             </select>
-            <span className="text-gray-400">
+            <span className="text-gray-400 whitespace-nowrap">
               {data.length === 0
                 ? '0 records'
                 : pageSize === 0
@@ -157,7 +159,7 @@ export function DatagridTemplate<T>({
 
           {/* Right: page controls (hidden when showing all) */}
           {pageSize !== 0 && totalPages > 1 && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               {/* First */}
               <button
                 onClick={() => setPage(1)}
@@ -223,16 +225,16 @@ export function DatagridTemplate<T>({
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+      {/* Table — scrolls horizontally on narrow screens */}
+      <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm [-webkit-overflow-scrolling:touch] scrollbar-thin">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100" style={{ backgroundColor: 'var(--brand-mint)' }}>
+            <tr className="border-b border-gray-100 bg-gray-50/80">
               {columns.map(col => (
                 <th
-                  key={String(col.key)}
-                  style={{ width: col.width, color: 'var(--brand-forest)' } as React.CSSProperties}
-                  className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
+                  key={col.id ?? String(col.key)}
+                  style={{ width: col.width } as React.CSSProperties}
+                  className="px-4 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
                 >
                   {col.label}
                 </th>

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { cn } from '@/lib/utils'
 
 type AgentStatus = 'active' | 'absent' | 'on_leave'
@@ -45,6 +47,75 @@ const AGENTS: Agent[] = [
   { id: '10', name: 'Tunde Adeyemi',    initials: 'TA', zone: 'Zone A', assignedFarmers: 115, capacity: 200, avgFRI: 69, visitsThisWeek: 0, lastActive: '3 days ago',  status: 'on_leave' },
   { id: '11', name: 'Binta Camara',     initials: 'BC', zone: 'Zone B', assignedFarmers: 155, capacity: 200, avgFRI: 85, visitsThisWeek: 7, lastActive: '1h ago',      status: 'active'   },
   { id: '12', name: 'Usman Garba',      initials: 'UG', zone: 'Zone C', assignedFarmers: 80,  capacity: 200, avgFRI: 67, visitsThisWeek: 0, lastActive: '5 days ago',  status: 'on_leave' },
+]
+
+const STATUS_DOT: Record<AgentStatus, string> = { active: '#22c55e', absent: '#f59e0b', on_leave: '#9ca3af' }
+
+const AGENT_COLUMNS: DatagridColumn<Agent>[] = [
+  {
+    key: 'name', label: 'Agent',
+    render: (v, agent) => (
+      <div className="flex items-center gap-2.5">
+        <div className="relative shrink-0">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: 'var(--brand-forest)' }}>
+            {agent.initials}
+          </div>
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ backgroundColor: STATUS_DOT[agent.status] }} />
+        </div>
+        <div className="min-w-0">
+          <p className="font-medium text-gray-900 truncate leading-tight">{String(v)}</p>
+          <p className="text-xs text-gray-400 truncate">{agent.zone}</p>
+        </div>
+      </div>
+    ),
+  },
+  { key: 'zone', label: 'Zone', render: v => <span className="text-gray-600 whitespace-nowrap">{String(v)}</span> },
+  {
+    key: 'assignedFarmers', label: 'Assigned / Capacity',
+    render: (v, agent) => {
+      const fillPct = Math.min(100, Math.round((agent.assignedFarmers / agent.capacity) * 100))
+      return (
+        <div className="flex flex-col gap-1 min-w-[110px]">
+          <span className="text-xs text-gray-700 font-medium">{String(v)} / {agent.capacity}</span>
+          <div className="h-1.5 w-24 rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${fillPct}%`, backgroundColor: fillPct >= 90 ? 'var(--brand-red)' : fillPct >= 70 ? '#f59e0b' : 'var(--brand-green)' }} />
+          </div>
+        </div>
+      )
+    },
+  },
+  { key: 'visitsThisWeek', label: 'Visits This Week', render: v => <span className="text-gray-700 whitespace-nowrap">{String(v)}</span> },
+  {
+    key: 'avgFRI', label: 'Avg FRI',
+    render: v => {
+      const fri = Number(v)
+      return (
+        <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap',
+          fri >= 75 ? 'bg-green-100 text-green-700' : fri >= 65 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}>
+          {fri}
+        </span>
+      )
+    },
+  },
+  { key: 'lastActive', label: 'Last Active', render: v => <span className="text-gray-500 whitespace-nowrap text-xs">{String(v)}</span> },
+  {
+    key: 'status', label: 'Status',
+    render: v => {
+      const status = v as AgentStatus
+      if (status === 'active')   return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">Active</span>
+      if (status === 'absent')   return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 whitespace-nowrap">Absent</span>
+      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 whitespace-nowrap">On Leave</span>
+    },
+  },
+  {
+    key: 'id', id: 'actions', label: 'Actions',
+    render: () => (
+      <div className="flex items-center gap-1">
+        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} />
+      </div>
+    ),
+  },
 ]
 
 function FilterSelect({
@@ -236,132 +307,14 @@ export function Main() {
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Agent Roster</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Agent</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Zone</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Assigned / Capacity</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Visits This Week</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Avg FRI</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Last Active</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 pr-4 whitespace-nowrap">Status</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-3 whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
-                    No agents match your filters.
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(agent => {
-                  const fillPct = Math.min(100, Math.round((agent.assignedFarmers / agent.capacity) * 100))
-                  const dotColor =
-                    agent.status === 'active'   ? '#22c55e' :
-                    agent.status === 'absent'   ? '#f59e0b' : '#9ca3af'
-
-                  return (
-                    <tr key={agent.id} className="hover:bg-gray-50/50 transition-colors">
-                      {/* Agent */}
-                      <td className="py-3 pr-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="relative shrink-0">
-                            <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                              style={{ backgroundColor: 'var(--brand-forest)' }}
-                            >
-                              {agent.initials}
-                            </div>
-                            <span
-                              className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white"
-                              style={{ backgroundColor: dotColor }}
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate leading-tight">{agent.name}</p>
-                            <p className="text-xs text-gray-400 truncate">{agent.zone}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Zone */}
-                      <td className="py-3 pr-4 text-gray-600 whitespace-nowrap">{agent.zone}</td>
-
-                      {/* Assigned / Capacity */}
-                      <td className="py-3 pr-4">
-                        <div className="flex flex-col gap-1 min-w-[110px]">
-                          <span className="text-xs text-gray-700 font-medium">{agent.assignedFarmers} / {agent.capacity}</span>
-                          <div className="h-1.5 w-24 rounded-full bg-gray-100 overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${fillPct}%`,
-                                backgroundColor: fillPct >= 90 ? 'var(--brand-red)' : fillPct >= 70 ? '#f59e0b' : 'var(--brand-green)',
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Visits this week */}
-                      <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">{agent.visitsThisWeek}</td>
-
-                      {/* Avg FRI */}
-                      <td className="py-3 pr-4 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            'px-2 py-0.5 rounded-full text-xs font-medium',
-                            agent.avgFRI >= 75 ? 'bg-green-100 text-green-700' :
-                            agent.avgFRI >= 65 ? 'bg-amber-100 text-amber-700' :
-                                                 'bg-red-100 text-red-700',
-                          )}
-                        >
-                          {agent.avgFRI}
-                        </span>
-                      </td>
-
-                      {/* Last Active */}
-                      <td className="py-3 pr-4 text-gray-500 whitespace-nowrap text-xs">{agent.lastActive}</td>
-
-                      {/* Status */}
-                      <td className="py-3 pr-4 whitespace-nowrap">
-                        {agent.status === 'active'   && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Active</span>}
-                        {agent.status === 'absent'   && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Absent</span>}
-                        {agent.status === 'on_leave' && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">On Leave</span>}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3">
-                        <div className="flex items-center gap-1">
-                          <ButtonTemplate
-                            variant="outline"
-                            size="sm"
-                            isIcon
-                            tooltip="View"
-                            leftIcon={<Eye className="w-3.5 h-3.5" />}
-                            onClick={() => {}}
-                          />
-                          <ButtonTemplate
-                            variant="outline"
-                            size="sm"
-                            isIcon
-                            tooltip="Edit"
-                            leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                            onClick={() => {}}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DatagridTemplate<Agent>
+          columns={AGENT_COLUMNS}
+          data={displayed}
+          rowKey="id"
+          emptyLabel="No agents match your filters."
+          defaultPageSize={0}
+          pageSizeOptions={[0]}
+        />
 
         <PaginationBar
           page={page}

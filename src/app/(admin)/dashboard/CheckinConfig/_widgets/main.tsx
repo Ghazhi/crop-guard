@@ -7,6 +7,8 @@ import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { MultiSelectTemplate } from '@/customComponents/MultiSelectTemplate'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 
 import type { Pillar, Section, CropDef, Org, Question, Week, BaselineActivity, OrgConfig, CohortSchedule } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
 import {
@@ -187,6 +189,260 @@ function PartnerP4Panel({
   )
 }
 
+// ── Custom baseline templates (Baseline Activities page) ────────────────────
+
+interface CustomBaseline { id: string; label: string; activities: PartnerP4Question[] }
+
+const CUSTOM_BASELINE_COLORS = ['#7C3AED', '#0D9488', '#DB2777', '#CA8A04', '#4F46E5', '#059669']
+
+function NewBaselineSheet({
+  open, onClose, onCreate,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreate: (label: string) => void
+}) {
+  const [label, setLabel] = useState('')
+
+  function handleSave() {
+    if (!label.trim()) return
+    onCreate(label.trim())
+    setLabel('')
+    onClose()
+  }
+
+  return (
+    <SheetTemplate
+      open={open}
+      onClose={() => { setLabel(''); onClose() }}
+      title="New Baseline"
+      size="md"
+      footer={
+        <>
+          <ButtonTemplate variant="outline" label="Cancel" onClick={() => { setLabel(''); onClose() }} />
+          <ButtonTemplate variant="primary" label="Save" onClick={handleSave} isDisabled={!label.trim()} />
+        </>
+      }
+    >
+      <div className="px-6 py-5 flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Baseline name</label>
+        <input
+          autoFocus
+          type="text"
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+          placeholder="e.g. Climate Resilience Baseline"
+          className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
+        />
+      </div>
+    </SheetTemplate>
+  )
+}
+
+function BaselineActivityCard({
+  label, color, activities, onRename, onRemove, onAddActivity, onEditActivity, onDeleteActivity, onToggleActivity,
+}: {
+  label:     string
+  color:     string
+  activities: PartnerP4Question[]
+  /** Omit to make the label read-only (used for the fixed P1-P4 pillars) */
+  onRename?: (label: string) => void
+  /** Omit to hide the delete-baseline control (used for the fixed P1-P4 pillars) */
+  onRemove?: () => void
+  onAddActivity:    (label: string, desc: string) => void
+  onEditActivity:   (activityId: string, label: string, desc: string) => void
+  onDeleteActivity: (activityId: string) => void
+  onToggleActivity: (activityId: string) => void
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [nameDraft, setNameDraft] = useState(label)
+  const [adding, setAdding] = useState(false)
+  const [newLabel, setNewLabel] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<PartnerP4Question | null>(null)
+  const [deletingBaseline, setDeletingBaseline] = useState(false)
+
+  function submitRename() {
+    if (!nameDraft.trim() || !onRename) return
+    onRename(nameDraft.trim())
+    setRenaming(false)
+  }
+
+  function submitAdd() {
+    if (!newLabel.trim()) return
+    onAddActivity(newLabel.trim(), newDesc.trim())
+    setNewLabel(''); setNewDesc(''); setAdding(false)
+  }
+
+  function startEdit(a: PartnerP4Question) {
+    setEditingId(a.id); setEditLabel(a.label); setEditDesc(a.desc)
+  }
+
+  function submitEdit() {
+    if (!editingId || !editLabel.trim()) return
+    onEditActivity(editingId, editLabel.trim(), editDesc.trim())
+    setEditingId(null)
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2 px-1 group/header">
+        {renaming ? (
+          <div className="flex items-center gap-1.5 flex-1">
+            <input
+              autoFocus
+              type="text"
+              value={nameDraft}
+              onChange={e => setNameDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
+              className="flex-1 h-7 px-2 text-xs font-semibold uppercase tracking-wider border border-gray-200 rounded focus:outline-none focus:border-(--brand-green)"
+              style={{ color }}
+            />
+            <button onClick={submitRename} className="text-green-600 hover:text-green-800 shrink-0"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setRenaming(false)} className="text-gray-400 hover:text-gray-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
+            {(onRename || onRemove) && (
+              <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+                {onRename && (
+                  <button onClick={() => { setNameDraft(label); setRenaming(true) }}
+                    className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600" title="Rename baseline">
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+                {onRemove && (
+                  <button onClick={() => setDeletingBaseline(true)}
+                    className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500" title="Delete baseline">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
+        {activities.length === 0 && !adding && (
+          <p className="text-sm text-gray-400 py-6 text-center">No activities yet.</p>
+        )}
+
+        {activities.map(a => (
+          editingId === a.id ? (
+            <div key={a.id} className="px-4 py-3 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-2">
+              <input
+                autoFocus
+                type="text"
+                value={editLabel}
+                onChange={e => setEditLabel(e.target.value)}
+                placeholder="Activity name…"
+                className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+              />
+              <input
+                type="text"
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                placeholder="Description"
+                className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+              />
+              <div className="flex items-center gap-2">
+                <button onClick={submitEdit} className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold text-white rounded-lg" style={{ background: '#4b5563' }}>
+                  <Check className="w-3 h-3" /> Save
+                </button>
+                <button onClick={() => setEditingId(null)} className="flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                  <X className="w-3 h-3" /> Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div key={a.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium leading-tight ${a.active ? 'text-gray-800' : 'text-gray-400'}`}>{a.label}</p>
+                {a.desc && <p className="text-xs text-gray-400 mt-0.5">{a.desc}</p>}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Toggle checked={a.active} onChange={() => onToggleActivity(a.id)} />
+                <button onClick={() => startEdit(a)}
+                  className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Edit">
+                  <Pencil className="w-3 h-3" />
+                </button>
+                <button onClick={() => setDeleteTarget(a)}
+                  className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )
+        ))}
+
+        {adding ? (
+          <div className="px-4 py-3 border-t border-gray-100 flex flex-col gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={newLabel}
+              onChange={e => setNewLabel(e.target.value)}
+              placeholder="Activity name…"
+              className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            />
+            <input
+              type="text"
+              value={newDesc}
+              onChange={e => setNewDesc(e.target.value)}
+              placeholder="Description"
+              className="w-full h-8 px-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
+            />
+            <div className="flex items-center gap-2">
+              <button onClick={submitAdd} className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold text-white rounded-lg hover:opacity-90" style={{ background: 'var(--brand-forest)' }}>
+                <Check className="w-3 h-3" /> Save
+              </button>
+              <button onClick={() => setAdding(false)} className="flex items-center gap-1 h-7 px-2.5 text-xs text-gray-500 hover:text-gray-700">
+                <X className="w-3 h-3" /> Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}
+            className="w-full flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 transition-colors border-t border-gray-100"
+            style={{ color: 'var(--brand-forest)' }}
+          >
+            <Plus className="w-3.5 h-3.5" /> Add activity
+          </button>
+        )}
+      </div>
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete activity?"
+        message={`"${deleteTarget?.label ?? 'This activity'}" will be permanently removed.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) onDeleteActivity(deleteTarget.id); setDeleteTarget(null) }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      {onRemove && (
+        <ConfirmModal
+          open={deletingBaseline}
+          title="Delete baseline?"
+          message={`"${label}" will be removed from all cohort schedules that use it.`}
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={() => { onRemove(); setDeletingBaseline(false) }}
+          onCancel={() => setDeletingBaseline(false)}
+        />
+      )}
+    </div>
+  )
+}
+
 export function Main() {
   const [section, setSection]        = useState<Section>('weekly')
   const [crop, setCrop]              = useState<string>('maize')
@@ -198,8 +454,7 @@ export function Main() {
     Object.fromEntries(ORGS.map(o => [o.id, freshConfig(BUILT_IN_CROPS)]))
   )
 
-  const cfg            = orgConfigs[org]
-  const baselineActive = cfg.baselineActive
+  const cfg = orgConfigs[org]
 
   type WeekUpdater = Week[] | ((prev: Week[]) => Week[])
 
@@ -209,10 +464,6 @@ export function Main() {
       const next = typeof updater === 'function' ? updater(cur) : updater
       return { ...prev, [org]: { ...prev[org], cropWeeks: { ...prev[org].cropWeeks, [cropId]: next } } }
     })
-  }
-
-  function setBaselineActive(updater: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) {
-    setOrgConfigs(prev => ({ ...prev, [org]: { ...prev[org], baselineActive: typeof updater === 'function' ? updater(prev[org].baselineActive) : updater } }))
   }
 
   // ── Baseline Activities: per-partner P4 view ─────────────────────────────────
@@ -394,12 +645,101 @@ export function Main() {
       { id: 'c6', name: 'Kwahu West' }, { id: 'c7', name: 'New Juaben' },
     ]},
   ]
-  const BASELINE_OPTIONS = [
-    { id: 'standard',   label: 'Standard Baseline (All Pillars)' },
-    { id: 'agronomy',   label: 'Agronomy Focus Baseline'         },
-    { id: 'enterprise', label: 'Enterprise Focus Baseline'       },
-  ]
+  const [BASELINE_OPTIONS, setBaselineOptions] = useState<CustomBaseline[]>([])
+  const [newBaselineSheetOpen, setNewBaselineSheetOpen] = useState(false)
+
+  const [pillarActivities, setPillarActivities] = useState<Record<string, PartnerP4Question[]>>(() => {
+    const byPillar: Record<string, PartnerP4Question[]> = {}
+    for (const pillar of BASELINE_PILLARS) {
+      byPillar[pillar.id] = BASELINE_SEED
+        .filter(a => a.pillar === pillar.id)
+        .map(a => ({ id: a.id, label: a.label, desc: a.desc, active: true }))
+    }
+    return byPillar
+  })
+
+  function addPillarActivity(pillarId: string, label: string, desc: string) {
+    setPillarActivities(prev => ({
+      ...prev,
+      [pillarId]: [...(prev[pillarId] ?? []), { id: `pillar_act_${Date.now()}`, label, desc, active: true }],
+    }))
+  }
+
+  function editPillarActivity(pillarId: string, activityId: string, label: string, desc: string) {
+    setPillarActivities(prev => ({
+      ...prev,
+      [pillarId]: (prev[pillarId] ?? []).map(a => a.id !== activityId ? a : { ...a, label, desc }),
+    }))
+  }
+
+  function deletePillarActivity(pillarId: string, activityId: string) {
+    setPillarActivities(prev => ({
+      ...prev,
+      [pillarId]: (prev[pillarId] ?? []).filter(a => a.id !== activityId),
+    }))
+  }
+
+  function togglePillarActivity(pillarId: string, activityId: string) {
+    setPillarActivities(prev => ({
+      ...prev,
+      [pillarId]: (prev[pillarId] ?? []).map(a => a.id !== activityId ? a : { ...a, active: !a.active }),
+    }))
+  }
+
+  function addBaselineOption(label: string) {
+    const id = `baseline_${Date.now()}`
+    setBaselineOptions(prev => [...prev, { id, label, activities: [] }])
+    return id
+  }
+
+  function editBaselineOption(id: string, label: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== id ? o : { ...o, label }))
+  }
+
+  function removeBaselineOption(id: string) {
+    setBaselineOptions(prev => prev.filter(o => o.id !== id))
+    setSchBaselineIds(prev => prev.filter(v => v !== id))
+    setSchedules(prev => prev.map(s => ({ ...s, baselineIds: s.baselineIds.filter(v => v !== id) })))
+  }
+
+  function addBaselineActivity(baselineId: string, label: string, desc: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      activities: [...o.activities, { id: `act_${Date.now()}`, label, desc, active: true }],
+    }))
+  }
+
+  function editBaselineActivity(baselineId: string, activityId: string, label: string, desc: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      activities: o.activities.map(a => a.id !== activityId ? a : { ...a, label, desc }),
+    }))
+  }
+
+  function deleteBaselineActivity(baselineId: string, activityId: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      activities: o.activities.filter(a => a.id !== activityId),
+    }))
+  }
+
+  function toggleBaselineActivity(baselineId: string, activityId: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      activities: o.activities.map(a => a.id !== activityId ? a : { ...a, active: !a.active }),
+    }))
+  }
+
   const checkInListOptions = crops.map(c => ({ id: c.id, label: c.season ? `${c.name} ${c.season}` : c.name }))
+
+  const allBaselineOptions = [
+    ...BASELINE_PILLARS.map(p => ({ id: p.id, label: p.label })),
+    ...BASELINE_OPTIONS.map(o => ({ id: o.id, label: o.label })),
+  ]
+
+  function baselineLabel(id: string) {
+    return allBaselineOptions.find(o => o.id === id)?.label ?? id
+  }
 
   const [schedules,      setSchedules]      = useState<CohortSchedule[]>([])
   const [scheduleSheet,  setScheduleSheet]  = useState(false)
@@ -410,13 +750,13 @@ export function Main() {
   const [schCohortId,    setSchCohortId]    = useState('')
   const [schDate,        setSchDate]        = useState('')
   const [schEndDate,     setSchEndDate]     = useState('')
-  const [schBaselineId,  setSchBaselineId]  = useState('standard')
+  const [schBaselineIds, setSchBaselineIds] = useState<string[]>([])
   const [schCheckInIds,  setSchCheckInIds]  = useState<string[]>(crops[0] ? [crops[0].id] : [])
 
   function openNewSchedule() {
     setEditingSchId(null)
     setSchMode('start_now'); setSchProgramId(''); setSchCohortId(''); setSchDate(''); setSchEndDate('')
-    setSchBaselineId('standard'); setSchCheckInIds(crops[0] ? [crops[0].id] : [])
+    setSchBaselineIds([]); setSchCheckInIds(crops[0] ? [crops[0].id] : [])
     setScheduleSheet(true)
   }
 
@@ -424,7 +764,7 @@ export function Main() {
     setEditingSchId(s.id)
     setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId)
     setSchDate(s.scheduledDate ?? ''); setSchEndDate(s.endDate ?? '')
-    setSchBaselineId(s.baselineId); setSchCheckInIds(s.checkInListIds)
+    setSchBaselineIds(s.baselineIds); setSchCheckInIds(s.checkInListIds)
     setScheduleSheet(true)
   }
 
@@ -443,7 +783,7 @@ export function Main() {
         mode:           schMode,
         scheduledDate:  schMode === 'scheduled' ? schDate : undefined,
         endDate:        schEndDate || undefined,
-        baselineId:     schBaselineId,
+        baselineIds:    schBaselineIds,
         checkInListIds: schCheckInIds,
       }))
     } else {
@@ -456,7 +796,7 @@ export function Main() {
         mode:          schMode,
         scheduledDate: schMode === 'scheduled' ? schDate : undefined,
         endDate:       schEndDate || undefined,
-        baselineId:    schBaselineId,
+        baselineIds:   schBaselineIds,
         checkInListIds: schCheckInIds,
         status:        schMode === 'start_now' ? 'active' : 'pending',
       }
@@ -473,6 +813,41 @@ export function Main() {
     active:    'bg-green-100 text-green-700',
     completed: 'bg-gray-100 text-gray-600',
   }
+
+  const SCHEDULE_COLUMNS: DatagridColumn<CohortSchedule>[] = [
+    { key: 'programName', label: 'Program', render: v => <span className="text-gray-800 font-medium">{String(v)}</span> },
+    { key: 'cohortName', label: 'Cohort', render: v => <span className="text-gray-600">{String(v)}</span> },
+    {
+      key: 'baselineIds', label: 'Baselines',
+      render: (v) => <span className="text-gray-600">{(v as string[]).map(baselineLabel).join(', ')}</span>,
+    },
+    {
+      key: 'checkInListIds', label: 'Check-in List',
+      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => checkInListOptions.find(o => o.id === id)?.label ?? id).join(', ')}</span>,
+    },
+    {
+      key: 'scheduledDate', label: 'Start',
+      render: (_, s) => <span className="text-gray-500 text-xs">{s.mode === 'start_now' ? 'Immediate' : (s.scheduledDate ?? '—')}</span>,
+    },
+    { key: 'endDate', label: 'End', render: v => <span className="text-gray-500 text-xs">{v ? String(v) : '—'}</span> },
+    {
+      key: 'status', label: 'Status',
+      render: v => <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[v as CohortSchedule['status']]}`}>{String(v)}</span>,
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: (_, s) => (
+        <div className="flex items-center gap-1.5">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View"
+            leftIcon={<Eye className="w-3.5 h-3.5" />}
+            onClick={() => setViewSchedule(s)} />
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
+            leftIcon={<Pencil className="w-3.5 h-3.5" />}
+            onClick={() => openEditSchedule(s)} />
+        </div>
+      ),
+    },
+  ]
 
   const SECTION_NAV = [
     { id: 'weekly'   as Section, Icon: ClipboardCheck, label: 'Weekly Check-ins',   sub: 'Crop-specific check-in questions per week' },
@@ -881,51 +1256,14 @@ export function Main() {
                   <p className="text-xs text-gray-300">Click "New Schedule" to assign a check-in list to a cohort.</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-100 bg-gray-50">
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Program</th>
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Cohort</th>
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Check-in List</th>
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Start</th>
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">End</th>
-                        <th className="text-left text-xs font-semibold text-gray-500 px-4 py-2.5">Status</th>
-                        <th className="px-4 py-2.5" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schedules.map(s => {
-                        const listLabel = s.checkInListIds.map(id => checkInListOptions.find(o => o.id === id)?.label ?? id).join(', ')
-                        return (
-                          <tr key={s.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
-                            <td className="px-4 py-3 text-gray-800 font-medium">{s.programName}</td>
-                            <td className="px-4 py-3 text-gray-600">{s.cohortName}</td>
-                            <td className="px-4 py-3 text-gray-600">{listLabel}</td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">
-                              {s.mode === 'start_now' ? 'Immediate' : (s.scheduledDate ?? '—')}
-                            </td>
-                            <td className="px-4 py-3 text-gray-500 text-xs">{s.endDate ?? '—'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[s.status]}`}>
-                                {s.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-1.5">
-                                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View"
-                                  leftIcon={<Eye className="w-3.5 h-3.5" />}
-                                  onClick={() => setViewSchedule(s)} />
-                                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
-                                  leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                                  onClick={() => openEditSchedule(s)} />
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                  <DatagridTemplate<CohortSchedule>
+                    columns={SCHEDULE_COLUMNS}
+                    data={schedules}
+                    rowKey="id"
+                    defaultPageSize={0}
+                    pageSizeOptions={[0]}
+                  />
                 </div>
               )}
 
@@ -941,7 +1279,7 @@ export function Main() {
                       variant="primary"
                       label={editingSchId ? 'Save Changes' : 'Save Schedule'}
                       onClick={handleSaveSchedule}
-                      isDisabled={!schProgramId || !schCohortId || (schMode === 'scheduled' && !schDate) || schCheckInIds.length === 0}
+                      isDisabled={!schProgramId || !schCohortId || (schMode === 'scheduled' && !schDate) || schCheckInIds.length === 0 || schBaselineIds.length === 0}
                     />
                   </>
                 }
@@ -1020,17 +1358,15 @@ export function Main() {
                     />
                   </div>
 
-                  {/* baseline */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assign baseline</label>
-                    <select
-                      value={schBaselineId}
-                      onChange={e => setSchBaselineId(e.target.value)}
-                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) bg-white"
-                    >
-                      {BASELINE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-                    </select>
-                  </div>
+                  {/* baseline — multiselect */}
+                  <MultiSelectTemplate
+                    label="Assign baseline(s)"
+                    isRequired
+                    placeholder="Select baselines…"
+                    options={allBaselineOptions.map(o => ({ value: o.id, label: o.label }))}
+                    value={schBaselineIds}
+                    onChange={setSchBaselineIds}
+                  />
 
                   {/* check-in list — multiselect */}
                   <MultiSelectTemplate
@@ -1071,7 +1407,6 @@ export function Main() {
                         ['Start type', viewSchedule.mode === 'start_now' ? 'Immediate' : 'Scheduled'],
                         ['Start date', viewSchedule.mode === 'start_now' ? 'Immediate' : (viewSchedule.scheduledDate ?? '—')],
                         ['End date', viewSchedule.endDate ?? '—'],
-                        ['Baseline', BASELINE_OPTIONS.find(o => o.id === viewSchedule.baselineId)?.label ?? viewSchedule.baselineId],
                         ['Status', <span key="st" className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${STATUS_BADGE[viewSchedule.status]}`}>{viewSchedule.status}</span>],
                       ].map(([label, val]) => (
                         <div key={String(label)} className="bg-gray-50 rounded-xl p-3">
@@ -1079,6 +1414,16 @@ export function Main() {
                           <div className="text-sm font-medium text-gray-800">{val}</div>
                         </div>
                       ))}
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-2">Baselines</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {viewSchedule.baselineIds.map(id => (
+                          <span key={id} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
+                            {baselineLabel(id)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-2">Check-in Lists</p>
@@ -1099,47 +1444,49 @@ export function Main() {
           {/* ── Baseline Activities ── */}
           {section === 'baseline' && (
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
-                <h2 className="text-base font-bold text-gray-900">Baseline Activities</h2>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
+                  <h2 className="text-base font-bold text-gray-900">Baseline Activities</h2>
+                </div>
+                <ButtonTemplate variant="primary" size="sm" label="New Baseline" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewBaselineSheetOpen(true)} />
               </div>
 
               <div className="flex flex-col gap-3">
-                {BASELINE_PILLARS.map(pillar => {
-                  const activities = BASELINE_SEED.filter(a => a.pillar === pillar.id)
-                  return (
-                    <div key={pillar.id} className="flex flex-col gap-1.5">
-                      {/* pillar label */}
-                      <p className="text-xs font-semibold uppercase tracking-wider px-1" style={{ color: pillar.color }}>
-                        {pillar.label}
-                      </p>
-                      {/* activity rows */}
-                      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderLeftColor: pillar.color, borderLeftWidth: 3 }}>
-                        {activities.map(activity => {
-                          const active = baselineActive[activity.id] ?? true
-                          return (
-                            <div
-                              key={activity.id}
-                              className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50"
-                            >
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium leading-tight ${active ? 'text-gray-800' : 'text-gray-400'}`}>
-                                  {activity.label}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-0.5">{activity.desc}</p>
-                              </div>
-                              <Toggle
-                                checked={active}
-                                onChange={v => setBaselineActive(prev => ({ ...prev, [activity.id]: v }))}
-                              />
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+                {BASELINE_PILLARS.map(pillar => (
+                  <BaselineActivityCard
+                    key={pillar.id}
+                    label={pillar.label}
+                    color={pillar.color}
+                    activities={pillarActivities[pillar.id] ?? []}
+                    onAddActivity={(label, desc) => addPillarActivity(pillar.id, label, desc)}
+                    onEditActivity={(activityId, label, desc) => editPillarActivity(pillar.id, activityId, label, desc)}
+                    onDeleteActivity={activityId => deletePillarActivity(pillar.id, activityId)}
+                    onToggleActivity={activityId => togglePillarActivity(pillar.id, activityId)}
+                  />
+                ))}
+
+                {BASELINE_OPTIONS.map((baseline, i) => (
+                  <BaselineActivityCard
+                    key={baseline.id}
+                    label={baseline.label}
+                    color={CUSTOM_BASELINE_COLORS[i % CUSTOM_BASELINE_COLORS.length]}
+                    activities={baseline.activities}
+                    onRename={label => editBaselineOption(baseline.id, label)}
+                    onRemove={() => removeBaselineOption(baseline.id)}
+                    onAddActivity={(label, desc) => addBaselineActivity(baseline.id, label, desc)}
+                    onEditActivity={(activityId, label, desc) => editBaselineActivity(baseline.id, activityId, label, desc)}
+                    onDeleteActivity={activityId => deleteBaselineActivity(baseline.id, activityId)}
+                    onToggleActivity={activityId => toggleBaselineActivity(baseline.id, activityId)}
+                  />
+                ))}
               </div>
+
+              <NewBaselineSheet
+                open={newBaselineSheetOpen}
+                onClose={() => setNewBaselineSheetOpen(false)}
+                onCreate={addBaselineOption}
+              />
 
               <div className="flex flex-col gap-1.5 max-w-xs pt-2">
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Partner</label>

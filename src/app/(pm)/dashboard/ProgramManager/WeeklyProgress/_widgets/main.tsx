@@ -27,6 +27,8 @@ import {
 } from 'lucide-react'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
@@ -82,6 +84,38 @@ const cohortTableData = [
   { cohortName: 'Cohort 6', community: 'Coastal Lowlands',   submitted: 202, total: 240, pct: 84, onTime: false },
   { cohortName: 'Cohort 7', community: 'Highland Basin',     submitted: 232, total: 270, pct: 86, onTime: true },
   { cohortName: 'Cohort 8', community: 'Lowland Flats',      submitted: 213, total: 260, pct: 82, onTime: false },
+]
+
+const COHORT_TABLE_COLUMNS: DatagridColumn<typeof cohortTableData[number]>[] = [
+  { key: 'cohortName', label: 'Cohort Name', render: v => <span className="font-medium text-gray-900">{String(v)}</span> },
+  { key: 'community', label: 'Community', render: v => <span className="text-gray-600">{String(v)}</span> },
+  { key: 'submitted', label: 'Submitted', render: v => <span className="block text-right tabular-nums text-gray-700">{String(v)}</span> },
+  { key: 'total', label: 'Total', render: v => <span className="block text-right tabular-nums text-gray-500">{String(v)}</span> },
+  {
+    key: 'pct', label: 'Completion %', width: '140px',
+    render: v => (
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${Number(v)}%`, backgroundColor: 'var(--brand-green)' }} />
+        </div>
+        <span className="text-xs text-gray-700 tabular-nums w-8 text-right">{String(v)}%</span>
+      </div>
+    ),
+  },
+  {
+    key: 'onTime', label: 'On Time',
+    render: v => v
+      ? <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">On Time</span>
+      : <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Late</span>,
+  },
+  {
+    key: 'cohortName', id: 'actions', label: 'Actions',
+    render: () => (
+      <div className="flex justify-end">
+        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+      </div>
+    ),
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -435,94 +469,14 @@ export function Main() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">
-                  Cohort Name
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">
-                  Community
-                </th>
-                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">
-                  Submitted
-                </th>
-                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">
-                  Total
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4 min-w-[140px]">
-                  Completion %
-                </th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2 pr-4">
-                  On Time
-                </th>
-                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.map((row, i) => (
-                <tr
-                  key={i}
-                  className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
-                >
-                  <td className="py-3 pr-4 font-medium text-gray-900">{row.cohortName}</td>
-                  <td className="py-3 pr-4 text-gray-600">{row.community}</td>
-                  <td className="py-3 pr-4 text-right tabular-nums text-gray-700">
-                    {row.submitted}
-                  </td>
-                  <td className="py-3 pr-4 text-right tabular-nums text-gray-500">{row.total}</td>
-                  <td className="py-3 pr-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${row.pct}%`,
-                            backgroundColor: 'var(--brand-green)',
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-700 tabular-nums w-8 text-right">
-                        {row.pct}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 pr-4">
-                    {row.onTime ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        On Time
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        Late
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 text-right">
-                    <ButtonTemplate
-                      variant="outline"
-                      size="sm"
-                      isIcon
-                      tooltip="View"
-                      leftIcon={<Eye className="w-3.5 h-3.5" />}
-                      onClick={() => {}}
-                    />
-                  </td>
-                </tr>
-              ))}
-              {displayed.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-sm text-gray-400">
-                    No cohorts match your filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DatagridTemplate<typeof cohortTableData[number]>
+          columns={COHORT_TABLE_COLUMNS}
+          data={displayed}
+          rowKey="cohortName"
+          emptyLabel="No cohorts match your filters."
+          defaultPageSize={0}
+          pageSizeOptions={[0]}
+        />
 
         <PaginationBar
           page={page}

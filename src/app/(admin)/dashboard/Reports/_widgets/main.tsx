@@ -166,15 +166,15 @@ export function Main() {
     <div className="p-6 max-w-300 mx-auto">
 
       {/* header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900">Reports</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-green)' }}>
             Platform analytics, weekly agent summaries, and AI-generated reports
           </p>
         </div>
         {tab === 'overview' && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
             <select
               value={programFilter}
               onChange={e => setProgramFilter(e.target.value)}
@@ -183,11 +183,11 @@ export function Main() {
               <option value="all">All programs</option>
               {PROGRAMS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">
+            <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors shrink-0">
               <RefreshCcw className="w-3.5 h-3.5 text-gray-500" />
             </button>
             <button
-              className="flex items-center gap-1.5 h-8 px-3 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-1.5 h-8 px-3 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
               Export CSV

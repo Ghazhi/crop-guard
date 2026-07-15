@@ -19,6 +19,8 @@ import {
 } from 'lucide-react'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -299,6 +301,33 @@ function VerificationProgressTab() {
     return 'text-red-600'
   }
 
+  const COHORT_COLUMNS: DatagridColumn<CohortProgress>[] = [
+    { key: 'cohort', label: 'Cohort', render: v => <span className="font-medium text-gray-900 whitespace-nowrap">{String(v)}</span> },
+    { key: 'community', label: 'Community', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    { key: 'enrolled', label: 'Enrolled', render: v => <span className="text-gray-700 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    { key: 'verified', label: 'Verified', render: v => <span className="text-gray-700 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    { key: 'pending', label: 'Pending', render: v => <span className="text-amber-600 whitespace-nowrap tabular-nums font-medium">{String(v)}</span> },
+    { key: 'rejected', label: 'Rejected', render: v => <span className="text-red-500 whitespace-nowrap tabular-nums font-medium">{String(v)}</span> },
+    {
+      key: 'pct', label: 'Progress %', width: '160px',
+      render: v => {
+        const pct = Number(v)
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-20">
+              <div className={cn('h-full rounded-full', pctColor(pct))} style={{ width: `${pct}%` }} />
+            </div>
+            <span className={cn('text-xs font-semibold tabular-nums w-10 text-right', pctTextColor(pct))}>{pct}%</span>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: () => <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View Details" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />,
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -314,53 +343,17 @@ function VerificationProgressTab() {
           <SearchBar value={search} onChange={v => { setSearch(v); setPage(1) }} placeholder="Search cohort or community…" />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap rounded-tl-lg">Cohort</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Community</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Enrolled</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Verified</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Pending</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Rejected</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap min-w-[160px]">Progress %</th>
-                <th className="py-2.5 px-3 rounded-tr-lg" />
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12">
-                    <EmptyState icon={<ShieldCheck className="w-6 h-6" />} message="No cohorts match the current search." />
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(c => (
-                  <tr key={c.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-3 font-medium text-gray-900 whitespace-nowrap">{c.cohort}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{c.community}</td>
-                    <td className="py-3 px-3 text-gray-700 whitespace-nowrap tabular-nums">{c.enrolled}</td>
-                    <td className="py-3 px-3 text-gray-700 whitespace-nowrap tabular-nums">{c.verified}</td>
-                    <td className="py-3 px-3 text-amber-600 whitespace-nowrap tabular-nums font-medium">{c.pending}</td>
-                    <td className="py-3 px-3 text-red-500 whitespace-nowrap tabular-nums font-medium">{c.rejected}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden min-w-[80px]">
-                          <div className={cn('h-full rounded-full', pctColor(c.pct))} style={{ width: `${c.pct}%` }} />
-                        </div>
-                        <span className={cn('text-xs font-semibold tabular-nums w-10 text-right', pctTextColor(c.pct))}>{c.pct}%</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View Details" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {displayed.length === 0 ? (
+          <EmptyState icon={<ShieldCheck className="w-6 h-6" />} message="No cohorts match the current search." />
+        ) : (
+          <DatagridTemplate<CohortProgress>
+            columns={COHORT_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
+        )}
 
         <PaginationBar
           page={page}
@@ -410,6 +403,42 @@ function ReviewQueueTab() {
     return 'bg-yellow-100 text-yellow-700'
   }
 
+  const REVIEW_COLUMNS: DatagridColumn<ReviewRecord>[] = [
+    { key: 'farmer', label: 'Farmer Name', render: v => <span className="font-medium text-gray-900 whitespace-nowrap">{String(v)}</span> },
+    { key: 'community', label: 'Community', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    { key: 'cohort', label: 'Cohort', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    { key: 'submittedDate', label: 'Submitted', render: v => <span className="text-gray-500 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    {
+      key: 'type', label: 'Type',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', v === 'Resubmission' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600')}>{String(v)}</span>,
+    },
+    {
+      key: 'priority', label: 'Priority',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', priorityBadge(String(v)))}>{String(v)}</span>,
+    },
+    {
+      key: 'status', label: 'Status',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', statusBadge(String(v)))}>{String(v)}</span>,
+    },
+    {
+      key: 'reviewedBy', label: 'Reviewer',
+      render: v => <span className="text-gray-500 whitespace-nowrap text-xs">{v === '—' ? <span className="text-gray-300">—</span> : String(v)}</span>,
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: (_, r) => (
+        <div className="flex items-center gap-1">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Review" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+          {r.reviewedBy === '—' ? (
+            <ButtonTemplate variant="outline" size="sm" tooltip="Assign to yourself" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} className="text-xs px-2 h-7" />
+          ) : (
+            <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reassign" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} />
+          )}
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -434,65 +463,17 @@ function ReviewQueueTab() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Farmer Name</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Community</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Cohort</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Submitted</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Type</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Priority</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Status</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Reviewer</th>
-                <th className="py-2.5 px-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12">
-                    <EmptyState icon={<Clock className="w-6 h-6" />} message="No records match the current filters." />
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(r => (
-                  <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-3 font-medium text-gray-900 whitespace-nowrap">{r.farmer}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{r.community}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{r.cohort}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap tabular-nums">{r.submittedDate}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', r.type === 'Resubmission' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600')}>{r.type}</span>
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', priorityBadge(r.priority))}>{r.priority}</span>
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', statusBadge(r.status))}>{r.status}</span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap text-xs">
-                      {r.reviewedBy === '—' ? (
-                        <span className="text-gray-300">—</span>
-                      ) : r.reviewedBy}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Review" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
-                        {r.reviewedBy === '—' ? (
-                          <ButtonTemplate variant="outline" size="sm" tooltip="Assign to yourself" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} className="text-xs px-2 h-7" />
-                        ) : (
-                          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reassign" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {displayed.length === 0 ? (
+          <EmptyState icon={<Clock className="w-6 h-6" />} message="No records match the current filters." />
+        ) : (
+          <DatagridTemplate<ReviewRecord>
+            columns={REVIEW_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
+        )}
 
         <PaginationBar
           page={page}
@@ -545,6 +526,31 @@ function RevisitRequiredTab() {
     return 'text-gray-600'
   }
 
+  const REVISIT_COLUMNS: DatagridColumn<RevisitRecord>[] = [
+    { key: 'farmer', label: 'Farmer', render: v => <span className="font-medium text-gray-900 whitespace-nowrap">{String(v)}</span> },
+    { key: 'community', label: 'Community', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    { key: 'cohort', label: 'Cohort', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    {
+      key: 'reason', label: 'Reason',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', reasonBadge(String(v)))}>{String(v)}</span>,
+    },
+    { key: 'assignedTo', label: 'Assigned To', render: v => <span className="text-gray-500 whitespace-nowrap text-xs">{String(v)}</span> },
+    { key: 'dueDate', label: 'Due Date', render: v => <span className="text-gray-500 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    {
+      key: 'daysLeft', label: 'Days Left',
+      render: v => <span className={cn('text-sm tabular-nums', daysLeftColor(Number(v)))}>{String(v)}d</span>,
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: () => (
+        <div className="flex items-center gap-1">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Send Reminder" leftIcon={<RefreshCw className="w-3.5 h-3.5" />} onClick={() => {}} />
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -582,53 +588,17 @@ function RevisitRequiredTab() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Farmer</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Community</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Cohort</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Reason</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Assigned To</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Due Date</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Days Left</th>
-                <th className="py-2.5 px-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12">
-                    <EmptyState icon={<AlertCircle className="w-6 h-6" />} message="No revisit items match the current filters." />
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(r => (
-                  <tr key={r.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-3 font-medium text-gray-900 whitespace-nowrap">{r.farmer}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{r.community}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{r.cohort}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', reasonBadge(r.reason))}>{r.reason}</span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap text-xs">{r.assignedTo}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap tabular-nums">{r.dueDate}</td>
-                    <td className="py-3 px-3 whitespace-nowrap tabular-nums">
-                      <span className={cn('text-sm', daysLeftColor(r.daysLeft))}>{r.daysLeft}d</span>
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
-                        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Send Reminder" leftIcon={<RefreshCw className="w-3.5 h-3.5" />} onClick={() => {}} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {displayed.length === 0 ? (
+          <EmptyState icon={<AlertCircle className="w-6 h-6" />} message="No revisit items match the current filters." />
+        ) : (
+          <DatagridTemplate<RevisitRecord>
+            columns={REVISIT_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
+        )}
 
         <PaginationBar
           page={page}
@@ -669,6 +639,29 @@ function ResolvedDisputesTab() {
     return 'bg-amber-100 text-amber-700'
   }
 
+  const DISPUTE_COLUMNS: DatagridColumn<DisputeRecord>[] = [
+    { key: 'farmer', label: 'Farmer', render: v => <span className="font-medium text-gray-900 whitespace-nowrap">{String(v)}</span> },
+    { key: 'community', label: 'Community', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    { key: 'cohort', label: 'Cohort', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    {
+      key: 'resolution', label: 'Resolution',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', resolutionBadge(String(v)))}>{String(v)}</span>,
+    },
+    { key: 'resolvedBy', label: 'Resolved By', render: v => <span className="text-gray-500 whitespace-nowrap text-xs">{String(v)}</span> },
+    { key: 'resolvedDate', label: 'Resolved Date', render: v => <span className="text-gray-500 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    {
+      key: 'notes', label: 'Notes', width: '200px',
+      render: v => {
+        const notes = String(v)
+        return <span className="text-gray-400 text-xs max-w-50 truncate block">{notes.slice(0, 40)}{notes.length > 40 ? '…' : ''}</span>
+      },
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: () => <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View Details" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />,
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -695,48 +688,17 @@ function ResolvedDisputesTab() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Farmer</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Community</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Cohort</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Resolution</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Resolved By</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Resolved Date</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap max-w-[200px]">Notes</th>
-                <th className="py-2.5 px-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12">
-                    <EmptyState icon={<CheckCircle className="w-6 h-6" />} message="No resolved disputes match the current filters." />
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(d => (
-                  <tr key={d.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-3 font-medium text-gray-900 whitespace-nowrap">{d.farmer}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{d.community}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{d.cohort}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', resolutionBadge(d.resolution))}>{d.resolution}</span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap text-xs">{d.resolvedBy}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap tabular-nums">{d.resolvedDate}</td>
-                    <td className="py-3 px-3 text-gray-400 text-xs max-w-[200px] truncate">{d.notes.slice(0, 40)}{d.notes.length > 40 ? '…' : ''}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View Details" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {displayed.length === 0 ? (
+          <EmptyState icon={<CheckCircle className="w-6 h-6" />} message="No resolved disputes match the current filters." />
+        ) : (
+          <DatagridTemplate<DisputeRecord>
+            columns={DISPUTE_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
+        )}
 
         <PaginationBar
           page={page}
@@ -785,6 +747,34 @@ function SupportRequestsTab() {
     return 'bg-green-100 text-green-700'
   }
 
+  const SUPPORT_COLUMNS: DatagridColumn<SupportRequest>[] = [
+    { key: 'farmer', label: 'Farmer', render: v => <span className="font-medium text-gray-900 whitespace-nowrap">{String(v)}</span> },
+    { key: 'community', label: 'Community', render: v => <span className="text-gray-500 whitespace-nowrap">{String(v)}</span> },
+    {
+      key: 'type', label: 'Type',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', typeBadge(String(v)))}>{String(v)}</span>,
+    },
+    { key: 'subject', label: 'Subject', width: '220px', render: v => <span className="text-gray-600 max-w-55 truncate text-xs block">{String(v)}</span> },
+    { key: 'submittedDate', label: 'Submitted', render: v => <span className="text-gray-500 whitespace-nowrap tabular-nums">{String(v)}</span> },
+    {
+      key: 'status', label: 'Status',
+      render: v => <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', statusBadge(String(v)))}>{String(v)}</span>,
+    },
+    {
+      key: 'assignedTo', label: 'Assigned To',
+      render: v => <span className="text-gray-500 whitespace-nowrap text-xs">{v === '—' ? <span className="text-gray-300">—</span> : String(v)}</span>,
+    },
+    {
+      key: 'id', id: 'actions', label: '',
+      render: () => (
+        <div className="flex items-center gap-1">
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reply" leftIcon={<MessageSquare className="w-3.5 h-3.5" />} onClick={() => {}} />
+        </div>
+      ),
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -822,55 +812,17 @@ function SupportRequestsTab() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Farmer</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Community</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Type</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap max-w-[220px]">Subject</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Submitted</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Status</th>
-                <th className="text-left py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">Assigned To</th>
-                <th className="py-2.5 px-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12">
-                    <EmptyState icon={<MessageSquare className="w-6 h-6" />} message="No support requests match the current filters." />
-                  </td>
-                </tr>
-              ) : (
-                displayed.map(s => (
-                  <tr key={s.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3 px-3 font-medium text-gray-900 whitespace-nowrap">{s.farmer}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">{s.community}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', typeBadge(s.type))}>{s.type}</span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-600 max-w-[220px] truncate text-xs">{s.subject}</td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap tabular-nums">{s.submittedDate}</td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', statusBadge(s.status))}>{s.status}</span>
-                    </td>
-                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap text-xs">
-                      {s.assignedTo === '—' ? <span className="text-gray-300">—</span> : s.assignedTo}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="View" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
-                        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reply" leftIcon={<MessageSquare className="w-3.5 h-3.5" />} onClick={() => {}} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {displayed.length === 0 ? (
+          <EmptyState icon={<MessageSquare className="w-6 h-6" />} message="No support requests match the current filters." />
+        ) : (
+          <DatagridTemplate<SupportRequest>
+            columns={SUPPORT_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
+        )}
 
         <PaginationBar
           page={page}

@@ -12,6 +12,8 @@ import {
 import type { CheckinRecord, BaselineItem } from '../_logics/interface'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { getFRIFarmers, getFRISummary, getFRIPrograms } from '../_logics/functions'
 import type { FRIFarmer, FRISummary, ProgramOption, FriZone, CreditRisk, PillarScore } from '../_logics/interface'
 
@@ -75,6 +77,58 @@ function TrendIcon({ trend }: { trend: 'up' | 'down' | 'flat' | null }) {
   return <Minus className="w-4 h-4 text-gray-400" />
 }
 
+const FRI_FARMER_COLUMNS: DatagridColumn<FRIFarmer>[] = [
+  {
+    key: 'fullName', label: 'Farmer', width: '224px',
+    render: (v, f) => (
+      <>
+        <p className="font-semibold text-sm" style={{ color: 'var(--brand-forest)' }}>{String(v)}</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--brand-mid)' }}>{f.region} · {f.district}</p>
+        <p className="text-[11px] mt-0.5 text-gray-400">
+          {f.primaryCrop}{f.farmSize && f.farmSize !== '0' ? ` · ${f.farmSize}ha` : ''}
+        </p>
+      </>
+    ),
+  },
+  {
+    key: 'currentFri', label: 'FRI Score',
+    render: (v, f) => f.currentFri !== null
+      ? <span className="text-xl font-bold" style={{ color: friColor(f.currentFri) }}>{String(v)}</span>
+      : <span className="text-gray-300">—</span>,
+  },
+  {
+    key: 'creditRisk', label: 'Credit Risk',
+    render: (v, f) => f.creditRisk
+      ? <span className="text-sm font-medium" style={{ color: RISK_COLOR[f.creditRisk] }}>{String(v)}</span>
+      : <span className="text-gray-300">—</span>,
+  },
+  {
+    key: 'currentZone', label: 'Zone',
+    render: (_, f) => f.currentZone ? <ZoneBadge zone={f.currentZone} /> : <span className="text-gray-300">—</span>,
+  },
+  {
+    key: 'baselineDone', label: 'Baseline',
+    render: (v) => v
+      ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+      : <Clock className="w-4 h-4 text-gray-300" />,
+  },
+  {
+    key: 'checkinCount', label: 'Check-ins',
+    render: (v, f) => f.checkinCount > 0 ? (
+      <span className="flex flex-col leading-tight" style={{ color: 'var(--brand-forest)' }}>
+        <span className="font-semibold">{String(v)}</span>
+        <span className="text-[11px] text-gray-400">{f.verifiedCheckins}v</span>
+      </span>
+    ) : (
+      <span className="text-sm" style={{ color: 'var(--brand-forest)' }}>0</span>
+    ),
+  },
+  {
+    key: 'friTrend', label: 'Trend',
+    render: (_, f) => <TrendIcon trend={f.friTrend} />,
+  },
+]
+
 // ── Page-level stat card ──────────────────────────────────────────────────────
 function StatCard({ label, value, valueColor, sub }: {
   label: string; value: string | number; valueColor?: string; sub?: string
@@ -108,16 +162,6 @@ function ZoneCard({ zone, count, selected, onClick }: {
         {c.label}
       </span>
     </button>
-  )
-}
-
-function SkeletonRow() {
-  return (
-    <tr className="border-b border-gray-100">
-      {[1,2,3,4,5,6,7].map(i => (
-        <td key={i} className="px-4 py-3"><div className="h-3 bg-gray-100 rounded animate-pulse" /></td>
-      ))}
-    </tr>
   )
 }
 
@@ -801,82 +845,17 @@ export function Main() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 w-56">Farmer</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">FRI Score</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Credit Risk</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Zone</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Baseline</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Check-ins</th>
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Trend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
-              ) : displayed.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">No farmers match the current filters.</td>
-                </tr>
-              ) : (
-                displayed.map(f => (
-                  <tr key={f.id}
-                      onClick={() => openDetail(f)}
-                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer">
-
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-sm" style={{ color: 'var(--brand-forest)' }}>{f.fullName}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--brand-mid)' }}>{f.region} · {f.district}</p>
-                      <p className="text-[11px] mt-0.5 text-gray-400">
-                        {f.primaryCrop}{f.farmSize && f.farmSize !== '0' ? ` · ${f.farmSize}ha` : ''}
-                      </p>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {f.currentFri !== null
-                        ? <span className="text-xl font-bold" style={{ color: friColor(f.currentFri) }}>{f.currentFri}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {f.creditRisk
-                        ? <span className="text-sm font-medium" style={{ color: RISK_COLOR[f.creditRisk] }}>{f.creditRisk}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {f.currentZone ? <ZoneBadge zone={f.currentZone} /> : <span className="text-gray-300">—</span>}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {f.baselineDone
-                        ? <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        : <Clock className="w-4 h-4 text-gray-300" />}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {f.checkinCount > 0 ? (
-                        <span className="flex flex-col leading-tight" style={{ color: 'var(--brand-forest)' }}>
-                          <span className="font-semibold">{f.checkinCount}</span>
-                          <span className="text-[11px] text-gray-400">{f.verifiedCheckins}v</span>
-                        </span>
-                      ) : (
-                        <span className="text-sm" style={{ color: 'var(--brand-forest)' }}>0</span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <TrendIcon trend={f.friTrend} />
-                    </td>
-
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-4">
+          <DatagridTemplate<FRIFarmer>
+            columns={FRI_FARMER_COLUMNS}
+            data={displayed}
+            rowKey="id"
+            isLoading={loading}
+            onRowClick={openDetail}
+            emptyLabel="No farmers match the current filters."
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
         </div>
       </div>
 

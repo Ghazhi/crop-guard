@@ -23,6 +23,8 @@ import {
 import { CardTemplate } from '@/customComponents/CardTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 
 import {
   getFarmerDetail,
@@ -409,6 +411,16 @@ function FriThresholdBar({
 
 // ─── Main widget ──────────────────────────────────────────────────────────────
 
+const RISK_FLAG_COLUMNS: DatagridColumn<RiskFlag>[] = [
+  { key: 'flagType', label: 'Flag Type', render: v => <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{String(v)}</span> },
+  {
+    key: 'severity', label: 'Severity',
+    render: v => <BadgeTemplate label={v === 'high' ? 'High' : 'Medium'} variant={v === 'high' ? 'danger' : 'warning'} dot size="sm" />,
+  },
+  { key: 'description', label: 'Description', render: v => <span style={{ color: 'var(--brand-slate)' }}>{String(v)}</span> },
+  { key: 'createdAt', label: 'Triggered', render: v => <span className="text-xs" style={{ color: 'var(--brand-slate)' }}>{String(v)}</span> },
+]
+
 export function Main({ farmerId }: { farmerId: string }) {
   const router = useRouter()
 
@@ -736,53 +748,14 @@ export function Main({ farmerId }: { farmerId: string }) {
       {flags.length > 0 && (
         <div className="mb-6">
           <CardTemplate title="Active Risk Flags" noPadding>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--brand-mint)' }}>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--brand-slate)' }}>
-                      Flag Type
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--brand-slate)' }}>
-                      Severity
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--brand-slate)' }}>
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold" style={{ color: 'var(--brand-slate)' }}>
-                      Triggered
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {flags.map((flag, idx) => (
-                    <tr
-                      key={flag.id}
-                      style={{
-                        borderBottom: idx < flags.length - 1 ? '1px solid #F3F4F6' : 'none',
-                      }}
-                    >
-                      <td className="px-4 py-3 font-medium" style={{ color: 'var(--brand-forest)' }}>
-                        {flag.flagType}
-                      </td>
-                      <td className="px-4 py-3">
-                        <BadgeTemplate
-                          label={flag.severity === 'high' ? 'High' : 'Medium'}
-                          variant={flag.severity === 'high' ? 'danger' : 'warning'}
-                          dot
-                          size="sm"
-                        />
-                      </td>
-                      <td className="px-4 py-3" style={{ color: 'var(--brand-slate)' }}>
-                        {flag.description}
-                      </td>
-                      <td className="px-4 py-3 text-xs" style={{ color: 'var(--brand-slate)' }}>
-                        {flag.createdAt}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="p-4">
+              <DatagridTemplate<RiskFlag>
+                columns={RISK_FLAG_COLUMNS}
+                data={flags}
+                rowKey="id"
+                defaultPageSize={0}
+                pageSizeOptions={[0]}
+              />
             </div>
           </CardTemplate>
         </div>

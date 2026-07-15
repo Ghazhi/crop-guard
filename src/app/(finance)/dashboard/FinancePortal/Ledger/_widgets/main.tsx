@@ -6,8 +6,33 @@ import { cn } from '@/lib/utils'
 import { SectionCard } from '../../_shared'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { TRANSACTIONS, fmtGHS, txTypeStyle, txStatusStyle, type Transaction } from '../../_data'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 
 const TX_TYPES: Transaction['type'][] = ['Disbursement', 'Repayment', 'Provision', 'Write-off']
+
+const TX_COLUMNS: DatagridColumn<Transaction>[] = [
+  { key: 'date', label: 'Date', render: v => <span className="text-gray-500 text-xs">{String(v)}</span> },
+  {
+    key: 'type', label: 'Type',
+    render: v => <span className={`block text-center text-xs font-semibold px-2 py-0.5 rounded-full border ${txTypeStyle(v as Transaction['type'])}`}>{String(v)}</span>,
+  },
+  { key: 'farmer', label: 'Farmer', render: v => <span className="font-medium text-gray-800">{String(v)}</span> },
+  { key: 'program', label: 'Program', render: v => <span className="text-gray-500 text-xs">{String(v)}</span> },
+  {
+    key: 'amount', label: 'Amount',
+    render: (v, t) => (
+      <span className={`block text-right font-semibold ${t.type === 'Repayment' ? 'text-green-700' : t.type === 'Write-off' ? 'text-red-700' : 'text-gray-800'}`}>
+        {t.type === 'Repayment' ? '+' : '-'}{fmtGHS(Number(v))}
+      </span>
+    ),
+  },
+  { key: 'reference', label: 'Reference', render: v => <span className="text-xs font-mono text-gray-400">{String(v)}</span> },
+  {
+    key: 'status', label: 'Status',
+    render: v => <span className={`block text-center text-xs font-semibold px-2 py-0.5 rounded-full ${txStatusStyle(v as Transaction['status'])}`}>{String(v)}</span>,
+  },
+]
 
 export function Main() {
   const [search, setSearch] = useState('')
@@ -96,40 +121,13 @@ export function Main() {
             <Download className="w-3.5 h-3.5" /> Export
           </button>
         }>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Date</th>
-                <th className="text-center px-4 py-3">Type</th>
-                <th className="text-left px-4 py-3">Farmer</th>
-                <th className="text-left px-4 py-3">Program</th>
-                <th className="text-right px-4 py-3">Amount</th>
-                <th className="text-left px-4 py-3">Reference</th>
-                <th className="text-center px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {displayed.map(t => (
-                <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3 text-gray-500 text-xs">{t.date}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${txTypeStyle(t.type)}`}>{t.type}</span>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{t.farmer}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{t.program}</td>
-                  <td className={`px-4 py-3 text-right font-semibold ${t.type === 'Repayment' ? 'text-green-700' : t.type === 'Write-off' ? 'text-red-700' : 'text-gray-800'}`}>
-                    {t.type === 'Repayment' ? '+' : '-'}{fmtGHS(t.amount)}
-                  </td>
-                  <td className="px-4 py-3 text-xs font-mono text-gray-400">{t.reference}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${txStatusStyle(t.status)}`}>{t.status}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DatagridTemplate<Transaction>
+          columns={TX_COLUMNS}
+          data={displayed}
+          rowKey="id"
+          defaultPageSize={0}
+          pageSizeOptions={[0]}
+        />
       </SectionCard>
     </div>
   )

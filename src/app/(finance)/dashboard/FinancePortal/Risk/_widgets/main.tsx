@@ -3,6 +3,37 @@
 import { SectionCard } from '../../_shared'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { RISK_ENTRIES, fmtGHS, riskBandStyle, type RiskEntry } from '../../_data'
+import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
+import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
+
+const RISK_COLUMNS: DatagridColumn<RiskEntry>[] = [
+  {
+    key: 'name', label: 'Farmer',
+    render: (v, r) => (
+      <div className="flex items-center gap-2.5">
+        <PersonAvatar name={r.name} size={28} />
+        <span className="font-medium text-gray-800">{String(v)}</span>
+      </div>
+    ),
+  },
+  { key: 'program', label: 'Program', render: v => <span className="text-gray-600 text-xs">{String(v)}</span> },
+  { key: 'loanAmount', label: 'Loan', render: v => <span className="block text-right font-medium text-gray-800">{fmtGHS(Number(v))}</span> },
+  {
+    key: 'fri', label: 'FRI',
+    render: (v, r) => (
+      <span className={`block text-center text-xs font-bold px-2 py-0.5 rounded-full ${r.fri < 50 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{String(v)}</span>
+    ),
+  },
+  {
+    key: 'daysOverdue', label: 'Days Overdue',
+    render: (v, r) => <span className={`block text-center text-xs font-bold ${r.daysOverdue > 30 ? 'text-red-700' : 'text-amber-700'}`}>{String(v)}d</span>,
+  },
+  {
+    key: 'riskBand', label: 'Risk Band',
+    render: v => <span className={`block text-center text-xs font-semibold px-2 py-0.5 rounded-full border ${riskBandStyle(v as RiskEntry['riskBand'])}`}>{String(v)}</span>,
+  },
+  { key: 'recommendation', label: 'Recommendation', render: v => <span className="text-xs text-gray-500">{String(v)}</span> },
+]
 
 export function Main() {
   return (
@@ -27,44 +58,14 @@ export function Main() {
       </div>
 
       <SectionCard title="At-Risk Farmer Register">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500 font-semibold uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Farmer</th>
-                <th className="text-left px-4 py-3">Program</th>
-                <th className="text-right px-4 py-3">Loan</th>
-                <th className="text-center px-4 py-3">FRI</th>
-                <th className="text-center px-4 py-3">Days Overdue</th>
-                <th className="text-center px-4 py-3">Risk Band</th>
-                <th className="text-left px-4 py-3">Recommendation</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {RISK_ENTRIES.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <PersonAvatar name={r.name} size={28} />
-                      <span className="font-medium text-gray-800">{r.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{r.program}</td>
-                  <td className="px-4 py-3 text-right font-medium text-gray-800">{fmtGHS(r.loanAmount)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.fri < 50 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{r.fri}</span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-bold ${r.daysOverdue > 30 ? 'text-red-700' : 'text-amber-700'}`}>{r.daysOverdue}d</span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${riskBandStyle(r.riskBand)}`}>{r.riskBand}</span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{r.recommendation}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="p-5">
+          <DatagridTemplate<RiskEntry>
+            columns={RISK_COLUMNS}
+            data={RISK_ENTRIES}
+            rowKey="id"
+            defaultPageSize={0}
+            pageSizeOptions={[0]}
+          />
         </div>
       </SectionCard>
     </div>

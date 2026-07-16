@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   AreaChart, Area,
 } from 'recharts'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 
@@ -134,17 +135,17 @@ export function Main() {
     <div className="min-h-screen p-6 space-y-5" style={{ background: 'var(--brand-gray)' }}>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
             Risk Intelligence
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Identify and monitor at-risk farmers across your program</p>
         </div>
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-gray-600"
+          className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-gray-600 shrink-0"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshed ? 'animate-spin' : ''}`} />
           Refresh
@@ -184,13 +185,13 @@ export function Main() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 flex gap-6">
+      <ScrollTabsTemplate className="border-b border-gray-200 gap-6" fadeColor="gray-100">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={[
-              'pb-2.5 text-sm font-medium border-b-2 transition-colors',
+              'shrink-0 whitespace-nowrap pb-2.5 text-sm font-medium border-b-2 transition-colors',
               tab === t.key
                 ? 'border-(--brand-forest) text-(--brand-forest)'
                 : 'border-transparent text-gray-400 hover:text-gray-600',
@@ -199,7 +200,7 @@ export function Main() {
             {t.label}
           </button>
         ))}
-      </div>
+      </ScrollTabsTemplate>
 
       {/* ── Overview ── */}
       {tab === 'overview' && (

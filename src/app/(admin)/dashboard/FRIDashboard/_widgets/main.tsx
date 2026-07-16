@@ -748,14 +748,14 @@ export function Main() {
     <div className="p-6 space-y-5">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>FRI Dashboard</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
             {loading ? '…' : `${summary?.totalFarmers ?? 0} farmers · ${summary?.scored ?? 0} scored`}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap shrink-0 whitespace-nowrap">
           <button
             onClick={() => setShowCards(s => !s)}
             className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-medium transition-colors ${
@@ -811,8 +811,8 @@ export function Main() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48">
+      <div className="bg-white rounded-xl border border-gray-200 p-3 grid grid-cols-1 sm:flex sm:items-center gap-2">
+        <div className="relative sm:flex-1 sm:min-w-48">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <input
             type="text"
@@ -823,24 +823,26 @@ export function Main() {
             style={{ color: 'var(--brand-slate)' }}
           />
         </div>
-        <select value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterCohort('') }}
-                className={SELECT_CLS} style={SELECT_STYLE}>
-          <option value="">All programs</option>
-          {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <select value={filterCohort} onChange={e => setFilterCohort(e.target.value)}
-                className={SELECT_CLS} style={SELECT_STYLE} disabled={!cohortOptions.length}>
-          <option value="">All cohorts</option>
-          {cohortOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                className={SELECT_CLS} style={SELECT_STYLE}>
-          <option value="">All statuses</option>
-          <option value="scored">Scored</option>
-          <option value="not_scored">Not Scored</option>
-          <option value="baseline_done">Baseline Done</option>
-          <option value="help">Help Requested</option>
-        </select>
+        <div className="grid grid-cols-1 sm:contents gap-2">
+          <select value={filterProgram} onChange={e => { setFilterProgram(e.target.value); setFilterCohort('') }}
+                  className={`w-full sm:w-auto ${SELECT_CLS}`} style={SELECT_STYLE}>
+            <option value="">All programs</option>
+            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select value={filterCohort} onChange={e => setFilterCohort(e.target.value)}
+                  className={`w-full sm:w-auto ${SELECT_CLS}`} style={SELECT_STYLE} disabled={!cohortOptions.length}>
+            <option value="">All cohorts</option>
+            {cohortOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                  className={`w-full sm:w-auto ${SELECT_CLS}`} style={SELECT_STYLE}>
+            <option value="">All statuses</option>
+            <option value="scored">Scored</option>
+            <option value="not_scored">Not Scored</option>
+            <option value="baseline_done">Baseline Done</option>
+            <option value="help">Help Requested</option>
+          </select>
+        </div>
       </div>
 
       {/* Table */}

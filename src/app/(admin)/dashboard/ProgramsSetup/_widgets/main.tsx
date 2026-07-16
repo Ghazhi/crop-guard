@@ -879,6 +879,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
   const [addCohortOpen,   setAddCohortOpen]   = useState(false)
   const [deleteCohortTarget,  setDeleteCohortTarget]  = useState<{ id: string; name: string } | null>(null)
   const [unassignAgentTarget, setUnassignAgentTarget] = useState<{ cohortId: string; agentName: string } | null>(null)
+  const [statusTarget, setStatusTarget] = useState<Program | null>(null)
   const toast = useToast()
 
   const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
@@ -900,10 +901,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
   }
 
   function handleToggleStatus() {
-    const next: Program['status'] = isActive ? 'Inactive' : 'Active'
-    const updated = { ...program, status: next }
-    onUpdate(updated)
-    toast.success(`${program.name} ${next === 'Active' ? 'activated' : 'deactivated'}`)
+    setStatusTarget(program)
   }
 
   return (
@@ -1061,6 +1059,23 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         }}
         onCancel={() => setUnassignAgentTarget(null)}
       />
+
+      <ConfirmModal
+        open={statusTarget !== null}
+        title={statusTarget?.status === 'Active' ? 'Deactivate Program' : 'Activate Program'}
+        message={`Are you sure you want to ${statusTarget?.status === 'Active' ? 'deactivate' : 'activate'} "${statusTarget?.name}"?`}
+        confirmLabel={statusTarget?.status === 'Active' ? 'Deactivate' : 'Activate'}
+        variant="warning"
+        onConfirm={() => {
+          if (statusTarget) {
+            const next: Program['status'] = statusTarget.status === 'Active' ? 'Inactive' : 'Active'
+            onUpdate({ ...statusTarget, status: next })
+            toast.success(`${statusTarget.name} ${next === 'Active' ? 'activated' : 'deactivated'}`)
+          }
+          setStatusTarget(null)
+        }}
+        onCancel={() => setStatusTarget(null)}
+      />
     </>
   )
 }
@@ -1084,6 +1099,7 @@ function ProgramListRow({ program, onUpdate }: {
   onUpdate: (updated: Program) => void
 }) {
   const [programMode, setProgramMode] = useState<'view' | 'edit' | null>(null)
+  const [statusTarget, setStatusTarget] = useState<Program | null>(null)
   const toast = useToast()
 
   const totalEnrolled = program.cohorts.reduce((s, c) => s + c.enrolledCount, program.enrolledCount)
@@ -1092,9 +1108,7 @@ function ProgramListRow({ program, onUpdate }: {
   const statusVariant = program.status === 'Active' ? 'success' : program.status === 'Completed' ? 'info' : 'neutral'
 
   function handleToggleStatus() {
-    const next: Program['status'] = isActive ? 'Inactive' : 'Active'
-    onUpdate({ ...program, status: next })
-    toast.success(`${program.name} ${next === 'Active' ? 'activated' : 'deactivated'}`)
+    setStatusTarget(program)
   }
 
   return (
@@ -1134,6 +1148,23 @@ function ProgramListRow({ program, onUpdate }: {
         onClose={() => setProgramMode(null)}
         onModeChange={setProgramMode}
         onSave={data => onUpdate({ ...program, ...data })}
+      />
+
+      <ConfirmModal
+        open={statusTarget !== null}
+        title={statusTarget?.status === 'Active' ? 'Deactivate Program' : 'Activate Program'}
+        message={`Are you sure you want to ${statusTarget?.status === 'Active' ? 'deactivate' : 'activate'} "${statusTarget?.name}"?`}
+        confirmLabel={statusTarget?.status === 'Active' ? 'Deactivate' : 'Activate'}
+        variant="warning"
+        onConfirm={() => {
+          if (statusTarget) {
+            const next: Program['status'] = statusTarget.status === 'Active' ? 'Inactive' : 'Active'
+            onUpdate({ ...statusTarget, status: next })
+            toast.success(`${statusTarget.name} ${next === 'Active' ? 'activated' : 'deactivated'}`)
+          }
+          setStatusTarget(null)
+        }}
+        onCancel={() => setStatusTarget(null)}
       />
     </>
   )

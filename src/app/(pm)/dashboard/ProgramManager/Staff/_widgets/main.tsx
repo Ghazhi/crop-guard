@@ -314,6 +314,7 @@ export function Main() {
           emptyLabel="No agents match your filters."
           defaultPageSize={0}
           pageSizeOptions={[0]}
+          hideFooter
         />
 
         <PaginationBar

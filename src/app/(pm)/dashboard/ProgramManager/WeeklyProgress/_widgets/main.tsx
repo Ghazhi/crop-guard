@@ -476,6 +476,7 @@ export function Main() {
           emptyLabel="No cohorts match your filters."
           defaultPageSize={0}
           pageSizeOptions={[0]}
+          hideFooter
         />
 
         <PaginationBar

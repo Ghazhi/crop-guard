@@ -18,6 +18,7 @@ import { CheckboxTemplate }     from '@/customComponents/CheckboxTemplate'
 import { FileUploadTemplate }   from '@/customComponents/FileUploadTemplate'
 import { fetchCommunities, fetchCooperatives, fetchRegions } from '../_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import type {
   Community, Cooperative, RegionOption, SocialAmenities, AmenityEntry,
 } from '../_logics/interface'
@@ -797,11 +798,13 @@ export function Main() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Community Profiling</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
-          Manage community profiles and farmer cooperative/group registrations.
-        </p>
+      <div className="flex flex-wrap items-start gap-2 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Community Profiling</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
+            Manage community profiles and farmer cooperative/group registrations.
+          </p>
+        </div>
       </div>
 
       {/* Overview stats */}
@@ -823,14 +826,14 @@ export function Main() {
 
       {/* Tabs + grid toggle */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex gap-1 p-1 rounded-full border border-gray-200 bg-gray-50 w-fit">
+        <ScrollTabsTemplate className="gap-1 p-1 rounded-full border border-gray-200 bg-gray-50 max-w-full" fadeColor="gray-50">
           {([
             { key: 'communities',  label: 'Communities',  icon: MapPin },
             { key: 'cooperatives', label: 'Cooperatives', icon: Users  },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button key={key}
               onClick={() => { setTab(key); setSearch('') }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap shrink-0"
               style={tab === key
                 ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
                 : { color: '#6b7280' }}
@@ -838,9 +841,9 @@ export function Main() {
               <Icon className="w-3.5 h-3.5" />{label}
             </button>
           ))}
-        </div>
+        </ScrollTabsTemplate>
 
-        <div className="flex gap-0.5 p-1 rounded-lg border border-gray-200 bg-gray-50">
+        <div className="flex gap-0.5 p-1 rounded-lg border border-gray-200 bg-gray-50 shrink-0">
           <button
             onClick={() => setViewMode('card')}
             title="Card view"
@@ -865,8 +868,8 @@ export function Main() {
       </div>
 
       {/* Search + action */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 bg-white"
@@ -874,21 +877,23 @@ export function Main() {
             value={search} onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <ButtonTemplate
-          variant="secondary" size="sm"
-          leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
-          rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
-          label="Overview"
-          onClick={() => setStatsOpen(v => !v)}
-        />
-        <ButtonTemplate variant="primary" size="sm"
-          label={tab === 'communities' ? 'New Community' : 'New Cooperative'}
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => {
-            if (tab === 'communities') { setCommSheet({ community: null, mode: 'edit' }) }
-            else                       { setCoopSheet({ coop: null, mode: 'edit' }) }
-          }}
-        />
+        <div className="flex items-center gap-3">
+          <ButtonTemplate
+            variant="secondary" size="sm"
+            leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
+            rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
+            label="Overview"
+            onClick={() => setStatsOpen(v => !v)}
+          />
+          <ButtonTemplate variant="primary" size="sm"
+            label={tab === 'communities' ? 'New Community' : 'New Cooperative'}
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => {
+              if (tab === 'communities') { setCommSheet({ community: null, mode: 'edit' }) }
+              else                       { setCoopSheet({ coop: null, mode: 'edit' }) }
+            }}
+          />
+        </div>
       </div>
 
       {/* Pagination */}

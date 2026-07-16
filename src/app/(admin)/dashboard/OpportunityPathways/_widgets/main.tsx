@@ -772,7 +772,7 @@ function InterventionCard({ intervention: iv, onSuspend, onEnroll, onDelete }: O
       </div>
 
       {/* Action bar */}
-      <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+      <div className="px-4 py-2.5 border-t border-gray-100 flex items-center flex-wrap gap-1.5" onClick={e => e.stopPropagation()}>
         <ButtonTemplate
           variant="ghost" size="sm" isIcon tooltip={iv.status === 'Suspended' ? 'Activate' : 'Suspend'}
           leftIcon={<PauseCircle className="w-3.5 h-3.5" />}
@@ -971,14 +971,14 @@ export function Main() {
     <div className="min-h-screen bg-(--brand-gray) p-6 space-y-5">
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>Opportunity Pathways</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-dark)' }}>
             {loading ? 'Loading…' : `${interventions.length} opportunit${interventions.length === 1 ? 'y' : 'ies'} configured`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center flex-wrap gap-2 shrink-0">
           <ButtonTemplate
             variant="secondary" size="sm"
             leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
@@ -1019,8 +1019,8 @@ export function Main() {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex items-center flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[10rem]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors bg-white"

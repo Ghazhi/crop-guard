@@ -127,6 +127,7 @@ export function Main() {
           rowKey="id"
           defaultPageSize={0}
           pageSizeOptions={[0]}
+          hideFooter
         />
       </SectionCard>
     </div>

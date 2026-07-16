@@ -22,6 +22,7 @@ import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { PROGRAMS } from '@/dataCenter/programs'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 import type { Intervention, EnrolledCohort } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
@@ -650,30 +651,32 @@ function LinkedInterventionsTab({
   return (
     <div className="space-y-4">
       {/* Filter bar */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative flex-1 min-w-45">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:items-center">
+        <div className="relative w-full sm:flex-1 sm:min-w-45">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search opportunities…"
             className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-green-200" />
         </div>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="h-9 text-xs rounded-lg border border-gray-200 bg-white px-3 pr-7 appearance-none focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer">
-          <option value="">All Types</option>
-          {['Input Loan','Cash Loan','Insurance','Advisory','Market Access'].map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="h-9 text-xs rounded-lg border border-gray-200 bg-white px-3 pr-7 appearance-none focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer">
-          <option value="">All Statuses</option>
-          {['Active','Draft','Suspended'].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        {programOptions.length > 0 && (
-          <select value={filterProgram} onChange={e => setFilterProgram(e.target.value)}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <select value={filterType} onChange={e => setFilterType(e.target.value)}
             className="h-9 text-xs rounded-lg border border-gray-200 bg-white px-3 pr-7 appearance-none focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer">
-            <option value="">All Programmes</option>
-            {programOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <option value="">All Types</option>
+            {['Input Loan','Cash Loan','Insurance','Advisory','Market Access'].map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-        )}
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+            className="h-9 text-xs rounded-lg border border-gray-200 bg-white px-3 pr-7 appearance-none focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer">
+            <option value="">All Statuses</option>
+            {['Active','Draft','Suspended'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {programOptions.length > 0 && (
+            <select value={filterProgram} onChange={e => setFilterProgram(e.target.value)}
+              className="h-9 text-xs rounded-lg border border-gray-200 bg-white px-3 pr-7 appearance-none focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer">
+              <option value="">All Programmes</option>
+              {programOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          )}
+        </div>
         {anyFilter && (
           <button onClick={() => { setSearch(''); setFilterType(''); setFilterStatus(''); setFilterProgram('') }}
             className="h-9 px-3 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors">
@@ -681,7 +684,7 @@ function LinkedInterventionsTab({
           </button>
         )}
         <button onClick={onAssign}
-          className="h-9 px-3 flex items-center gap-1.5 text-xs font-semibold text-white rounded-lg transition-colors ml-auto"
+          className="h-9 px-3 flex items-center gap-1.5 text-xs font-semibold text-white rounded-lg transition-colors sm:ml-auto"
           style={{ backgroundColor: 'var(--brand-forest)' }}>
           <Plus className="w-3.5 h-3.5" /> Assign Opportunity
         </button>
@@ -1130,11 +1133,11 @@ export function Main({ partnerId }: { partnerId: string }) {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <ScrollTabsTemplate className="gap-1 border-b border-gray-200" fadeColor="white">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={[
-              'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px',
+              'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px shrink-0 whitespace-nowrap',
               activeTab === id
                 ? 'border-green-600 text-green-700'
                 : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300',
@@ -1143,7 +1146,7 @@ export function Main({ partnerId }: { partnerId: string }) {
             {label}
           </button>
         ))}
-      </div>
+      </ScrollTabsTemplate>
 
       {/* Tab content */}
       {activeTab === 'programs' && (

@@ -21,6 +21,7 @@ import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -352,6 +353,7 @@ function VerificationProgressTab() {
             rowKey="id"
             defaultPageSize={0}
             pageSizeOptions={[0]}
+            hideFooter
           />
         )}
 
@@ -472,6 +474,7 @@ function ReviewQueueTab() {
             rowKey="id"
             defaultPageSize={0}
             pageSizeOptions={[0]}
+            hideFooter
           />
         )}
 
@@ -597,6 +600,7 @@ function RevisitRequiredTab() {
             rowKey="id"
             defaultPageSize={0}
             pageSizeOptions={[0]}
+            hideFooter
           />
         )}
 
@@ -697,6 +701,7 @@ function ResolvedDisputesTab() {
             rowKey="id"
             defaultPageSize={0}
             pageSizeOptions={[0]}
+            hideFooter
           />
         )}
 
@@ -821,6 +826,7 @@ function SupportRequestsTab() {
             rowKey="id"
             defaultPageSize={0}
             pageSizeOptions={[0]}
+            hideFooter
           />
         )}
 
@@ -887,13 +893,13 @@ export function Main() {
       </div>
 
       {/* Tab nav */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit overflow-x-auto">
+      <ScrollTabsTemplate className="gap-1 bg-gray-100 rounded-xl p-1 max-w-full" fadeColor="gray-100">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap',
+              'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0',
               tab === t.id
                 ? 'bg-white shadow-sm text-gray-900'
                 : 'text-gray-500 hover:text-gray-700'
@@ -902,7 +908,7 @@ export function Main() {
             {t.label}
           </button>
         ))}
-      </div>
+      </ScrollTabsTemplate>
 
       {/* Tab content */}
       {tab === 'progress' && <VerificationProgressTab />}

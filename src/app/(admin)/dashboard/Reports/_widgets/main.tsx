@@ -15,6 +15,7 @@ import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { PROGRAMS } from '@/dataCenter/programs'
 import { AGENTS } from '@/dataCenter/agents'
 import { DASHBOARD_STATS, ZONE_BREAKDOWN } from '@/dataCenter/stats'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 
 // ─── derived data ─────────────────────────────────────────────────────────────
 
@@ -174,11 +175,11 @@ export function Main() {
           </p>
         </div>
         {tab === 'overview' && (
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <select
               value={programFilter}
               onChange={e => setProgramFilter(e.target.value)}
-              className="h-8 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none"
+              className="h-8 px-3 text-sm border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none w-full sm:w-auto min-w-0"
             >
               <option value="all">All programs</option>
               {PROGRAMS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -197,12 +198,12 @@ export function Main() {
       </div>
 
       {/* tabs */}
-      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6">
+      <ScrollTabsTemplate className="gap-1 bg-gray-100 rounded-xl p-1 max-w-fit mb-6" fadeColor="white">
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all shrink-0 whitespace-nowrap ${
               tab === id
                 ? 'bg-white shadow-sm text-gray-900'
                 : 'text-gray-500 hover:text-gray-700'
@@ -212,7 +213,7 @@ export function Main() {
             {label}
           </button>
         ))}
-      </div>
+      </ScrollTabsTemplate>
 
       {/* ── Platform Overview ── */}
       {tab === 'overview' && (

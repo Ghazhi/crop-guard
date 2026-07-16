@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Plus, MapPin, Mail, Building2, ChevronRight, ChevronDown, ChevronUp, Eye, Trash2, Calendar, Layers, Pencil, CheckCircle2, Clock, X, SlidersHorizontal, Users, Wallet, Check, BarChart2 } from 'lucide-react'
+import { Search, Plus, MapPin, Mail, Building2, ChevronRight, ChevronDown, Eye, Trash2, Calendar, Layers, Pencil, CheckCircle2, Clock, X, SlidersHorizontal, Users, Wallet, Check } from 'lucide-react'
 import Link from 'next/link'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
@@ -19,7 +19,6 @@ import type { PartnerStatus } from '@/dataCenter/partners'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 import { cn } from '@/lib/utils'
-import { usePersistedState } from '@/lib/usePersistedState'
 
 interface Partner {
   id: string; name: string; type: string; region: string
@@ -912,7 +911,6 @@ export function Main() {
   const [baselinePartnerFilter, setBaselinePartnerFilter] = useState('')
   const [baselineSheetOpen,     setBaselineSheetOpen]     = useState(false)
   const [baselineSheetPartnerId, setBaselineSheetPartnerId] = useState<string | undefined>(undefined)
-  const [statsOpen, setStatsOpen] = usePersistedState('partners-stats', false)
   // bumped whenever a baseline is saved, to force a re-render of rows/badges reading the module-level store
   const [, setBaselineVersion] = useState(0)
 
@@ -949,7 +947,7 @@ export function Main() {
     },
     {
       key: 'type', label: 'Type',
-      render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{String(v)}</span>,
+      render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">{String(v)}</span>,
     },
     {
       key: 'contact', label: 'Primary Contact',
@@ -1017,25 +1015,18 @@ export function Main() {
     <div className="p-6 space-y-5">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900">Partners</h1>
           <p className="text-sm text-gray-500 mt-0.5">{partners.length} registered partner organisations</p>
         </div>
-        <div className="flex items-center gap-2">
-          <ButtonTemplate
-            variant="secondary" size="md"
-            leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
-            rightIcon={<ChevronUp className={cn('w-3.5 h-3.5 transition-transform', !statsOpen && 'rotate-180')} />}
-            label="Overview"
-            onClick={() => setStatsOpen(v => !v)}
-          />
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <button onClick={() => { setBaselineSheetPartnerId(undefined); setBaselineSheetOpen(true) }}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap">
             <Wallet className="w-4 h-4" /> Create Baseline
           </button>
           <button onClick={() => setSheetOpen(true)}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"
             style={{ backgroundColor: 'var(--brand-forest)' }}>
             <Plus className="w-4 h-4" /> Add Partner
           </button>
@@ -1043,26 +1034,24 @@ export function Main() {
       </div>
 
       {/* Overview stats bar */}
-      {statsOpen && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
-          {[
-            { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
-            { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
-            { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
-            { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
-          ].map(({ icon: Icon, bg, color, value, label }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{label}</p>
-              </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
+        {[
+          { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
+          { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
+          { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
+          { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
+        ].map(({ icon: Icon, bg, color, value, label }) => (
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
+              <Icon className={`w-4 h-4 ${color}`} />
             </div>
-          ))}
-        </div>
-      )}
+            <div>
+              <p className="text-lg font-bold text-gray-900 leading-none">{value}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Filters */}
       {/* Filters + Table */}
@@ -1139,9 +1128,9 @@ export function Main() {
         </div>
 
         {/* Pagination row */}
-        <div className="px-5 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="px-5 py-2.5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-50/50">
           <p className="text-xs text-gray-400">{filtered.length} partner{filtered.length !== 1 ? 's' : ''}</p>
-          <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
+          <PaginationBar className="w-full sm:w-auto" page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
         </div>
 
         {displayed.length === 0 ? (
@@ -1157,6 +1146,7 @@ export function Main() {
               rowKey="id"
               defaultPageSize={0}
               pageSizeOptions={[0]}
+              hideFooter
             />
           </div>
         )}

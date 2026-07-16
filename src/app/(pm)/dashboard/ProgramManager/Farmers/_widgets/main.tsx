@@ -1230,7 +1230,7 @@ function DonutChart({ data }: { data: { name: string; value: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={160}>
       <PieChart>
-        <Pie data={filled} cx="50%" cy="45%" innerRadius={45} outerRadius={65}
+        <Pie data={filled} cx="50%" cy="45%" innerRadius="45%" outerRadius="65%"
           dataKey="value" paddingAngle={2}>
           {filled.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>

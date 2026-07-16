@@ -38,6 +38,8 @@ export interface DatagridTemplateProps<T> {
   isLoading?: boolean
   /** Optional row click handler */
   onRowClick?: (row: T) => void
+  /** Hides the built-in pagination footer — use when the caller already renders its own pagination controls around pre-sliced data */
+  hideFooter?: boolean
   className?: string
 }
 
@@ -67,6 +69,7 @@ export function DatagridTemplate<T>({
   emptyLabel = 'No records found',
   isLoading = false,
   onRowClick,
+  hideFooter = false,
   className,
 }: DatagridTemplateProps<T>) {
   const [page,     setPage]     = useState(1)
@@ -132,8 +135,8 @@ export function DatagridTemplate<T>({
     <div className={cn('flex flex-col gap-0', className)}>
 
       {/* ── Paginate footer ──────────────────────────────────────────────────── */}
-      {mode === 'paginate' && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-xs text-gray-500">
+      {mode === 'paginate' && !hideFooter && (
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500">
 
           {/* Left: rows per page */}
           <div className="flex flex-wrap items-center gap-2">
@@ -148,7 +151,7 @@ export function DatagridTemplate<T>({
                 <option key={n} value={n}>{n === 0 ? 'All' : n}</option>
               ))}
             </select>
-            <span className="text-gray-400 whitespace-nowrap">
+            <span className="text-gray-400 whitespace-nowrap ml-auto sm:ml-0">
               {data.length === 0
                 ? '0 records'
                 : pageSize === 0
@@ -159,13 +162,13 @@ export function DatagridTemplate<T>({
 
           {/* Right: page controls (hidden when showing all) */}
           {pageSize !== 0 && totalPages > 1 && (
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="flex items-center justify-between sm:justify-end gap-1 w-full sm:w-auto">
               {/* First */}
               <button
                 onClick={() => setPage(1)}
                 disabled={page === 1}
                 title="First page"
-                className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronsLeft className="w-3.5 h-3.5" />
               </button>
@@ -174,22 +177,22 @@ export function DatagridTemplate<T>({
                 onClick={() => setPage(p => p - 1)}
                 disabled={page === 1}
                 title="Previous page"
-                className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
 
               {/* Numbered pages */}
-              <div className="flex items-center gap-0.5 mx-1">
+              <div className="flex items-center gap-0.5 sm:mx-1">
                 {pageRange(page, totalPages).map((p, i) =>
                   p === '…' ? (
-                    <span key={`ellipsis-${i}`} className="w-7 text-center text-gray-400 select-none">…</span>
+                    <span key={`ellipsis-${i}`} className="w-5 sm:w-7 text-center text-gray-400 select-none">…</span>
                   ) : (
                     <button
                       key={p}
                       onClick={() => setPage(p)}
                       className={cn(
-                        'h-7 min-w-7 rounded-md px-1.5 font-medium transition-colors text-xs',
+                        'h-7 min-w-6 sm:min-w-7 rounded-md px-1 sm:px-1.5 font-medium transition-colors text-[11px] sm:text-xs',
                         p === page
                           ? 'text-white shadow-sm'
                           : 'hover:bg-gray-100 text-gray-600',
@@ -207,7 +210,7 @@ export function DatagridTemplate<T>({
                 onClick={() => setPage(p => p + 1)}
                 disabled={page === totalPages}
                 title="Next page"
-                className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -216,7 +219,7 @@ export function DatagridTemplate<T>({
                 onClick={() => setPage(totalPages)}
                 disabled={page === totalPages}
                 title="Last page"
-                className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronsRight className="w-3.5 h-3.5" />
               </button>
@@ -227,7 +230,7 @@ export function DatagridTemplate<T>({
 
       {/* Table — scrolls horizontally on narrow screens */}
       <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm [-webkit-overflow-scrolling:touch] scrollbar-thin">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" style={{ minWidth: `${columns.length * 120}px` }}>
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80">
               {columns.map(col => (
@@ -246,7 +249,7 @@ export function DatagridTemplate<T>({
       </div>
 
       {/* ── Load-more footer ─────────────────────────────────────────────────── */}
-      {mode === 'load-more' && !isLoading && data.length > 0 && (
+      {mode === 'load-more' && !isLoading && !hideFooter && data.length > 0 && (
         <div className="mt-3 flex flex-col items-center gap-2">
           {remaining > 0 && (
             <button

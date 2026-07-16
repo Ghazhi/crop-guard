@@ -38,10 +38,10 @@ export function PaginationBar({
   if (total === 0) return null
 
   return (
-    <div className={cn('flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500', className)}>
+    <div className={cn('flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 text-xs text-gray-500', className)}>
       {/* Left: rows per page + count */}
-      <div className="flex items-center gap-2">
-        <span className="text-gray-400">Per page</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-gray-400 whitespace-nowrap">Per page</span>
         <select
           value={pageSize}
           onChange={e => { onPageSizeChange(Number(e.target.value)); onPageChange(1) }}
@@ -52,7 +52,7 @@ export function PaginationBar({
             <option key={n} value={n}>{n === 0 ? 'All' : n}</option>
           ))}
         </select>
-        <span className="text-gray-400">
+        <span className="text-gray-400 whitespace-nowrap ml-auto sm:ml-0">
           {pageSize === 0
             ? `All ${total}`
             : `${start + 1}–${Math.min(start + pageSize, total)} of ${total}`}
@@ -61,22 +61,22 @@ export function PaginationBar({
 
       {/* Right: page buttons (hidden when showing all or single page) */}
       {pageSize !== 0 && totalPages > 1 && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between sm:justify-end gap-1 w-full sm:w-auto">
           <button onClick={() => onPageChange(1)} disabled={page === 1}
-            className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronsLeft className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => onPageChange(page - 1)} disabled={page === 1}
-            className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          <div className="flex items-center gap-0.5 mx-1">
+          <div className="flex items-center gap-0.5 sm:mx-1">
             {getPageRange(page, totalPages).map((p, i) =>
               p === '…' ? (
-                <span key={`e${i}`} className="w-7 text-center text-gray-400 select-none">…</span>
+                <span key={`e${i}`} className="w-5 sm:w-7 text-center text-gray-400 select-none">…</span>
               ) : (
                 <button key={p} onClick={() => onPageChange(p)}
-                  className={cn('h-7 min-w-7 rounded-md px-1.5 font-medium transition-colors text-xs',
+                  className={cn('h-7 min-w-6 sm:min-w-7 rounded-md px-1 sm:px-1.5 font-medium transition-colors text-[11px] sm:text-xs',
                     p === page ? 'text-white shadow-sm' : 'hover:bg-gray-100 text-gray-600')}
                   style={p === page ? { backgroundColor: 'var(--brand-forest)' } : {}}>
                   {p}
@@ -85,11 +85,11 @@ export function PaginationBar({
             )}
           </div>
           <button onClick={() => onPageChange(page + 1)} disabled={page === totalPages}
-            className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => onPageChange(totalPages)} disabled={page === totalPages}
-            className="rounded p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+            className="rounded p-1 sm:p-1.5 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronsRight className="w-3.5 h-3.5" />
           </button>
         </div>

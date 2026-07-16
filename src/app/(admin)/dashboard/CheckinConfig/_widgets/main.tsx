@@ -22,6 +22,7 @@ import {
   cloneWeeks,
   freshConfig,
 } from '@/dataCenter/checkinConfig'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { PARTNERS } from '@/dataCenter/partners'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
@@ -860,12 +861,12 @@ export function Main() {
     <div className="flex flex-col gap-4 p-6">
       {/* page header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <ClipboardCheck className="w-5 h-5" style={{ color: 'var(--brand-forest)' }} />
-            <h1 className="text-xl font-bold text-gray-900">Check-in Configuration</h1>
+            <ClipboardCheck className="w-5 h-5 shrink-0" style={{ color: 'var(--brand-forest)' }} />
+            <h1 className="text-xl font-bold text-gray-900 truncate">Check-in Configuration</h1>
           </div>
-          <p className="text-sm text-gray-500 ml-7">Configure weekly check-in questions, cohort schedules, and baseline activities</p>
+          <p className="text-sm text-gray-500 ml-7 truncate">Configure weekly check-in questions, cohort schedules, and baseline activities</p>
         </div>
       </div>
 
@@ -873,26 +874,49 @@ export function Main() {
       <div className="flex flex-col md:flex-row gap-5 items-start">
 
         {/* left section nav */}
-        <div className="flex flex-row md:flex-col gap-1 w-full md:w-48 md:shrink-0 overflow-x-auto pb-1 md:pb-0">
-          {SECTION_NAV.map(({ id, Icon, label, sub }) => {
-            const active = section === id
-            return (
-              <button
-                key={id}
-                onClick={() => setSection(id)}
-                className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                  active ? 'text-white' : 'hover:bg-gray-100 text-gray-700'
-                }`}
-                style={active ? { background: 'var(--brand-forest)' } : {}}
-              >
-                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${active ? 'text-white' : 'text-gray-400'}`} />
-                <div>
-                  <p className={`text-xs font-semibold leading-tight ${active ? 'text-white' : 'text-gray-800'}`}>{label}</p>
-                  <p className={`text-[10px] mt-0.5 leading-tight ${active ? 'text-white/70' : 'text-gray-400'}`}>{sub}</p>
-                </div>
-              </button>
-            )
-          })}
+        <div className="w-full md:w-48 md:shrink-0 min-w-0">
+          <div className="hidden md:flex md:flex-col gap-1">
+            {SECTION_NAV.map(({ id, Icon, label, sub }) => {
+              const active = section === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSection(id)}
+                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                    active ? 'text-white' : 'hover:bg-gray-100 text-gray-700'
+                  }`}
+                  style={active ? { background: 'var(--brand-forest)' } : {}}
+                >
+                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${active ? 'text-white' : 'text-gray-400'}`} />
+                  <div>
+                    <p className={`text-xs font-semibold leading-tight ${active ? 'text-white' : 'text-gray-800'}`}>{label}</p>
+                    <p className={`text-[10px] mt-0.5 leading-tight ${active ? 'text-white/70' : 'text-gray-400'}`}>{sub}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <ScrollTabsTemplate className="md:hidden gap-1 pb-1" fadeColor="gray-50">
+            {SECTION_NAV.map(({ id, Icon, label, sub }) => {
+              const active = section === id
+              return (
+                <button
+                  key={id}
+                  onClick={() => setSection(id)}
+                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors shrink-0 whitespace-nowrap ${
+                    active ? 'text-white' : 'hover:bg-gray-100 text-gray-700'
+                  }`}
+                  style={active ? { background: 'var(--brand-forest)' } : {}}
+                >
+                  <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${active ? 'text-white' : 'text-gray-400'}`} />
+                  <div>
+                    <p className={`text-xs font-semibold leading-tight ${active ? 'text-white' : 'text-gray-800'}`}>{label}</p>
+                    <p className={`text-[10px] mt-0.5 leading-tight ${active ? 'text-white/70' : 'text-gray-400'}`}>{sub}</p>
+                  </div>
+                </button>
+              )
+            })}
+          </ScrollTabsTemplate>
         </div>
 
         {/* main content */}

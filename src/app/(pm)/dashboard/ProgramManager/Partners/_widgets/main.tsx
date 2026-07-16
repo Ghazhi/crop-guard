@@ -902,13 +902,13 @@ export function Main() {
     <div className="p-6 space-y-5">
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900">Partners</h1>
           <p className="text-sm text-gray-500 mt-0.5">{partners.length} registered partner organisations</p>
         </div>
         <button onClick={() => setSheetOpen(true)}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 flex-wrap shrink-0 self-start"
           style={{ backgroundColor: 'var(--brand-forest)' }}>
           <Plus className="w-4 h-4" /> Add Partner
         </button>
@@ -1001,9 +1001,9 @@ export function Main() {
         </div>
 
         {/* Pagination row */}
-        <div className="px-5 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="px-5 py-2.5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-50/50">
           <p className="text-xs text-gray-400">{filtered.length} partner{filtered.length !== 1 ? 's' : ''}</p>
-          <PaginationBar page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
+          <PaginationBar className="w-full sm:w-auto" page={page} pageSize={pageSize} total={filtered.length} onPageChange={setPage} onPageSizeChange={ps => { setPageSize(ps); setPage(1) }} />
         </div>
 
         {displayed.length === 0 ? (
@@ -1019,6 +1019,7 @@ export function Main() {
               rowKey="id"
               defaultPageSize={0}
               pageSizeOptions={[0]}
+              hideFooter
             />
           </div>
         )}

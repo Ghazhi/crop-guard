@@ -32,7 +32,7 @@ const SELECT_STYLE = {
   backgroundPosition: 'right 8px center',
 }
 
-const SELECT_CLS = 'h-9 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 cursor-pointer'
+const SELECT_CLS = 'w-full h-10 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-8 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors cursor-pointer'
 
 // ── Add Agent to Cohort sheet ─────────────────────────────────────────────────
 
@@ -530,8 +530,8 @@ export function Main() {
     <div className="p-6 space-y-6" style={{ background: 'var(--brand-gray)', minHeight: '100vh' }}>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Agent Assignments</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
             {loading ? '…' : (
@@ -542,7 +542,7 @@ export function Main() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ButtonTemplate
             variant="secondary" size="sm"
             leftIcon={<BarChart2 className="w-3.5 h-3.5" />}
@@ -578,11 +578,11 @@ export function Main() {
           {[0, 1, 2, 3].map(i => <div key={i} className="h-44 w-64 shrink-0 rounded-2xl bg-gray-200 animate-pulse" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 scrollbar-hide">
           {agents
             .filter(a => !filterAgent || filterAgent === a.id)
             .map(a => (
-              <div key={a.id}>
+              <div key={a.id} className="w-72 shrink-0 sm:w-auto sm:shrink">
                 <AgentCard agent={a}
                   isActive={filterAgent === a.id}
                   onFilter={() => setFilterAgent(prev => prev === a.id ? '' : a.id)}

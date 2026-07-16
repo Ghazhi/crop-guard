@@ -1218,7 +1218,7 @@ function DonutChart({ data }: { data: { name: string; value: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={160}>
       <PieChart>
-        <Pie data={filled} cx="50%" cy="45%" innerRadius={45} outerRadius={65}
+        <Pie data={filled} cx="50%" cy="45%" innerRadius="45%" outerRadius="65%"
           dataKey="value" paddingAngle={2}>
           {filled.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         </Pie>
@@ -1470,14 +1470,14 @@ export function Main() {
     <div className="p-6 space-y-5" style={{ background: 'var(--brand-gray)', minHeight: '100vh' }}>
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Farmer Management</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
             {loading ? '…' : `${farmers.length} farmers`}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <ButtonTemplate
             variant="secondary" size="sm"
             label="Overview"
@@ -1512,8 +1512,8 @@ export function Main() {
 
       {/* ── Filters ─────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors"
@@ -1605,8 +1605,8 @@ export function Main() {
 
       {/* ── Select-all bar ───────────────────────────────────────────────────── */}
       {!loading && displayed.length > 0 && (
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap px-1">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex flex-col gap-0.5">
               <button
                 onClick={() => selected.size === displayed.length ? clearAll() : selectAll()}
@@ -1644,7 +1644,7 @@ export function Main() {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <ButtonTemplate variant="outline" size="sm" label="Export"
               leftIcon={<Download className="w-3.5 h-3.5" />} />
             <ButtonTemplate variant="outline" size="sm" label="Bulk Upload"

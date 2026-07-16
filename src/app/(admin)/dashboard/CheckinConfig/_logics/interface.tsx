@@ -1,5 +1,5 @@
 export type Pillar  = 'agronomy' | 'climate_smart' | 'advisory_commitment' | 'farm_enterprise'
-export type Section = 'weekly' | 'cohort' | 'baseline' | 'crops'
+export type Section = 'weekly' | 'checkinLists' | 'cohort' | 'baseline' | 'crops'
 
 export interface CropDef {
   id:       string
@@ -14,6 +14,7 @@ export interface CohortSchedule {
   programName:    string
   cohortId:       string
   cohortName:     string
+  cropIds:        string[]
   mode:           'start_now' | 'scheduled'
   scheduledDate?: string
   endDate?:       string

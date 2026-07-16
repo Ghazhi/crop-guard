@@ -943,8 +943,8 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         </div>
 
         {/* Actions bar */}
-        <div className="flex items-center justify-between px-6 py-2.5 border-t border-gray-100">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap px-6 py-2.5 border-t border-gray-100">
+          <div className="flex items-center gap-2 flex-wrap">
             <ButtonTemplate
               variant="outline" size="sm" isIcon tooltip="View"
               leftIcon={<Eye className="w-3.5 h-3.5" />}
@@ -956,7 +956,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
               onClick={handleToggleStatus}
             />
           </div>
-          <div className={cn('flex items-center gap-2', !isActive && 'opacity-50 pointer-events-none')}>
+          <div className={cn('flex items-center gap-2 flex-wrap', !isActive && 'opacity-50 pointer-events-none')}>
             <ButtonTemplate variant="outline" size="sm" isIcon={false}
               leftIcon={<Users className="w-3.5 h-3.5" />}
               label={`Cohorts (${program.cohorts.length})`}

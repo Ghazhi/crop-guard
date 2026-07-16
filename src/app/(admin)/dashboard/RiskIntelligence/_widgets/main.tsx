@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { AlertTriangle, RefreshCw, TrendingUp, Activity, Filter, ChevronDown } from 'lucide-react'
+import { AlertTriangle, RefreshCw, TrendingUp, Activity, Filter, ChevronDown, Zap } from 'lucide-react'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -10,6 +10,15 @@ import {
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
+import { usePersistedState } from '@/lib/usePersistedState'
+
+const SELECT_STYLE: React.CSSProperties = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234A5568' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 8px center',
+  backgroundSize: '12px',
+}
+const SELECT_CLS = 'h-9 pl-2.5 pr-7 text-sm border border-gray-200 rounded-lg bg-white appearance-none focus:outline-none focus:ring-1 focus:ring-(--brand-forest)/30 cursor-pointer text-gray-700'
 
 // ── Risk classification ────────────────────────────────────────────────────────
 function riskLevel(f: Farmer): 'High' | 'Medium' | 'Low' {
@@ -28,7 +37,7 @@ const REGION_LABEL: Record<string, string> = {
   ah: 'Ashanti', sa: 'Savannah', nr: 'Northern', ue: 'Upper East', uw: 'Upper West',
 }
 
-type RiskTab    = 'overview' | 'at-risk' | 'by-region' | 'trends'
+type RiskTab    = 'overview' | 'at-risk' | 'by-region' | 'trends' | 'norvi-ai'
 type RiskFilter = 'all' | 'high' | 'medium' | 'low'
 
 // Mock days since last check-in per farmer
@@ -81,8 +90,36 @@ export function Main() {
   const [tab,         setTab]       = useState<RiskTab>('overview')
   const [riskFilter,  setRiskFilter] = useState<RiskFilter>('all')
   const [refreshed,   setRefreshed]  = useState(false)
+  const [filterProgram, setFilterProgram] = usePersistedState('risk-program', '')
+  const [filterCohort,  setFilterCohort]  = usePersistedState('risk-cohort', '')
+  const [insight,    setInsight]    = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
 
-  const farmers = FARMERS_LIST as Farmer[]
+  const allFarmers = FARMERS_LIST as Farmer[]
+
+  const programs = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; cohorts: Map<string, { id: string; name: string }> }>()
+    for (const f of allFarmers) {
+      const e = f.enrollment
+      if (!e) continue
+      if (!map.has(e.programId)) map.set(e.programId, { id: e.programId, name: e.programName, cohorts: new Map() })
+      if (e.cohortId) map.get(e.programId)!.cohorts.set(e.cohortId, { id: e.cohortId, name: e.cohortName ?? e.cohortId })
+    }
+    return Array.from(map.values()).map(p => ({ id: p.id, name: p.name, cohorts: Array.from(p.cohorts.values()) }))
+  }, [allFarmers])
+
+  const cohortOptions = useMemo(() => {
+    if (!filterProgram) return programs.flatMap(p => p.cohorts)
+    return programs.find(p => p.id === filterProgram)?.cohorts ?? []
+  }, [programs, filterProgram])
+
+  const farmers = useMemo(() => {
+    return allFarmers.filter(f => {
+      if (filterProgram && f.enrollment?.programId !== filterProgram) return false
+      if (filterCohort && f.enrollment?.cohortId !== filterCohort) return false
+      return true
+    })
+  }, [allFarmers, filterProgram, filterCohort])
 
   const stats = useMemo(() => {
     const high   = farmers.filter(f => riskLevel(f) === 'High')
@@ -124,11 +161,38 @@ export function Main() {
     setTimeout(() => setRefreshed(false), 800)
   }
 
+  function handleGenerateInsight() {
+    setGenerating(true)
+    setTimeout(() => {
+      const total       = farmers.length
+      const highPct     = total ? Math.round((stats.high.length / total) * 100) : 0
+      const topFactor   = stats.riskFactors.slice().sort((a, b) => b.count - a.count)[0]
+      const worstRegion = stats.byRegion.slice().sort((a, b) => b.high - a.high)[0]
+
+      const sentences = [
+        `${stats.high.length} farmer${stats.high.length !== 1 ? 's are' : ' is'} currently high-risk (${highPct}% of ${total} tracked), with an average FRI score of ${stats.avgFri}.`,
+        topFactor
+          ? `The leading driver is "${topFactor.factor}", affecting ${topFactor.count} farmer${topFactor.count !== 1 ? 's' : ''} across the portfolio.`
+          : '',
+        worstRegion && worstRegion.high > 0
+          ? `${worstRegion.region} shows the highest concentration of at-risk farmers, with ${worstRegion.high} classified high-risk.`
+          : '',
+        stats.high.length > 0
+          ? `Norvi recommends prioritizing check-ins for high-risk farmers this week to prevent further FRI decline.`
+          : `No farmers currently fall in the high-risk band — maintain the current check-in cadence.`,
+      ].filter(Boolean)
+
+      setInsight(sentences.join(' '))
+      setGenerating(false)
+    }, 500)
+  }
+
   const TABS: { key: RiskTab; label: string }[] = [
     { key: 'overview',   label: 'Overview'       },
     { key: 'at-risk',    label: 'At-Risk Farmers' },
     { key: 'by-region',  label: 'By Region'       },
     { key: 'trends',     label: 'Trends'          },
+    { key: 'norvi-ai',   label: 'Norvi AI'        },
   ]
 
   return (
@@ -150,6 +214,29 @@ export function Main() {
           <RefreshCw className={`w-3.5 h-3.5 ${refreshed ? 'animate-spin' : ''}`} />
           Refresh
         </button>
+      </div>
+
+      {/* Program / Cohort filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={filterProgram}
+          onChange={e => { setFilterProgram(e.target.value); setFilterCohort('') }}
+          className={`w-full sm:w-auto ${SELECT_CLS}`}
+          style={SELECT_STYLE}
+        >
+          <option value="">All programs</option>
+          {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select
+          value={filterCohort}
+          onChange={e => setFilterCohort(e.target.value)}
+          className={`w-full sm:w-auto ${SELECT_CLS}`}
+          style={SELECT_STYLE}
+          disabled={!cohortOptions.length}
+        >
+          <option value="">All cohorts</option>
+          {cohortOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
 
       {/* Stat cards */}
@@ -197,6 +284,7 @@ export function Main() {
                 : 'border-transparent text-gray-400 hover:text-gray-600',
             ].join(' ')}
           >
+            {t.key === 'norvi-ai' && <Zap className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />}
             {t.label}
           </button>
         ))}
@@ -472,6 +560,54 @@ export function Main() {
               <p className="text-xs font-semibold text-gray-700 mt-0.5">Total enrolled</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Last 6 months</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Norvi AI ── */}
+      {tab === 'norvi-ai' && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Dark header */}
+          <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Norvi AI</p>
+              <p className="text-xs text-white/60">Risk insight generated from live portfolio data</p>
+            </div>
+            {insight && (
+              <button
+                onClick={handleGenerateInsight}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-white ${generating ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="p-5">
+            {generating ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <Zap className="w-6 h-6 animate-pulse" style={{ color: 'var(--brand-forest)' }} />
+                <p className="text-sm text-gray-400">Norvi is analyzing risk data…</p>
+              </div>
+            ) : insight ? (
+              <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 gap-4">
+                <p className="text-sm text-gray-400">No insight generated yet.</p>
+                <button
+                  onClick={handleGenerateInsight}
+                  className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--brand-forest)' }}
+                >
+                  <Zap className="w-4 h-4" />
+                  Generate Insight
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

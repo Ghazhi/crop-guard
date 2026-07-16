@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ClipboardCheck, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check, CalendarDays, Eye, Wallet } from 'lucide-react'
+import { ClipboardCheck, ListChecks, Calendar, Layers, ChevronDown, ChevronUp, Pencil, Trash2, Plus, X, Sprout, Check, CalendarDays, Eye, Wallet } from 'lucide-react'
 import { MultiSelectTabsTemplate } from '@/customComponents/MultiSelectTabsTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
@@ -11,6 +11,7 @@ import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 
 import type { Pillar, Section, CropDef, Org, Question, Week, BaselineActivity, OrgConfig, CohortSchedule } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
+// CheckInList is defined locally in this file, mirroring the CustomBaseline convention
 import {
   ORGS,
   BUILT_IN_CROPS,
@@ -27,6 +28,10 @@ import { PARTNERS } from '@/dataCenter/partners'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 
+
+function cropLabel(c: CropDef): string {
+  return c.season ? `${c.name} ${c.season}` : c.name
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -192,7 +197,7 @@ function PartnerP4Panel({
 
 // ── Custom baseline templates (Baseline Activities page) ────────────────────
 
-interface CustomBaseline { id: string; label: string; activities: PartnerP4Question[] }
+interface CustomBaseline { id: string; label: string; pillars: Record<string, PartnerP4Question[]> }
 
 const CUSTOM_BASELINE_COLORS = ['#7C3AED', '#0D9488', '#DB2777', '#CA8A04', '#4F46E5', '#059669']
 
@@ -241,23 +246,85 @@ function NewBaselineSheet({
   )
 }
 
+function BaselineHeader({
+  label, color, onRename, onRemove, entityLabel = 'baseline',
+}: {
+  label: string
+  color: string
+  onRename: (label: string) => void
+  onRemove: () => void
+  entityLabel?: string
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [nameDraft, setNameDraft] = useState(label)
+  const [deleting, setDeleting] = useState(false)
+
+  function submitRename() {
+    if (!nameDraft.trim()) return
+    onRename(nameDraft.trim())
+    setRenaming(false)
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 px-1 group/header">
+      {renaming ? (
+        <div className="flex items-center gap-1.5 flex-1">
+          <input
+            autoFocus
+            type="text"
+            value={nameDraft}
+            onChange={e => setNameDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
+            className="flex-1 h-8 px-2 text-sm font-bold border border-gray-200 rounded focus:outline-none focus:border-(--brand-green)"
+            style={{ color }}
+          />
+          <button onClick={submitRename} className="text-green-600 hover:text-green-800 shrink-0"><Check className="w-4 h-4" /></button>
+          <button onClick={() => setRenaming(false)} className="text-gray-400 hover:text-gray-600 shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm font-bold" style={{ color }}>{label}</p>
+          <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
+            <button onClick={() => { setNameDraft(label); setRenaming(true) }}
+              className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600" title={`Rename ${entityLabel}`}>
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setDeleting(true)}
+              className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500" title={`Delete ${entityLabel}`}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </>
+      )}
+
+      <ConfirmModal
+        open={deleting}
+        title={`Delete ${entityLabel}?`}
+        message={
+          entityLabel === 'baseline'
+            ? `"${label}" and all its pillar activities will be removed from all cohort schedules that use it.`
+            : `"${label}" and all its questions will be removed from all cohort schedules that use it.`
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { onRemove(); setDeleting(false) }}
+        onCancel={() => setDeleting(false)}
+      />
+    </div>
+  )
+}
+
 function BaselineActivityCard({
-  label, color, activities, onRename, onRemove, onAddActivity, onEditActivity, onDeleteActivity, onToggleActivity,
+  label, color, activities, onAddActivity, onEditActivity, onDeleteActivity, onToggleActivity,
 }: {
   label:     string
   color:     string
   activities: PartnerP4Question[]
-  /** Omit to make the label read-only (used for the fixed P1-P4 pillars) */
-  onRename?: (label: string) => void
-  /** Omit to hide the delete-baseline control (used for the fixed P1-P4 pillars) */
-  onRemove?: () => void
   onAddActivity:    (label: string, desc: string) => void
   onEditActivity:   (activityId: string, label: string, desc: string) => void
   onDeleteActivity: (activityId: string) => void
   onToggleActivity: (activityId: string) => void
 }) {
-  const [renaming, setRenaming] = useState(false)
-  const [nameDraft, setNameDraft] = useState(label)
   const [adding, setAdding] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -265,13 +332,6 @@ function BaselineActivityCard({
   const [editLabel, setEditLabel] = useState('')
   const [editDesc, setEditDesc] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<PartnerP4Question | null>(null)
-  const [deletingBaseline, setDeletingBaseline] = useState(false)
-
-  function submitRename() {
-    if (!nameDraft.trim() || !onRename) return
-    onRename(nameDraft.trim())
-    setRenaming(false)
-  }
 
   function submitAdd() {
     if (!newLabel.trim()) return
@@ -291,42 +351,8 @@ function BaselineActivityCard({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2 px-1 group/header">
-        {renaming ? (
-          <div className="flex items-center gap-1.5 flex-1">
-            <input
-              autoFocus
-              type="text"
-              value={nameDraft}
-              onChange={e => setNameDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') submitRename(); if (e.key === 'Escape') setRenaming(false) }}
-              className="flex-1 h-7 px-2 text-xs font-semibold uppercase tracking-wider border border-gray-200 rounded focus:outline-none focus:border-(--brand-green)"
-              style={{ color }}
-            />
-            <button onClick={submitRename} className="text-green-600 hover:text-green-800 shrink-0"><Check className="w-3.5 h-3.5" /></button>
-            <button onClick={() => setRenaming(false)} className="text-gray-400 hover:text-gray-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
-            {(onRename || onRemove) && (
-              <div className="flex items-center gap-1 opacity-0 group-hover/header:opacity-100 transition-opacity">
-                {onRename && (
-                  <button onClick={() => { setNameDraft(label); setRenaming(true) }}
-                    className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600" title="Rename baseline">
-                    <Pencil className="w-3 h-3" />
-                  </button>
-                )}
-                {onRemove && (
-                  <button onClick={() => setDeletingBaseline(true)}
-                    className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500" title="Delete baseline">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        )}
+      <div className="flex items-center justify-between gap-2 px-1">
+        <p className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
@@ -428,18 +454,243 @@ function BaselineActivityCard({
         onConfirm={() => { if (deleteTarget) onDeleteActivity(deleteTarget.id); setDeleteTarget(null) }}
         onCancel={() => setDeleteTarget(null)}
       />
+    </div>
+  )
+}
 
-      {onRemove && (
-        <ConfirmModal
-          open={deletingBaseline}
-          title="Delete baseline?"
-          message={`"${label}" will be removed from all cohort schedules that use it.`}
-          confirmLabel="Delete"
-          variant="danger"
-          onConfirm={() => { onRemove(); setDeletingBaseline(false) }}
-          onCancel={() => setDeletingBaseline(false)}
+// ── Check-in Lists (named question sets for cohort schedules) ──────────────
+
+interface CheckInList { id: string; label: string; questions: Question[] }
+
+function NewCheckInListSheet({
+  open, onClose, onCreate,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreate: (label: string) => void
+}) {
+  const [label, setLabel] = useState('')
+
+  function handleSave() {
+    if (!label.trim()) return
+    onCreate(label.trim())
+    setLabel('')
+    onClose()
+  }
+
+  return (
+    <SheetTemplate
+      open={open}
+      onClose={() => { setLabel(''); onClose() }}
+      title="New Check-in List"
+      size="md"
+      footer={
+        <>
+          <ButtonTemplate variant="outline" label="Cancel" onClick={() => { setLabel(''); onClose() }} />
+          <ButtonTemplate variant="primary" label="Save" onClick={handleSave} isDisabled={!label.trim()} />
+        </>
+      }
+    >
+      <div className="px-6 py-5 flex flex-col gap-1.5">
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Check-in list name</label>
+        <input
+          autoFocus
+          type="text"
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+          placeholder="e.g. Pre-Season Readiness Check"
+          className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
         />
+      </div>
+    </SheetTemplate>
+  )
+}
+
+function CheckInListCard({
+  questions, onAddQuestion, onEditQuestion, onDeleteQuestion, onToggleQuestion,
+}: {
+  questions:        Question[]
+  onAddQuestion:    (pillar: Pillar, label: string, hint: string) => void
+  onEditQuestion:   (questionId: string, pillar: Pillar, label: string, hint: string) => void
+  onDeleteQuestion: (questionId: string) => void
+  onToggleQuestion: (questionId: string) => void
+}) {
+  const [adding,    setAdding]    = useState(false)
+  const [newPillar, setNewPillar] = useState<Pillar>('agronomy')
+  const [newLabel,  setNewLabel]  = useState('')
+  const [newHint,   setNewHint]   = useState('')
+
+  const [editingId,  setEditingId]  = useState<string | null>(null)
+  const [editPillar, setEditPillar] = useState<Pillar>('agronomy')
+  const [editLabel,  setEditLabel]  = useState('')
+  const [editHint,   setEditHint]   = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<Question | null>(null)
+
+  function submitAdd() {
+    if (!newLabel.trim()) return
+    onAddQuestion(newPillar, newLabel.trim(), newHint.trim())
+    setNewLabel(''); setNewHint(''); setNewPillar('agronomy'); setAdding(false)
+  }
+
+  function startEdit(q: Question) {
+    setEditingId(q.id); setEditPillar(q.pillar); setEditLabel(q.label); setEditHint(q.hint ?? '')
+  }
+
+  function submitEdit() {
+    if (!editingId || !editLabel.trim()) return
+    onEditQuestion(editingId, editPillar, editLabel.trim(), editHint.trim())
+    setEditingId(null)
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+          Questions ({questions.length})
+        </p>
+        <button
+          onClick={() => { setAdding(true); setNewLabel(''); setNewHint(''); setNewPillar('agronomy') }}
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+          style={{ background: 'var(--brand-forest)' }}
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Question
+        </button>
+      </div>
+
+      {questions.length === 0 && !adding && (
+        <p className="text-sm text-gray-400 py-10 text-center">No questions yet for this check-in list.</p>
       )}
+
+      {questions.map(q => {
+        const pll = PILLARS.find(p => p.id === q.pillar)
+        return editingId === q.id ? (
+          <div key={q.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              {PILLARS.map(pll2 => (
+                <button
+                  key={pll2.id}
+                  type="button"
+                  onClick={() => setEditPillar(pll2.id)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+                    editPillar === pll2.id
+                      ? 'border-gray-400 bg-gray-100 text-gray-800'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  {pll2.shortLabel}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={editLabel}
+              onChange={e => setEditLabel(e.target.value)}
+              placeholder="Question statement..."
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            />
+            <input
+              type="text"
+              value={editHint}
+              onChange={e => setEditHint(e.target.value)}
+              placeholder="Optional hint for agent"
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            />
+            <div className="flex items-center gap-2">
+              <button onClick={submitEdit}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ background: '#4b5563' }}>
+                <Check className="w-3.5 h-3.5" /> Save
+              </button>
+              <button onClick={() => setEditingId(null)}
+                className="flex items-center gap-1 h-8 px-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
+                <X className="w-3 h-3" /> Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div key={q.id} className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+            <div className="flex-1 min-w-0">
+              {pll && (
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase mb-1 ${pll.strip} ${pll.text}`}>
+                  {PILLAR_DISPLAY[q.pillar]}
+                </span>
+              )}
+              <p className={`text-sm font-medium leading-tight ${q.active ? 'text-gray-800' : 'text-gray-400'}`}>{q.label}</p>
+              {q.hint && <p className="text-xs text-gray-400 mt-0.5">{q.hint}</p>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0 mt-0.5">
+              <Toggle checked={q.active} onChange={() => onToggleQuestion(q.id)} />
+              <button onClick={() => startEdit(q)}
+                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors">
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setDeleteTarget(q)}
+                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )
+      })}
+
+      {adding && (
+        <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {PILLARS.map(pll => (
+              <button
+                key={pll.id}
+                type="button"
+                onClick={() => setNewPillar(pll.id)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+                  newPillar === pll.id
+                    ? 'border-gray-400 bg-gray-100 text-gray-800'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
+              >
+                {pll.shortLabel}
+              </button>
+            ))}
+          </div>
+          <input
+            autoFocus
+            type="text"
+            value={newLabel}
+            onChange={e => setNewLabel(e.target.value)}
+            placeholder="Question statement..."
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+          />
+          <input
+            type="text"
+            value={newHint}
+            onChange={e => setNewHint(e.target.value)}
+            placeholder="Optional hint for agent"
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+          />
+          <div className="flex items-center gap-2">
+            <button onClick={submitAdd}
+              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+              style={{ background: 'var(--brand-forest)' }}>
+              <Check className="w-3.5 h-3.5" /> Save
+            </button>
+            <button onClick={() => setAdding(false)}
+              className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
+              <X className="w-3.5 h-3.5" /> Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Delete question?"
+        message={`"${deleteTarget?.label ?? 'This question'}" will be permanently removed from this check-in list.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) onDeleteQuestion(deleteTarget.id); setDeleteTarget(null) }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   )
 }
@@ -689,7 +940,9 @@ export function Main() {
 
   function addBaselineOption(label: string) {
     const id = `baseline_${Date.now()}`
-    setBaselineOptions(prev => [...prev, { id, label, activities: [] }])
+    const pillars: Record<string, PartnerP4Question[]> = {}
+    for (const pillar of BASELINE_PILLARS) pillars[pillar.id] = []
+    setBaselineOptions(prev => [...prev, { id, label, pillars }])
     return id
   }
 
@@ -703,44 +956,106 @@ export function Main() {
     setSchedules(prev => prev.map(s => ({ ...s, baselineIds: s.baselineIds.filter(v => v !== id) })))
   }
 
-  function addBaselineActivity(baselineId: string, label: string, desc: string) {
-    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
-      ...o,
-      activities: [...o.activities, { id: `act_${Date.now()}`, label, desc, active: true }],
+  // ── Check-in Lists ───────────────────────────────────────────────────────────
+  const [CHECKIN_LISTS, setCheckInLists] = useState<CheckInList[]>([])
+  const [newCheckInListSheetOpen, setNewCheckInListSheetOpen] = useState(false)
+
+  function addCheckInList(label: string) {
+    const id = `checkinlist_${Date.now()}`
+    setCheckInLists(prev => [...prev, { id, label, questions: [] }])
+    return id
+  }
+
+  function editCheckInList(id: string, label: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== id ? l : { ...l, label }))
+  }
+
+  function removeCheckInList(id: string) {
+    setCheckInLists(prev => prev.filter(l => l.id !== id))
+    setSchCheckInIds(prev => prev.filter(v => v !== id))
+    setSchedules(prev => prev.map(s => ({ ...s, checkInListIds: s.checkInListIds.filter(v => v !== id) })))
+  }
+
+  function addCheckInListQuestion(listId: string, pillar: Pillar, label: string, hint: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: [...l.questions, { id: `cq_${Date.now()}`, pillar, label, hint: hint || undefined, active: true }],
     }))
   }
 
-  function editBaselineActivity(baselineId: string, activityId: string, label: string, desc: string) {
-    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
-      ...o,
-      activities: o.activities.map(a => a.id !== activityId ? a : { ...a, label, desc }),
+  function editCheckInListQuestion(listId: string, questionId: string, pillar: Pillar, label: string, hint: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, pillar, label, hint: hint || undefined }),
     }))
   }
 
-  function deleteBaselineActivity(baselineId: string, activityId: string) {
-    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
-      ...o,
-      activities: o.activities.filter(a => a.id !== activityId),
+  function deleteCheckInListQuestion(listId: string, questionId: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.filter(q => q.id !== questionId),
     }))
   }
 
-  function toggleBaselineActivity(baselineId: string, activityId: string) {
-    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
-      ...o,
-      activities: o.activities.map(a => a.id !== activityId ? a : { ...a, active: !a.active }),
+  function toggleCheckInListQuestion(listId: string, questionId: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, active: !q.active }),
     }))
   }
 
-  const checkInListOptions = crops.map(c => ({ id: c.id, label: c.season ? `${c.name} ${c.season}` : c.name }))
+  function addBaselineActivity(baselineId: string, pillarId: string, label: string, desc: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      pillars: {
+        ...o.pillars,
+        [pillarId]: [...(o.pillars[pillarId] ?? []), { id: `act_${Date.now()}`, label, desc, active: true }],
+      },
+    }))
+  }
+
+  function editBaselineActivity(baselineId: string, pillarId: string, activityId: string, label: string, desc: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      pillars: {
+        ...o.pillars,
+        [pillarId]: (o.pillars[pillarId] ?? []).map(a => a.id !== activityId ? a : { ...a, label, desc }),
+      },
+    }))
+  }
+
+  function deleteBaselineActivity(baselineId: string, pillarId: string, activityId: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      pillars: {
+        ...o.pillars,
+        [pillarId]: (o.pillars[pillarId] ?? []).filter(a => a.id !== activityId),
+      },
+    }))
+  }
+
+  function toggleBaselineActivity(baselineId: string, pillarId: string, activityId: string) {
+    setBaselineOptions(prev => prev.map(o => o.id !== baselineId ? o : {
+      ...o,
+      pillars: {
+        ...o.pillars,
+        [pillarId]: (o.pillars[pillarId] ?? []).map(a => a.id !== activityId ? a : { ...a, active: !a.active }),
+      },
+    }))
+  }
+
+  const checkInListOptions = CHECKIN_LISTS.map(l => ({ id: l.id, label: l.label }))
 
   const allBaselineOptions = [
-    ...BASELINE_PILLARS.map(p => ({ id: p.id, label: p.label })),
+    { id: 'standard', label: 'Standard Baseline' },
     ...BASELINE_OPTIONS.map(o => ({ id: o.id, label: o.label })),
   ]
 
   function baselineLabel(id: string) {
     return allBaselineOptions.find(o => o.id === id)?.label ?? id
   }
+
+  const cropOptions = crops.map(c => ({ id: c.id, label: cropLabel(c) }))
 
   const [schedules,      setSchedules]      = useState<CohortSchedule[]>([])
   const [scheduleSheet,  setScheduleSheet]  = useState(false)
@@ -749,21 +1064,22 @@ export function Main() {
   const [schMode,        setSchMode]        = useState<'start_now' | 'scheduled'>('start_now')
   const [schProgramId,   setSchProgramId]   = useState('')
   const [schCohortId,    setSchCohortId]    = useState('')
+  const [schCropIds,     setSchCropIds]     = useState<string[]>([])
   const [schDate,        setSchDate]        = useState('')
   const [schEndDate,     setSchEndDate]     = useState('')
   const [schBaselineIds, setSchBaselineIds] = useState<string[]>([])
-  const [schCheckInIds,  setSchCheckInIds]  = useState<string[]>(crops[0] ? [crops[0].id] : [])
+  const [schCheckInIds,  setSchCheckInIds]  = useState<string[]>([])
 
   function openNewSchedule() {
     setEditingSchId(null)
-    setSchMode('start_now'); setSchProgramId(''); setSchCohortId(''); setSchDate(''); setSchEndDate('')
-    setSchBaselineIds([]); setSchCheckInIds(crops[0] ? [crops[0].id] : [])
+    setSchMode('start_now'); setSchProgramId(''); setSchCohortId(''); setSchCropIds([]); setSchDate(''); setSchEndDate('')
+    setSchBaselineIds([]); setSchCheckInIds([])
     setScheduleSheet(true)
   }
 
   function openEditSchedule(s: CohortSchedule) {
     setEditingSchId(s.id)
-    setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId)
+    setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId); setSchCropIds(s.cropIds)
     setSchDate(s.scheduledDate ?? ''); setSchEndDate(s.endDate ?? '')
     setSchBaselineIds(s.baselineIds); setSchCheckInIds(s.checkInListIds)
     setScheduleSheet(true)
@@ -781,6 +1097,7 @@ export function Main() {
         programName:    prog.name,
         cohortId:       schCohortId,
         cohortName:     coh.name,
+        cropIds:        schCropIds,
         mode:           schMode,
         scheduledDate:  schMode === 'scheduled' ? schDate : undefined,
         endDate:        schEndDate || undefined,
@@ -794,6 +1111,7 @@ export function Main() {
         programName:   prog.name,
         cohortId:      schCohortId,
         cohortName:    coh.name,
+        cropIds:       schCropIds,
         mode:          schMode,
         scheduledDate: schMode === 'scheduled' ? schDate : undefined,
         endDate:       schEndDate || undefined,
@@ -819,12 +1137,16 @@ export function Main() {
     { key: 'programName', label: 'Program', render: v => <span className="text-gray-800 font-medium">{String(v)}</span> },
     { key: 'cohortName', label: 'Cohort', render: v => <span className="text-gray-600">{String(v)}</span> },
     {
+      key: 'cropIds', label: 'Crop',
+      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => cropOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
+    },
+    {
       key: 'baselineIds', label: 'Baselines',
-      render: (v) => <span className="text-gray-600">{(v as string[]).map(baselineLabel).join(', ')}</span>,
+      render: (v) => <span className="text-gray-600">{(v as string[]).map(baselineLabel).join(', ') || '—'}</span>,
     },
     {
       key: 'checkInListIds', label: 'Check-in List',
-      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => checkInListOptions.find(o => o.id === id)?.label ?? id).join(', ')}</span>,
+      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => checkInListOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
     },
     {
       key: 'scheduledDate', label: 'Start',
@@ -851,10 +1173,11 @@ export function Main() {
   ]
 
   const SECTION_NAV = [
-    { id: 'weekly'   as Section, Icon: ClipboardCheck, label: 'Weekly Check-ins',   sub: 'Crop-specific check-in questions per week' },
-    { id: 'cohort'   as Section, Icon: Calendar,       label: 'Cohort Schedules',   sub: 'Configure timing windows per cohort'        },
-    { id: 'baseline' as Section, Icon: Layers,         label: 'Baseline Activities',sub: 'Pillar activities for baseline assessment'  },
-    { id: 'crops'    as Section, Icon: Sprout,         label: 'Crops',              sub: 'Add and manage crop types'                  },
+    { id: 'weekly'       as Section, Icon: ClipboardCheck, label: 'Weekly Check-ins',   sub: 'Crop-specific check-in questions per week'   },
+    { id: 'checkinLists' as Section, Icon: ListChecks,     label: 'Check-in Lists',     sub: 'Named question sets for cohort schedules'    },
+    { id: 'cohort'       as Section, Icon: Calendar,       label: 'Cohort Schedules',   sub: 'Configure timing windows per cohort'         },
+    { id: 'baseline'     as Section, Icon: Layers,         label: 'Baseline Activities',sub: 'Pillar activities for baseline assessment'   },
+    { id: 'crops'        as Section, Icon: Sprout,         label: 'Crops',              sub: 'Add and manage crop types'                   },
   ]
 
   return (
@@ -920,7 +1243,7 @@ export function Main() {
         </div>
 
         {/* main content */}
-        <div className="flex-1 min-w-0">
+        <div className="w-full flex-1 min-w-0">
 
           {/* ── Weekly Check-in ── */}
           {section === 'weekly' && (
@@ -1166,6 +1489,57 @@ export function Main() {
             </div>
           )}
 
+          {/* ── Check-in Lists ── */}
+          {section === 'checkinLists' && (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ListChecks className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
+                  <h2 className="text-base font-bold text-gray-900">Check-in Lists</h2>
+                </div>
+                <ButtonTemplate variant="primary" size="sm" label="New Check-in List" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewCheckInListSheetOpen(true)} />
+              </div>
+
+              {CHECKIN_LISTS.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                  <ListChecks className="w-8 h-8 text-gray-200" />
+                  <p className="text-sm font-medium text-gray-400">No check-in lists yet</p>
+                  <p className="text-xs text-gray-300">Click &quot;New Check-in List&quot; to create a named question set for cohort schedules.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {CHECKIN_LISTS.map((list, i) => {
+                    const color = CUSTOM_BASELINE_COLORS[i % CUSTOM_BASELINE_COLORS.length]
+                    return (
+                      <div key={list.id} className="flex flex-col gap-3 p-3 rounded-2xl border border-dashed border-gray-200">
+                        <BaselineHeader
+                          label={list.label}
+                          color={color}
+                          entityLabel="check-in list"
+                          onRename={label => editCheckInList(list.id, label)}
+                          onRemove={() => removeCheckInList(list.id)}
+                        />
+                        <CheckInListCard
+                          questions={list.questions}
+                          onAddQuestion={(pillar, label, hint) => addCheckInListQuestion(list.id, pillar, label, hint)}
+                          onEditQuestion={(questionId, pillar, label, hint) => editCheckInListQuestion(list.id, questionId, pillar, label, hint)}
+                          onDeleteQuestion={questionId => deleteCheckInListQuestion(list.id, questionId)}
+                          onToggleQuestion={questionId => toggleCheckInListQuestion(list.id, questionId)}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              <NewCheckInListSheet
+                open={newCheckInListSheetOpen}
+                onClose={() => setNewCheckInListSheetOpen(false)}
+                onCreate={addCheckInList}
+              />
+            </div>
+          )}
+
           {/* ── Crops ── */}
           {section === 'crops' && (
             <div className="flex flex-col gap-4">
@@ -1357,6 +1731,15 @@ export function Main() {
                     </select>
                   </div>
 
+                  {/* crop — multi-select */}
+                  <MultiSelectTemplate
+                    label="Crop"
+                    placeholder="Select crop(s)…"
+                    options={cropOptions.map(o => ({ value: o.id, label: o.label }))}
+                    value={schCropIds}
+                    onChange={setSchCropIds}
+                  />
+
                   {/* date — only when scheduled */}
                   {schMode === 'scheduled' && (
                     <div className="flex flex-col gap-1.5">
@@ -1440,6 +1823,23 @@ export function Main() {
                       ))}
                     </div>
                     <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-2">Crop</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(() => {
+                          const labels = viewSchedule.cropIds
+                            .map(id => cropOptions.find(o => o.id === id)?.label)
+                            .filter((l): l is string => !!l)
+                          return labels.length === 0
+                            ? <span className="text-sm text-gray-400">—</span>
+                            : labels.map(label => (
+                              <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
+                                {label}
+                              </span>
+                            ))
+                        })()}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-2">Baselines</p>
                       <div className="flex flex-wrap gap-1.5">
                         {viewSchedule.baselineIds.map(id => (
@@ -1452,11 +1852,18 @@ export function Main() {
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-2">Check-in Lists</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {viewSchedule.checkInListIds.map(id => (
-                          <span key={id} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
-                            {checkInListOptions.find(o => o.id === id)?.label ?? id}
-                          </span>
-                        ))}
+                        {(() => {
+                          const labels = viewSchedule.checkInListIds
+                            .map(id => checkInListOptions.find(o => o.id === id)?.label)
+                            .filter((l): l is string => !!l)
+                          return labels.length === 0
+                            ? <span className="text-sm text-gray-400">—</span>
+                            : labels.map(label => (
+                              <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
+                                {label}
+                              </span>
+                            ))
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1490,20 +1897,31 @@ export function Main() {
                   />
                 ))}
 
-                {BASELINE_OPTIONS.map((baseline, i) => (
-                  <BaselineActivityCard
-                    key={baseline.id}
-                    label={baseline.label}
-                    color={CUSTOM_BASELINE_COLORS[i % CUSTOM_BASELINE_COLORS.length]}
-                    activities={baseline.activities}
-                    onRename={label => editBaselineOption(baseline.id, label)}
-                    onRemove={() => removeBaselineOption(baseline.id)}
-                    onAddActivity={(label, desc) => addBaselineActivity(baseline.id, label, desc)}
-                    onEditActivity={(activityId, label, desc) => editBaselineActivity(baseline.id, activityId, label, desc)}
-                    onDeleteActivity={activityId => deleteBaselineActivity(baseline.id, activityId)}
-                    onToggleActivity={activityId => toggleBaselineActivity(baseline.id, activityId)}
-                  />
-                ))}
+                {BASELINE_OPTIONS.map((baseline, i) => {
+                  const baseColor = CUSTOM_BASELINE_COLORS[i % CUSTOM_BASELINE_COLORS.length]
+                  return (
+                    <div key={baseline.id} className="flex flex-col gap-3 p-3 rounded-2xl border border-dashed border-gray-200">
+                      <BaselineHeader
+                        label={baseline.label}
+                        color={baseColor}
+                        onRename={label => editBaselineOption(baseline.id, label)}
+                        onRemove={() => removeBaselineOption(baseline.id)}
+                      />
+                      {BASELINE_PILLARS.map(pillar => (
+                        <BaselineActivityCard
+                          key={pillar.id}
+                          label={pillar.label}
+                          color={pillar.color}
+                          activities={baseline.pillars[pillar.id] ?? []}
+                          onAddActivity={(label, desc) => addBaselineActivity(baseline.id, pillar.id, label, desc)}
+                          onEditActivity={(activityId, label, desc) => editBaselineActivity(baseline.id, pillar.id, activityId, label, desc)}
+                          onDeleteActivity={activityId => deleteBaselineActivity(baseline.id, pillar.id, activityId)}
+                          onToggleActivity={activityId => toggleBaselineActivity(baseline.id, pillar.id, activityId)}
+                        />
+                      ))}
+                    </div>
+                  )
+                })}
               </div>
 
               <NewBaselineSheet

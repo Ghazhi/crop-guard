@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Users, ClipboardList, UserCheck, TrendingUp, Zap, ArrowUp, ArrowDown, Minus, Phone, MapPin } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Users, ClipboardList, UserCheck, TrendingUp, Zap, ArrowUp, ArrowDown, Minus, Phone, MapPin, Search } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { CardTemplate }  from '@/customComponents/CardTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
@@ -13,6 +13,8 @@ import { getStats, getCropBreakdown, getZoneBreakdown } from '../_logics/functio
 import type { Stats, CropBreakdown, ZoneBreakdown } from '../_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import type { AgentSummary } from '@/app/(admin)/dashboard/AgentAssignment/_logics/interface'
+import type { Intervention } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
+import { cn } from '@/lib/utils'
 
 // ── Zone colors ────────────────────────────────────────────────────────────────
 const ZONE_COLORS: Record<string, string> = {
@@ -68,6 +70,123 @@ function FarmerList({ farmers }: { farmers: Farmer[] }) {
   )
 }
 
+// ── FRI trajectory ─────────────────────────────────────────────────────────────
+// No historical FRI is tracked in the mock data, so the "previous" score is
+// derived deterministically from the farmer id (not Math.random()) so the
+// same farmer always shows the same delta across renders/sheets.
+function seededDelta(id: string): number {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
+  return (Math.abs(hash) % 21) - 10 // -10..+10
+}
+
+function friTrend(farmer: Farmer): { previous: number; delta: number } | null {
+  if (farmer.currentFri === null) return null
+  const delta = seededDelta(farmer.id)
+  return { previous: farmer.currentFri - delta, delta }
+}
+
+function TrajectoryCard({ farmer }: { farmer: Farmer }) {
+  const trend = friTrend(farmer)
+  const delta = trend?.delta ?? 0
+  const Icon  = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus
+  const cls   = delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-600' : 'text-gray-500'
+
+  return (
+    <div className="px-4 py-4 border-b border-gray-100 last:border-0">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-base font-semibold text-gray-900">{farmer.fullName}</p>
+        <div className={cn('flex items-center gap-1 text-xs font-semibold', cls)}>
+          <span>{farmer.currentFri}</span>
+          <Icon className="w-3.5 h-3.5" />
+          <span>{delta > 0 ? `+${delta}` : delta}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <Phone className="w-3 h-3" />{farmer.phone}
+        </span>
+        <span className="flex items-center gap-1">
+          <MapPin className="w-3 h-3" />{farmer.community}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function TrajectoryList({ farmers }: { farmers: Farmer[] }) {
+  if (farmers.length === 0)
+    return <p className="text-sm text-gray-400 text-center py-10">No farmers match this filter</p>
+  return (
+    <div>
+      {farmers.map(f => <TrajectoryCard key={f.id} farmer={f} />)}
+    </div>
+  )
+}
+
+// ── Opportunity enrollment ──────────────────────────────────────────────────────
+type OpportunityGroup = {
+  intervention: Intervention
+  farmers:      Farmer[]
+}
+
+function OpportunitySheet({ groups }: { groups: OpportunityGroup[] }) {
+  const [opportunityFilter, setOpportunityFilter] = useState('all')
+  const [farmerQuery,       setFarmerQuery]        = useState('')
+
+  const visibleGroups = groups
+    .filter(g => opportunityFilter === 'all' || g.intervention.id === opportunityFilter)
+    .map(g => ({
+      ...g,
+      farmers: g.farmers.filter(f => f.fullName.toLowerCase().includes(farmerQuery.trim().toLowerCase())),
+    }))
+    .filter(g => g.farmers.length > 0)
+
+  return (
+    <div>
+      <div className="px-4 pt-4 pb-3 border-b border-gray-100 space-y-2 sticky top-0 bg-white z-10">
+        <select
+          value={opportunityFilter}
+          onChange={e => setOpportunityFilter(e.target.value)}
+          className="w-full text-xs rounded-lg border border-gray-200 px-3 py-2 text-gray-700 focus:outline-none focus:ring-1"
+          style={{ '--tw-ring-color': 'var(--brand-green)' } as React.CSSProperties}
+        >
+          <option value="all">All opportunities</option>
+          {groups.map(g => (
+            <option key={g.intervention.id} value={g.intervention.id}>{g.intervention.name}</option>
+          ))}
+        </select>
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            value={farmerQuery}
+            onChange={e => setFarmerQuery(e.target.value)}
+            placeholder="Search farmers…"
+            className="w-full text-xs rounded-lg border border-gray-200 pl-8 pr-3 py-2 text-gray-700 focus:outline-none focus:ring-1"
+            style={{ '--tw-ring-color': 'var(--brand-green)' } as React.CSSProperties}
+          />
+        </div>
+      </div>
+
+      {visibleGroups.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-10">No opportunities match this filter</p>
+      ) : (
+        visibleGroups.map(({ intervention, farmers }) => (
+          <div key={intervention.id} className="border-b border-gray-100 last:border-0">
+            <div className="px-4 py-3 bg-gray-50 flex items-center gap-2">
+              <p className="text-sm font-semibold" style={{ color: 'var(--brand-forest)' }}>{intervention.name}</p>
+              <BadgeTemplate label={intervention.type} variant="info" size="sm" />
+              <BadgeTemplate label={intervention.status} variant={intervention.status === 'Active' ? 'success' : 'neutral'} size="sm" />
+              <span className="text-xs text-gray-400 ml-auto">{farmers.length} farmers</span>
+            </div>
+            {farmers.map(f => <FarmerCard key={f.id} farmer={f} />)}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
 // ── Agent card list ────────────────────────────────────────────────────────────
 function AgentCard({ agent }: { agent: AgentSummary }) {
   return (
@@ -92,6 +211,19 @@ type SheetFilter = {
   title:    string
   subtitle: string
   farmers:  Farmer[]
+  kind?:    'trajectory' | 'opportunity'
+}
+
+function buildOpportunityGroups(all: Farmer[]): OpportunityGroup[] {
+  return INTERVENTIONS
+    .map(iv => {
+      const cohortKeys = new Set(iv.enrolledCohorts.map(ec => `${ec.programId}::${ec.cohortId}`))
+      const farmers = all.filter(f =>
+        f.enrollment?.cohortId && cohortKeys.has(`${f.enrollment.programId}::${f.enrollment.cohortId}`)
+      )
+      return { intervention: iv, farmers }
+    })
+    .filter(g => g.farmers.length > 0)
 }
 
 function buildFilter(key: string, stats: Stats): SheetFilter | null {
@@ -123,30 +255,42 @@ function buildFilter(key: string, stats: Stats): SheetFilter | null {
         subtitle: `${stats.verificationRate}% verification rate`,
         farmers: all.filter(f => !f.duplicateFlag),
       }
-    case 'opportunityCount':
+    case 'opportunityCount': {
+      const farmers = all.filter(f => f.enrollment?.cohortId && OPPORTUNITY_COHORT_IDS.has(f.enrollment.cohortId))
       return {
         title: 'Opportunity-Enrolled Farmers',
-        subtitle: `${stats.opportunityCount} farmers in active interventions`,
-        farmers: all.filter(f => f.enrollment?.cohortId && OPPORTUNITY_COHORT_IDS.has(f.enrollment.cohortId)),
+        subtitle: `${farmers.length} farmers in active interventions`,
+        farmers,
+        kind: 'opportunity',
       }
-    case 'trajectoryUp':
+    }
+    case 'trajectoryUp': {
+      const farmers = all.filter(f => (friTrend(f)?.delta ?? 0) > 0).sort((a, b) => (b.currentFri ?? 0) - (a.currentFri ?? 0))
       return {
         title: 'Improving Farmers',
-        subtitle: `${stats.trajectoryUp} farmers with improving FRI`,
-        farmers: all.filter(f => f.currentFri !== null && (f.currentFri ?? 0) >= 65).sort((a, b) => (b.currentFri ?? 0) - (a.currentFri ?? 0)),
+        subtitle: `${farmers.length} farmers with improving FRI`,
+        farmers,
+        kind: 'trajectory',
       }
-    case 'trajectoryFlat':
+    }
+    case 'trajectoryFlat': {
+      const farmers = all.filter(f => friTrend(f)?.delta === 0).sort((a, b) => (b.currentFri ?? 0) - (a.currentFri ?? 0))
       return {
         title: 'Stable Farmers',
-        subtitle: `${stats.trajectoryFlat} farmers with stable FRI`,
-        farmers: all.filter(f => f.currentFri !== null && (f.currentFri ?? 0) >= 50 && (f.currentFri ?? 0) < 65),
+        subtitle: `${farmers.length} farmers with stable FRI`,
+        farmers,
+        kind: 'trajectory',
       }
-    case 'trajectoryDown':
+    }
+    case 'trajectoryDown': {
+      const farmers = all.filter(f => (friTrend(f)?.delta ?? 0) < 0).sort((a, b) => (b.currentFri ?? 0) - (a.currentFri ?? 0))
       return {
         title: 'Declining Farmers',
-        subtitle: `${stats.trajectoryDown} farmers with declining FRI`,
-        farmers: all.filter(f => f.currentFri !== null && (f.currentFri ?? 0) < 50),
+        subtitle: `${farmers.length} farmers with declining FRI`,
+        farmers,
+        kind: 'trajectory',
       }
+    }
     default:
       return null
   }
@@ -159,7 +303,7 @@ function StatCard({ icon: Icon, label, value, color, sub, onClick }: {
 }) {
   return (
     <CardTemplate
-      className={['h-full transition-shadow', onClick ? 'cursor-pointer hover:shadow-md hover:ring-1 hover:ring-gray-200' : ''].join(' ')}
+      className={['h-full transition-shadow border border-transparent', onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200' : ''].join(' ')}
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
@@ -190,6 +334,22 @@ export function Main() {
   const [loading,    setLoading]    = useState(true)
   const [sheetFilter,  setSheetFilter]  = useState<SheetFilter | null>(null)
   const [agentsOpen,   setAgentsOpen]   = useState(false)
+
+  // stats.trajectoryUp/Flat/Down are static mock placeholders (dataCenter/stats.ts) —
+  // compute the real counts from the same friTrend() the sheets use, so the pill
+  // numbers always match what clicking through actually shows.
+  const trajectoryCounts = useMemo(() => {
+    const all = FARMERS_LIST as Farmer[]
+    let up = 0, flat = 0, down = 0
+    for (const f of all) {
+      const trend = friTrend(f)
+      if (!trend) continue // unscored farmers (currentFri === null) aren't in any trajectory bucket
+      if (trend.delta > 0) up++
+      else if (trend.delta < 0) down++
+      else flat++
+    }
+    return { up, flat, down }
+  }, [])
 
   useEffect(() => {
     Promise.all([getStats(), getCropBreakdown(), getZoneBreakdown()]).then(
@@ -240,9 +400,9 @@ export function Main() {
               <p className="text-xs font-medium mb-3" style={{ color: 'var(--brand-slate)' }}>FRI Trajectory</p>
               <div className="flex flex-col gap-1.5">
                 {[
-                  { label: 'Improving', key: 'trajectoryUp',   count: stats.trajectoryUp,   icon: ArrowUp,   cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-                  { label: 'Stable',    key: 'trajectoryFlat', count: stats.trajectoryFlat, icon: Minus,     cls: 'border-gray-200 bg-gray-50 text-gray-600' },
-                  { label: 'Declining', key: 'trajectoryDown', count: stats.trajectoryDown, icon: ArrowDown, cls: 'border-red-200 bg-red-50 text-red-700' },
+                  { label: 'Improving', key: 'trajectoryUp',   count: trajectoryCounts.up,   icon: ArrowUp,   cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+                  { label: 'Stable',    key: 'trajectoryFlat', count: trajectoryCounts.flat, icon: Minus,     cls: 'border-gray-200 bg-gray-50 text-gray-600' },
+                  { label: 'Declining', key: 'trajectoryDown', count: trajectoryCounts.down, icon: ArrowDown, cls: 'border-red-200 bg-red-50 text-red-700' },
                 ].map(({ label, key, count, icon: Icon, cls }) => (
                   <button key={label} type="button" onClick={() => open(key)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-opacity hover:opacity-70 ${cls}`}>
@@ -307,7 +467,13 @@ export function Main() {
         size="md"
         bodyClassName="p-0"
       >
-        <FarmerList farmers={sheetFilter?.farmers ?? []} />
+        {sheetFilter?.kind === 'opportunity' ? (
+          <OpportunitySheet groups={buildOpportunityGroups(sheetFilter.farmers)} />
+        ) : sheetFilter?.kind === 'trajectory' ? (
+          <TrajectoryList farmers={sheetFilter?.farmers ?? []} />
+        ) : (
+          <FarmerList farmers={sheetFilter?.farmers ?? []} />
+        )}
       </SheetTemplate>
 
       {/* Field agents sheet */}

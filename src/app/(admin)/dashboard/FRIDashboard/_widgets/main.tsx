@@ -223,7 +223,7 @@ function FarmerDetailSheet({ farmer, open, onClose }: {
 
   return (
     <Sheet open={open} onOpenChange={v => { if (!v) onClose() }}>
-      <SheetContent side="right" className="w-full sm:w-135 sm:max-w-135 p-0 flex flex-col overflow-hidden">
+      <SheetContent showCloseButton={false} side="right" className="w-full sm:w-135 sm:max-w-135 p-0 flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">

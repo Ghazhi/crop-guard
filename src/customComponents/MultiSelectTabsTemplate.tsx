@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface MultiSelectTabsOption {
   id:    string
@@ -36,12 +37,32 @@ export function MultiSelectTabsTemplate({
   const [hydrated, setHydrated] = useState(false)
   const restored = useRef(false)
   const tabRefs  = useRef<Map<string, HTMLElement>>(new Map())
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showLeftFade,  setShowLeftFade]  = useState(false)
+  const [showRightFade, setShowRightFade] = useState(false)
+
+  function updateFades() {
+    const el = scrollRef.current
+    if (!el) return
+    setShowLeftFade(el.scrollLeft > 2)
+    setShowRightFade(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+  }
 
   // the active tab can sit outside the scroll container's current viewport —
   // scroll it fully into view so its hover-X isn't clipped
   useEffect(() => {
     tabRefs.current.get(value)?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   }, [value])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const observer = new ResizeObserver(updateFades)
+    observer.observe(el)
+    Array.from(el.children).forEach(child => observer.observe(child))
+    const raf = requestAnimationFrame(updateFades)
+    return () => { observer.disconnect(); cancelAnimationFrame(raf) }
+  }, [shown])
 
   // localStorage is client-only — restore after mount to avoid a hydration mismatch
   useEffect(() => {
@@ -89,29 +110,42 @@ export function MultiSelectTabsTemplate({
   return (
     <div className="flex items-center gap-1 w-full min-w-0">
       {/* tab row — every tab is removable via a hover-revealed X, scrolls horizontally when it overflows */}
-      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto min-w-0 scrollbar-none">
-        {shownTabs.map(o => (
-          <span
-            key={o.id}
-            ref={el => { if (el) tabRefs.current.set(o.id, el); else tabRefs.current.delete(o.id) }}
-            className={`group flex items-center rounded-lg text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
-              value === o.id
-                ? 'bg-white shadow-sm text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <button type="button" onClick={() => onChange(o.id)} className="pl-4 pr-1 py-1.5">
-              {o.label}
-            </button>
-            <button
-              type="button"
-              onClick={() => removeTab(o.id)}
-              className="mr-1.5 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-opacity"
+      <div className="relative min-w-0">
+        {showLeftFade && (
+          <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-5 bg-linear-to-r from-gray-100 to-transparent z-10 rounded-l-xl" />
+        )}
+        <div
+          ref={scrollRef}
+          onScroll={updateFades}
+          className="flex items-center gap-1 bg-gray-100 rounded-xl p-1.5 overflow-x-auto min-w-0 scrollbar-hide scroll-p-4"
+        >
+          {shownTabs.map(o => (
+            <span
+              key={o.id}
+              ref={el => { if (el) tabRefs.current.set(o.id, el); else tabRefs.current.delete(o.id) }}
+              className={cn(
+                'group flex items-center rounded-lg text-sm font-medium transition-all whitespace-nowrap shrink-0',
+                value === o.id
+                  ? 'bg-white shadow-sm text-gray-900'
+                  : 'text-gray-500 hover:text-gray-700',
+              )}
             >
-              <X className="w-3 h-3" />
-            </button>
-          </span>
-        ))}
+              <button type="button" onClick={() => onChange(o.id)} className="pl-4 pr-1 py-1.5">
+                {o.label}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeTab(o.id)}
+                className="mr-1.5 w-4 h-4 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+        {showRightFade && (
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-5 bg-linear-to-l from-gray-100 to-transparent z-10 rounded-r-xl" />
+        )}
       </div>
 
       {/* overflow dropdown — lists whatever isn't currently a tab, clicking adds + selects it */}

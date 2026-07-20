@@ -33,7 +33,7 @@ import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/inte
 const TABS = [
   { id: 'programs',      label: 'Linked Programs',      icon: Layers    },
   { id: 'interventions', label: 'Linked Interventions', icon: Zap       },
-  { id: 'p4baseline',    label: 'P4: Farm Enterprise',  icon: Wallet    },
+  { id: 'p4baseline',    label: 'ECI',                  icon: Wallet    },
   { id: 'risk',          label: 'Risk & Performance',   icon: Users     },
   { id: 'reports',       label: 'Reports',               icon: FileText },
 ] as const
@@ -782,7 +782,7 @@ function RiskPerformanceTab({ opportunities }: { opportunities: { intervention: 
   )
 }
 
-// ─── Tab: P4 Baseline (Farm Enterprise Discipline) ────────────────────────────
+// ─── Tab: ECI ──────────────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -838,9 +838,9 @@ function P4BaselineTab({
       {/* assignment toggle */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-gray-900">Assign to P4: Farm Enterprise Discipline</p>
+          <p className="text-sm font-semibold text-gray-900">Assign ECI</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            Once assigned, this partner gets its own set of P4 baseline questions — independent of every other partner.
+            Once assigned, this partner gets its own set of ECI questions — independent of every other partner.
           </p>
         </div>
         <Toggle checked={assigned} onChange={onToggleAssign} />
@@ -849,8 +849,8 @@ function P4BaselineTab({
       {!assigned ? (
         <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
           <Wallet className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">Not assigned to P4 yet.</p>
-          <p className="text-xs mt-1">Toggle it on above to give this partner its own Farm Enterprise Discipline questions.</p>
+          <p className="text-sm">Not assigned to ECI yet.</p>
+          <p className="text-xs mt-1">Toggle it on above to give this partner its own ECI questions.</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -957,7 +957,7 @@ function P4BaselineTab({
       <ConfirmModal
         open={!!deleteTarget}
         title="Delete question?"
-        message={`"${deleteTarget?.label ?? 'This question'}" will be permanently removed from this partner's P4 baseline.`}
+        message={`"${deleteTarget?.label ?? 'This question'}" will be permanently removed from this partner's ECI.`}
         confirmLabel="Delete"
         variant="danger"
         onConfirm={() => { if (deleteTarget) onDelete(deleteTarget.id); setDeleteTarget(null) }}
@@ -996,7 +996,7 @@ export function Main({ partnerId }: { partnerId: string }) {
     })
   )
 
-  // ── P4: Farm Enterprise Discipline — per-partner baseline questions ─────────
+  // ── ECI — per-partner questions ─────────────────────────────────────────────
   const [p4Assigned,  setP4Assigned]  = useState(() => !!PARTNER_BASELINES[partnerId])
   const [p4Questions, setP4Questions] = useState<PartnerP4Question[]>(() =>
     PARTNER_BASELINES[partnerId]?.questions ?? createDefaultP4Questions()

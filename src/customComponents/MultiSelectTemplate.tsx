@@ -17,6 +17,8 @@ export interface MultiSelectTemplateProps {
   isRequired?: boolean
   placeholder?: string
   className?: string
+  /** Hides the row of removable chips below the field — the closed control already shows "N selected" */
+  hideChips?: boolean
 }
 
 export function MultiSelectTemplate({
@@ -27,6 +29,7 @@ export function MultiSelectTemplate({
   isRequired,
   placeholder = 'Select…',
   className,
+  hideChips,
 }: MultiSelectTemplateProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -74,6 +77,9 @@ export function MultiSelectTemplate({
 
         {open && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {options.length === 0 && (
+              <p className="px-3 py-2.5 text-sm text-gray-400 text-center">No options available</p>
+            )}
             {options.map(opt => {
               const checked = value.includes(opt.value)
               return (
@@ -96,7 +102,7 @@ export function MultiSelectTemplate({
         )}
       </div>
 
-      {selected.length > 0 && (
+      {!hideChips && selected.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-0.5">
           {selected.map(opt => (
             <span

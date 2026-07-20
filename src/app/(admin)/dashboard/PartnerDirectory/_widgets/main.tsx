@@ -441,15 +441,15 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
                 ))}
               </div>
 
-              {/* P4 Baseline */}
+              {/* ECI */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">P4: Farm Enterprise Discipline</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">ECI</p>
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Wallet className="w-4 h-4 text-gray-400 shrink-0" />
                     {PARTNER_BASELINES[p.id] ? (
                       <div>
-                        <p className="text-sm font-medium text-gray-800">Baseline assigned</p>
+                        <p className="text-sm font-medium text-gray-800">ECI assigned</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {PARTNER_BASELINES[p.id].questions.length} question{PARTNER_BASELINES[p.id].questions.length !== 1 ? 's' : ''}
                         </p>
@@ -753,7 +753,7 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
   )
 }
 
-// ── Create Baseline Sheet ──────────────────────────────────────────────────────
+// ── Create ECI Sheet ───────────────────────────────────────────────────────────
 
 function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, onSaved }: {
   open: boolean; onOpenChange: (v: boolean) => void; partners: Partner[]
@@ -804,8 +804,8 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <SheetTitle>Create P4 Baseline</SheetTitle>
-          <SheetDescription>Assign a Farm Enterprise Discipline baseline to a single partner.</SheetDescription>
+          <SheetTitle>Create ECI</SheetTitle>
+          <SheetDescription>Assign an ECI to a single partner.</SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
@@ -821,7 +821,7 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
             <>
               {alreadyHasBaseline && (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                  {selectedPartner?.name} already has a P4 baseline — saving will update it.
+                  {selectedPartner?.name} already has an ECI — saving will update it.
                 </p>
               )}
 
@@ -885,7 +885,7 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
           <button onClick={handleSave} disabled={!partnerId}
             className="flex-1 h-10 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ backgroundColor: 'var(--brand-forest)' }}>
-            Save Baseline
+            Save ECI
           </button>
         </SheetFooter>
       </SheetContent>
@@ -977,7 +977,7 @@ export function Main() {
       render: v => <span className={`block text-center text-xs font-semibold px-2 py-0.5 rounded-full border ${statusCls(v as PartnerStatus)}`}>{String(v)}</span>,
     },
     {
-      key: 'id', id: 'p4baseline', label: 'P4 Baseline',
+      key: 'id', id: 'p4baseline', label: 'ECI',
       render: (_, p) => (
         <div className="text-center">
           {PARTNER_BASELINES[p.id] ? (
@@ -997,7 +997,7 @@ export function Main() {
       render: (_, p) => (
         <div className="flex items-center justify-end gap-1">
           <button onClick={() => { setBaselineSheetPartnerId(p.id); setBaselineSheetOpen(true) }}
-            title="Create / edit P4 baseline"
+            title="Create / edit ECI"
             className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
             <Wallet className="w-3.5 h-3.5" />
           </button>
@@ -1023,7 +1023,7 @@ export function Main() {
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           <button onClick={() => { setBaselineSheetPartnerId(undefined); setBaselineSheetOpen(true) }}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap">
-            <Wallet className="w-4 h-4" /> Create Baseline
+            <Wallet className="w-4 h-4" /> Create ECI
           </button>
           <button onClick={() => setSheetOpen(true)}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"

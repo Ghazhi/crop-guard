@@ -60,10 +60,10 @@ export function SelectTemplate({
 
       <select
         id={selectId}
-        disabled={isDisabled}
+        disabled={isDisabled || options.length === 0}
         required={isRequired}
         aria-invalid={!!error}
-        aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
+        aria-describedby={error ? `${selectId}-error` : `${selectId}-hint`}
         className={cn(
           'w-full rounded-lg border bg-white outline-none transition-all appearance-none cursor-pointer',
           'focus:border-(--brand-green) focus:ring-2 focus:ring-(--brand-green)/20',
@@ -77,7 +77,9 @@ export function SelectTemplate({
         )}
         {...props}
       >
-        {placeholder && (
+        {options.length === 0 ? (
+          <option value="" disabled>No options available</option>
+        ) : placeholder && (
           <option value="" disabled>
             {placeholder}
           </option>
@@ -94,9 +96,9 @@ export function SelectTemplate({
           {error}
         </p>
       )}
-      {!error && hint && (
+      {!error && (hint || options.length === 0) && (
         <p id={`${selectId}-hint`} className="text-xs text-gray-400">
-          {hint}
+          {options.length === 0 ? 'No options available' : hint}
         </p>
       )}
     </div>

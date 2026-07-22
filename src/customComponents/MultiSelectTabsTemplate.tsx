@@ -92,8 +92,12 @@ export function MultiSelectTabsTemplate({
     } catch { /* storage unavailable */ }
   }, [storageKey, hydrated, shown, value])
 
-  const shownTabs    = shown.map(id => options.find(o => o.id === id)).filter((o): o is MultiSelectTabsOption => !!o)
-  const overflowOpts = options.filter(o => !shown.includes(o.id))
+  // the parent can set `value` to an id that isn't a tab yet (e.g. right after creating
+  // brand-new content for it) — surface it as a tab instead of leaving it buried in the
+  // overflow dropdown with nothing highlighted; derived at render time, no state sync needed
+  const effectiveShown = shown.includes(value) || !options.some(o => o.id === value) ? shown : [...shown, value]
+  const shownTabs    = effectiveShown.map(id => options.find(o => o.id === id)).filter((o): o is MultiSelectTabsOption => !!o)
+  const overflowOpts = options.filter(o => !effectiveShown.includes(o.id))
 
   function addTab(id: string) {
     setShown(prev => prev.includes(id) ? prev : [...prev, id])

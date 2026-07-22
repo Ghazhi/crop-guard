@@ -828,7 +828,7 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                    Questions ({questions.length})
+                    ECI ({questions.length})
                   </p>
                   <button
                     onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}

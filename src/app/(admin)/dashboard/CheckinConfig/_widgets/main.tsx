@@ -11,7 +11,6 @@ import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 
 import type { Pillar, Section, CropDef, Org, Question, Week, BaselineActivity, OrgConfig, CohortSchedule } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
-// CheckInList is defined locally in this file, mirroring the CustomBaseline convention
 import {
   ORGS,
   BUILT_IN_CROPS,
@@ -24,6 +23,7 @@ import {
   freshConfig,
 } from '@/dataCenter/checkinConfig'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
+import { usePersistedState } from '@/lib/usePersistedState'
 import { PARTNERS } from '@/dataCenter/partners'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
@@ -31,6 +31,27 @@ import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 
 function cropLabel(c: CropDef): string {
   return c.season ? `${c.name} ${c.season}` : c.name
+}
+
+// every new crop starts from this neutral 4-week scaffold — titles read "Set title"
+// (editable via the pencil icon) and activities are placeholders meant to be replaced.
+function defaultWeekTemplate(cropId: string): Week[] {
+  const starterActivities: { pillar: Pillar; label: string }[] = [
+    { pillar: 'agronomy',            label: 'Sample agronomy activity' },
+    { pillar: 'climate_smart',       label: 'Sample climate-smart activity' },
+    { pillar: 'advisory_commitment', label: 'Sample advisory activity' },
+    { pillar: 'farm_enterprise',     label: 'Sample farm enterprise activity' },
+  ]
+  return [1, 2, 3, 4].map(weekNum => ({
+    week: weekNum,
+    title: 'Set title',
+    questions: starterActivities.map((a, i) => ({
+      id:     `${cropId}_w${weekNum}_q${i}`,
+      pillar: a.pillar,
+      label:  a.label,
+      active: true,
+    })),
+  }))
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -86,7 +107,7 @@ function PartnerP4Panel({
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
-          Questions ({questions.length})
+          ECI ({questions.length})
         </p>
         <button
           onClick={() => { setAdding(true); setNewLabel(''); setNewDesc('') }}
@@ -254,7 +275,7 @@ function BaselineHeader({
   onRename: (label: string) => void
   onRemove: () => void
   entityLabel?: string
-  /** Renders a chevron toggle button; omit to keep the header non-collapsible (e.g. Check-in Lists) */
+  /** Renders a chevron toggle button; omit to keep the header non-collapsible */
   collapsible?: boolean
   expanded?: boolean
   onToggleExpanded?: () => void
@@ -527,22 +548,20 @@ function NewCheckInListSheet({
 function CheckInListCard({
   questions, onAddQuestion, onEditQuestion, onDeleteQuestion, onToggleQuestion,
 }: {
-  questions:        Question[]
+  questions: Question[]
   onAddQuestion:    (pillar: Pillar, label: string, hint: string) => void
   onEditQuestion:   (questionId: string, pillar: Pillar, label: string, hint: string) => void
   onDeleteQuestion: (questionId: string) => void
   onToggleQuestion: (questionId: string) => void
 }) {
-  const [adding,    setAdding]    = useState(false)
+  const [adding, setAdding] = useState(false)
   const [newPillar, setNewPillar] = useState<Pillar>('agronomy')
-  const [newLabel,  setNewLabel]  = useState('')
-  const [newHint,   setNewHint]   = useState('')
-
-  const [editingId,  setEditingId]  = useState<string | null>(null)
+  const [newLabel, setNewLabel] = useState('')
+  const [newHint, setNewHint] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [editPillar, setEditPillar] = useState<Pillar>('agronomy')
-  const [editLabel,  setEditLabel]  = useState('')
-  const [editHint,   setEditHint]   = useState('')
-
+  const [editLabel, setEditLabel] = useState('')
+  const [editHint, setEditHint] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Question | null>(null)
 
   function submitAdd() {
@@ -572,7 +591,7 @@ function CheckInListCard({
           className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
           style={{ background: 'var(--brand-forest)' }}
         >
-          <Plus className="w-3.5 h-3.5" /> Add Question
+          <Plus className="w-3.5 h-3.5" /> Add
         </button>
       </div>
 
@@ -580,80 +599,75 @@ function CheckInListCard({
         <p className="text-sm text-gray-400 py-10 text-center">No questions yet for this check-in list.</p>
       )}
 
-      {questions.map(q => {
-        const pll = PILLARS.find(p => p.id === q.pillar)
-        return editingId === q.id ? (
-          <div key={q.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-3">
+      {questions.map(q => (
+        editingId === q.id ? (
+          <div key={q.id} className="px-4 py-4 border-b border-gray-100 last:border-b-0 bg-gray-50/50 flex flex-col gap-2.5">
             <div className="flex flex-wrap gap-2">
-              {PILLARS.map(pll2 => (
+              {PILLARS.map(pll => (
                 <button
-                  key={pll2.id}
+                  key={pll.id}
                   type="button"
-                  onClick={() => setEditPillar(pll2.id)}
+                  onClick={() => setEditPillar(pll.id)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
-                    editPillar === pll2.id
+                    editPillar === pll.id
                       ? 'border-gray-400 bg-gray-100 text-gray-800'
                       : 'border-gray-200 text-gray-500 hover:border-gray-300'
                   }`}
                 >
-                  {pll2.shortLabel}
+                  {pll.shortLabel}
                 </button>
               ))}
             </div>
             <input
+              autoFocus
               type="text"
               value={editLabel}
               onChange={e => setEditLabel(e.target.value)}
-              placeholder="Question statement..."
-              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+              placeholder="Question statement…"
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
             />
             <input
               type="text"
               value={editHint}
               onChange={e => setEditHint(e.target.value)}
               placeholder="Optional hint for agent"
-              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
             />
             <div className="flex items-center gap-2">
-              <button onClick={submitEdit}
-                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
-                style={{ background: '#4b5563' }}>
-                <Check className="w-3.5 h-3.5" /> Save
+              <button onClick={submitEdit} className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold text-white rounded-lg" style={{ background: '#4b5563' }}>
+                <Check className="w-3 h-3" /> Save
               </button>
-              <button onClick={() => setEditingId(null)}
-                className="flex items-center gap-1 h-8 px-3 text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors">
+              <button onClick={() => setEditingId(null)} className="flex items-center gap-1 h-7 px-2.5 text-xs font-medium text-gray-500 hover:text-gray-700">
                 <X className="w-3 h-3" /> Cancel
               </button>
             </div>
           </div>
         ) : (
-          <div key={q.id} className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
+          <div key={q.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
             <div className="flex-1 min-w-0">
-              {pll && (
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase mb-1 ${pll.strip} ${pll.text}`}>
-                  {PILLAR_DISPLAY[q.pillar]}
-                </span>
-              )}
+              <span className="inline-block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-0.5">
+                {PILLAR_DISPLAY[q.pillar] ?? q.pillar}
+              </span>
               <p className={`text-sm font-medium leading-tight ${q.active ? 'text-gray-800' : 'text-gray-400'}`}>{q.label}</p>
               {q.hint && <p className="text-xs text-gray-400 mt-0.5">{q.hint}</p>}
             </div>
-            <div className="flex items-center gap-2 shrink-0 mt-0.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Toggle checked={q.active} onChange={() => onToggleQuestion(q.id)} />
               <button onClick={() => startEdit(q)}
-                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors">
-                <Pencil className="w-3.5 h-3.5" />
+                className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Edit">
+                <Pencil className="w-3 h-3" />
               </button>
               <button onClick={() => setDeleteTarget(q)}
-                className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors">
-                <Trash2 className="w-3.5 h-3.5" />
+                className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+                <Trash2 className="w-3 h-3" />
               </button>
             </div>
           </div>
         )
-      })}
+      ))}
 
-      {adding && (
-        <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-3">
+      {adding ? (
+        <div className="px-4 py-4 border-t border-gray-100 flex flex-col gap-2.5">
           <div className="flex flex-wrap gap-2">
             {PILLARS.map(pll => (
               <button
@@ -675,28 +689,33 @@ function CheckInListCard({
             type="text"
             value={newLabel}
             onChange={e => setNewLabel(e.target.value)}
-            placeholder="Question statement..."
-            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            placeholder="Question statement…"
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
           />
           <input
             type="text"
             value={newHint}
             onChange={e => setNewHint(e.target.value)}
             placeholder="Optional hint for agent"
-            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400 placeholder:text-gray-300"
+            className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
           />
           <div className="flex items-center gap-2">
-            <button onClick={submitAdd}
-              className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
-              style={{ background: 'var(--brand-forest)' }}>
-              <Check className="w-3.5 h-3.5" /> Save
+            <button onClick={submitAdd} className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-semibold text-white rounded-lg hover:opacity-90" style={{ background: 'var(--brand-forest)' }}>
+              <Check className="w-3 h-3" /> Save
             </button>
-            <button onClick={() => setAdding(false)}
-              className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
-              <X className="w-3.5 h-3.5" /> Cancel
+            <button onClick={() => setAdding(false)} className="flex items-center gap-1 h-7 px-2.5 text-xs text-gray-500 hover:text-gray-700">
+              <X className="w-3 h-3" /> Cancel
             </button>
           </div>
         </div>
+      ) : (
+        <button
+          onClick={() => { setAdding(true); setNewLabel(''); setNewHint(''); setNewPillar('agronomy') }}
+          className="w-full flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold hover:bg-gray-50 transition-colors border-t border-gray-100"
+          style={{ color: 'var(--brand-forest)' }}
+        >
+          <Plus className="w-3.5 h-3.5" /> Add question
+        </button>
       )}
 
       <ConfirmModal
@@ -716,10 +735,13 @@ export function Main() {
   const [section, setSection]        = useState<Section>('weekly')
   const [crop, setCrop]              = useState<string>('maize')
   const [expandedWeeks, setExpanded] = useState<Set<number>>(new Set([1]))
+  const [renamingWeek, setRenamingWeek] = useState<number | null>(null)
+  const [weekTitleDraft, setWeekTitleDraft] = useState('')
   const org                           = ORGS[0].id
-  const [crops, setCrops]            = useState<CropDef[]>(BUILT_IN_CROPS)
+  const [crops, setCrops]            = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
 
-  const [orgConfigs, setOrgConfigs] = useState<Record<string, OrgConfig>>(() =>
+  const [orgConfigs, setOrgConfigs] = usePersistedState<Record<string, OrgConfig>>(
+    'checkinConfig.orgConfigs',
     Object.fromEntries(ORGS.map(o => [o.id, freshConfig(BUILT_IN_CROPS)]))
   )
 
@@ -794,7 +816,7 @@ export function Main() {
     setCrops(prev => [...prev, def])
     setOrgConfigs(prev =>
       Object.fromEntries(Object.entries(prev).map(([oid, cfg]) => [
-        oid, { ...cfg, cropWeeks: { ...cfg.cropWeeks, [id]: [] } }
+        oid, { ...cfg, cropWeeks: { ...cfg.cropWeeks, [id]: defaultWeekTemplate(id) } }
       ]))
     )
     setNewCropName('')
@@ -810,7 +832,7 @@ export function Main() {
 
   function handleDeleteCrop(cropId: string) {
     setCrops(prev => prev.filter(c => c.id !== cropId))
-    if (crop === cropId) setCrop(crops.find(c => c.id !== cropId)?.id ?? 'maize')
+    if (crop === cropId) setCrop(crops.find(c => c.id !== cropId)?.id ?? '')
     setOrgConfigs(prev =>
       Object.fromEntries(Object.entries(prev).map(([oid, cfg]) => {
         const rest = Object.fromEntries(Object.entries(cfg.cropWeeks).filter(([k]) => k !== cropId))
@@ -838,6 +860,18 @@ export function Main() {
 
   const totalQ  = weeks.reduce((a, w) => a + w.questions.length, 0)
   const activeQ = weeks.reduce((a, w) => a + w.questions.filter(q2 => q2.active).length, 0)
+
+  function addWeek(cropId: string) {
+    const existing = cfg.cropWeeks[cropId] ?? []
+    const nextNum = existing.length === 0 ? 1 : Math.max(...existing.map(w => w.week)) + 1
+    setWeeksForCrop(cropId, prev => [...prev, { week: nextNum, title: `Week ${nextNum}`, questions: [] }])
+    setCrop(cropId)
+    setExpanded(prev => new Set(prev).add(nextNum))
+  }
+
+  function renameWeek(weekNum: number, title: string) {
+    setWeeks(prev => prev.map(w => w.week !== weekNum ? w : { ...w, title }))
+  }
 
   function toggleWeek(n: number) {
     setExpanded(prev => {
@@ -914,7 +948,7 @@ export function Main() {
       { id: 'c6', name: 'Kwahu West' }, { id: 'c7', name: 'New Juaben' },
     ]},
   ]
-  const [BASELINE_OPTIONS, setBaselineOptions] = useState<CustomBaseline[]>([])
+  const [BASELINE_OPTIONS, setBaselineOptions] = usePersistedState<CustomBaseline[]>('checkinConfig.baselines', [])
   const [newBaselineSheetOpen, setNewBaselineSheetOpen] = useState(false)
   const [expandedBaselines, setExpandedBaselines] = useState<Set<string>>(new Set())
 
@@ -946,56 +980,8 @@ export function Main() {
   function removeBaselineOption(id: string) {
     setBaselineOptions(prev => prev.filter(o => o.id !== id))
     setSchBaselineIds(prev => prev.filter(v => v !== id))
-    setSchedules(prev => prev.map(s => ({ ...s, baselineIds: s.baselineIds.filter(v => v !== id) })))
+    setSchedules(prev => prev.map(s => ({ ...s, baselineIds: (s.baselineIds ?? []).filter(v => v !== id) })))
     setExpandedBaselines(prev => { const next = new Set(prev); next.delete(id); return next })
-  }
-
-  // ── Check-in Lists ───────────────────────────────────────────────────────────
-  const [CHECKIN_LISTS, setCheckInLists] = useState<CheckInList[]>([])
-  const [newCheckInListSheetOpen, setNewCheckInListSheetOpen] = useState(false)
-
-  function addCheckInList(label: string) {
-    const id = `checkinlist_${Date.now()}`
-    setCheckInLists(prev => [...prev, { id, label, questions: [] }])
-    return id
-  }
-
-  function editCheckInList(id: string, label: string) {
-    setCheckInLists(prev => prev.map(l => l.id !== id ? l : { ...l, label }))
-  }
-
-  function removeCheckInList(id: string) {
-    setCheckInLists(prev => prev.filter(l => l.id !== id))
-    setSchCheckInIds(prev => prev.filter(v => v !== id))
-    setSchedules(prev => prev.map(s => ({ ...s, checkInListIds: s.checkInListIds.filter(v => v !== id) })))
-  }
-
-  function addCheckInListQuestion(listId: string, pillar: Pillar, label: string, hint: string) {
-    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
-      ...l,
-      questions: [...l.questions, { id: `cq_${Date.now()}`, pillar, label, hint: hint || undefined, active: true }],
-    }))
-  }
-
-  function editCheckInListQuestion(listId: string, questionId: string, pillar: Pillar, label: string, hint: string) {
-    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
-      ...l,
-      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, pillar, label, hint: hint || undefined }),
-    }))
-  }
-
-  function deleteCheckInListQuestion(listId: string, questionId: string) {
-    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
-      ...l,
-      questions: l.questions.filter(q => q.id !== questionId),
-    }))
-  }
-
-  function toggleCheckInListQuestion(listId: string, questionId: string) {
-    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
-      ...l,
-      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, active: !q.active }),
-    }))
   }
 
   function addBaselineActivity(baselineId: string, pillarId: string, label: string, desc: string) {
@@ -1038,8 +1024,6 @@ export function Main() {
     }))
   }
 
-  const checkInListOptions = CHECKIN_LISTS.map(l => ({ id: l.id, label: l.label }))
-
   const allBaselineOptions = BASELINE_OPTIONS.map(o => ({ id: o.id, label: o.label }))
 
   function baselineLabel(id: string) {
@@ -1048,7 +1032,57 @@ export function Main() {
 
   const cropOptions = crops.map(c => ({ id: c.id, label: cropLabel(c) }))
 
-  const [schedules,      setSchedules]      = useState<CohortSchedule[]>([])
+  // ── Check-in Lists ───────────────────────────────────────────────────────────
+  const [CHECKIN_LISTS, setCheckInLists] = usePersistedState<CheckInList[]>('checkinConfig.checkinLists', [])
+  const [newCheckInListSheetOpen, setNewCheckInListSheetOpen] = useState(false)
+
+  function addCheckInList(label: string) {
+    const id = `checkinlist_${Date.now()}`
+    setCheckInLists(prev => [...prev, { id, label, questions: [] }])
+    return id
+  }
+
+  function editCheckInList(id: string, label: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== id ? l : { ...l, label }))
+  }
+
+  function removeCheckInList(id: string) {
+    setCheckInLists(prev => prev.filter(l => l.id !== id))
+    setSchCheckInIds(prev => prev.filter(v => v !== id))
+    setSchedules(prev => prev.map(s => ({ ...s, checkInListIds: (s.checkInListIds ?? []).filter(v => v !== id) })))
+  }
+
+  function addCheckInListQuestion(listId: string, pillar: Pillar, label: string, hint: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: [...l.questions, { id: `cq_${Date.now()}`, pillar, label, hint: hint || undefined, active: true }],
+    }))
+  }
+
+  function editCheckInListQuestion(listId: string, questionId: string, pillar: Pillar, label: string, hint: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, pillar, label, hint: hint || undefined }),
+    }))
+  }
+
+  function deleteCheckInListQuestion(listId: string, questionId: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.filter(q => q.id !== questionId),
+    }))
+  }
+
+  function toggleCheckInListQuestion(listId: string, questionId: string) {
+    setCheckInLists(prev => prev.map(l => l.id !== listId ? l : {
+      ...l,
+      questions: l.questions.map(q => q.id !== questionId ? q : { ...q, active: !q.active }),
+    }))
+  }
+
+  const checkInListOptions = CHECKIN_LISTS.map(l => ({ id: l.id, label: l.label }))
+
+  const [schedules,      setSchedules]      = usePersistedState<CohortSchedule[]>('checkinConfig.schedules', [])
   const [scheduleSheet,  setScheduleSheet]  = useState(false)
   const [viewSchedule,   setViewSchedule]   = useState<CohortSchedule | null>(null)
   const [editingSchId,   setEditingSchId]   = useState<string | null>(null)
@@ -1070,9 +1104,9 @@ export function Main() {
 
   function openEditSchedule(s: CohortSchedule) {
     setEditingSchId(s.id)
-    setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId); setSchCropIds(s.cropIds)
+    setSchMode(s.mode); setSchProgramId(s.programId); setSchCohortId(s.cohortId); setSchCropIds(s.cropIds ?? [])
     setSchDate(s.scheduledDate ?? ''); setSchEndDate(s.endDate ?? '')
-    setSchBaselineIds(s.baselineIds); setSchCheckInIds(s.checkInListIds)
+    setSchBaselineIds(s.baselineIds ?? []); setSchCheckInIds(s.checkInListIds ?? [])
     setScheduleSheet(true)
   }
 
@@ -1129,15 +1163,15 @@ export function Main() {
     { key: 'cohortName', label: 'Cohort', render: v => <span className="text-gray-600">{String(v)}</span> },
     {
       key: 'cropIds', label: 'Crop',
-      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => cropOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
+      render: (v) => <span className="text-gray-600">{((v as string[]) ?? []).map(id => cropOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
     },
     {
       key: 'baselineIds', label: 'Baselines',
-      render: (v) => <span className="text-gray-600">{(v as string[]).map(baselineLabel).join(', ') || '—'}</span>,
+      render: (v) => <span className="text-gray-600">{((v as string[]) ?? []).map(baselineLabel).join(', ') || '—'}</span>,
     },
     {
       key: 'checkInListIds', label: 'Check-in List',
-      render: (v) => <span className="text-gray-600">{(v as string[]).map(id => checkInListOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
+      render: (v) => <span className="text-gray-600">{((v as string[]) ?? []).map(id => checkInListOptions.find(o => o.id === id)?.label).filter(Boolean).join(', ') || '—'}</span>,
     },
     {
       key: 'scheduledDate', label: 'Start',
@@ -1245,21 +1279,54 @@ export function Main() {
                 <h2 className="text-base font-bold text-gray-900">Weekly Check-in</h2>
               </div>
 
-              {/* crop tabs */}
-              <MultiSelectTabsTemplate
-                options={crops.map(c => ({ id: c.id, label: c.season ? `${c.name} ${c.season}` : c.name }))}
-                value={crop}
-                onChange={setCrop}
-                visibleCount={4}
-                storageKey="checkinConfig.weeklyCropTabs"
-              />
+              {/* crop tabs — every crop shows up, whether or not it has weeks yet */}
+              {crops.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                  <Sprout className="w-8 h-8 text-gray-200" />
+                  <p className="text-sm font-medium text-gray-400">No crops yet</p>
+                  <p className="text-xs text-gray-300">Add a crop in the Crops section to start configuring weekly check-ins.</p>
+                </div>
+              ) : (
+                <>
+                  <MultiSelectTabsTemplate
+                    options={crops.map(c => ({ id: c.id, label: cropLabel(c) }))}
+                    value={crop}
+                    onChange={setCrop}
+                    visibleCount={4}
+                    storageKey="checkinConfig.weeklyCropTabs"
+                  />
 
-              {/* stats */}
-              <p className="text-sm text-gray-500">
-                <span className="font-medium text-gray-700">{totalQ} questions</span>
-                {' · '}
-                <span className="font-medium text-gray-700">{activeQ} active</span>
-              </p>
+                  {weeks.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                      <CalendarDays className="w-8 h-8 text-gray-200" />
+                      <p className="text-sm font-medium text-gray-400">No weeks configured yet</p>
+                      <ButtonTemplate
+                        variant="outline" size="sm" label="Add Week" className="mt-1"
+                        leftIcon={<Plus className="w-3.5 h-3.5" />}
+                        onClick={() => addWeek(crop)}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {/* stats */}
+                      <p className="text-sm text-gray-500">
+                        <span className="font-medium text-gray-700">{totalQ} questions</span>
+                        {' · '}
+                        <span className="font-medium text-gray-700">{activeQ} active</span>
+                      </p>
+
+                      {/* add week to current crop */}
+                      <div>
+                        <ButtonTemplate
+                          variant="outline" size="sm" label="Add Week"
+                          leftIcon={<Plus className="w-3.5 h-3.5" />}
+                          onClick={() => addWeek(crop)}
+                        />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
 
               {/* week accordion */}
               <div className="flex flex-col gap-2">
@@ -1276,25 +1343,55 @@ export function Main() {
                   return (
                     <div key={w.week} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                       {/* week header */}
-                      <button
-                        onClick={() => toggleWeek(w.week)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
-                      >
+                      <div className="w-full flex items-center gap-3 px-4 py-3 group/weekheader hover:bg-gray-50 transition-colors">
                         <div
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
                           style={{ background: 'var(--brand-forest)' }}
                         >
                           W{w.week}
                         </div>
-                        <div className="flex-1 text-left">
-                          <p className="text-sm font-semibold text-gray-900">{w.title}</p>
-                          <p className="text-xs text-gray-400">{w.questions.length} questions · {activeCount} active</p>
-                        </div>
-                        {open
-                          ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-                          : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-                        }
-                      </button>
+                        {renamingWeek === w.week ? (
+                          <div className="flex-1 flex items-center gap-1.5">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={weekTitleDraft}
+                              onChange={e => setWeekTitleDraft(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') { renameWeek(w.week, weekTitleDraft.trim() || 'Set title'); setRenamingWeek(null) }
+                                if (e.key === 'Escape') setRenamingWeek(null)
+                              }}
+                              className="flex-1 h-8 px-2 text-sm font-semibold border border-gray-200 rounded-lg focus:outline-none focus:border-(--brand-green)"
+                            />
+                            <button onClick={() => { renameWeek(w.week, weekTitleDraft.trim() || 'Set title'); setRenamingWeek(null) }}
+                              className="text-green-600 hover:text-green-800 shrink-0"><Check className="w-4 h-4" /></button>
+                            <button onClick={() => setRenamingWeek(null)}
+                              className="text-gray-400 hover:text-gray-600 shrink-0"><X className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <button onClick={() => toggleWeek(w.week)} className="flex-1 text-left flex items-center gap-2 min-w-0">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">{w.title}</p>
+                              <p className="text-xs text-gray-400">{w.questions.length} questions · {activeCount} active</p>
+                            </div>
+                          </button>
+                        )}
+                        {renamingWeek !== w.week && (
+                          <button
+                            onClick={() => { setRenamingWeek(w.week); setWeekTitleDraft(w.title) }}
+                            className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 shrink-0 opacity-0 group-hover/weekheader:opacity-100 transition-opacity"
+                            title="Rename week"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => toggleWeek(w.week)} className="shrink-0">
+                          {open
+                            ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                            : <ChevronDown className="w-4 h-4 text-gray-400" />
+                          }
+                        </button>
+                      </div>
 
                       {/* week body */}
                       {open && (
@@ -1562,7 +1659,6 @@ export function Main() {
                     ) : (
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">{c.name}</p>
-                        {c.builtIn && <p className="text-[10px] text-gray-400 mt-0.5">Built-in</p>}
                       </div>
                     )}
                     <div className="flex items-center gap-1 shrink-0">
@@ -1583,12 +1679,10 @@ export function Main() {
                             className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors opacity-0 group-hover:opacity-100">
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          {!c.builtIn && (
-                            <button onClick={() => handleDeleteCrop(c.id)}
-                              className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button onClick={() => handleDeleteCrop(c.id)}
+                            className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </>
                       )}
                     </div>
@@ -1642,7 +1736,7 @@ export function Main() {
                 <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
                   <CalendarDays className="w-8 h-8 text-gray-200" />
                   <p className="text-sm font-medium text-gray-400">No cohort schedules yet</p>
-                  <p className="text-xs text-gray-300">Click "New Schedule" to assign a check-in list to a cohort.</p>
+                  <p className="text-xs text-gray-300">Click &quot;New Schedule&quot; to assign a baseline to a cohort.</p>
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -1668,7 +1762,7 @@ export function Main() {
                       variant="primary"
                       label={editingSchId ? 'Save Changes' : 'Save Schedule'}
                       onClick={handleSaveSchedule}
-                      isDisabled={!schProgramId || !schCohortId || (schMode === 'scheduled' && !schDate) || schCheckInIds.length === 0 || schBaselineIds.length === 0}
+                      isDisabled={!schProgramId || !schCohortId || (schMode === 'scheduled' && !schDate) || schBaselineIds.length === 0}
                     />
                   </>
                 }
@@ -1827,7 +1921,7 @@ export function Main() {
                       <p className="text-xs text-gray-400 mb-2">Crop</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(() => {
-                          const labels = viewSchedule.cropIds
+                          const labels = (viewSchedule.cropIds ?? [])
                             .map(id => cropOptions.find(o => o.id === id)?.label)
                             .filter((l): l is string => !!l)
                           return labels.length === 0
@@ -1843,7 +1937,7 @@ export function Main() {
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-2">Baselines</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {viewSchedule.baselineIds.map(id => (
+                        {(viewSchedule.baselineIds ?? []).map(id => (
                           <span key={id} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'var(--brand-pale)', color: 'var(--brand-forest)' }}>
                             {baselineLabel(id)}
                           </span>
@@ -1854,7 +1948,7 @@ export function Main() {
                       <p className="text-xs text-gray-400 mb-2">Check-in Lists</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(() => {
-                          const labels = viewSchedule.checkInListIds
+                          const labels = (viewSchedule.checkInListIds ?? [])
                             .map(id => checkInListOptions.find(o => o.id === id)?.label)
                             .filter((l): l is string => !!l)
                           return labels.length === 0

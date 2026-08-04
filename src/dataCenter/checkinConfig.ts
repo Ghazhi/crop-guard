@@ -270,6 +270,17 @@ export const TOMATO_SEED: Week[] = [
   { week: 5, title: 'Harvest & Post-Harvest',      questions: [q('t5q1','agronomy','I harvested at the correct ripeness stage'),q('t5q2','agronomy','I minimised bruising during harvest'),q('t5q3','climate_smart','I stored fruit in a cool ventilated space'),q('t5q4','advisory_commitment','I shared yield data with agent'),q('t5q5','farm_enterprise','I calculated gross margin')] },
 ]
 
+export const COCOA_SEED: Week[] = [
+  { week: 1, title: 'Pruning & Farm Sanitation',      questions: [q('co1q1','agronomy','I pruned my cocoa trees'),q('co1q2','agronomy','I removed mistletoe and diseased branches'),q('co1q3','climate_smart','I maintained shade tree cover'),q('co1q4','advisory_commitment','I attended the pre-season cocoa training'),q('co1q5','farm_enterprise','I prepared my input budget')] },
+  { week: 2, title: 'Black Pod & Pest Scouting',      questions: [q('co2q1','agronomy','I scouted for black pod disease'),q('co2q2','agronomy','I scouted for capsids and mirids'),q('co2q3','climate_smart','I removed and destroyed infected pods'),q('co2q4','advisory_commitment','I reported disease findings to my agent'),q('co2q5','farm_enterprise','I recorded my crop protection costs')] },
+  { week: 3, title: 'Fertilizer Application',         questions: [q('co3q1','agronomy','I applied fertiliser at the correct rate','I used the recommended NPK blend for cocoa.'),q('co3q2','agronomy','I applied fertiliser before the rains'),q('co3q3','climate_smart','I avoided fertiliser runoff near water bodies'),q('co3q4','advisory_commitment','I followed the fertiliser advisory'),q('co3q5','farm_enterprise','I recorded my fertiliser costs')] },
+  { week: 4, title: 'Pollination & Flowering',        questions: [q('co4q1','agronomy','My trees are flowering well'),q('co4q2','agronomy','I maintained pollinator habitat (leaf litter, shade)'),q('co4q3','climate_smart','I managed shade levels for flowering'),q('co4q4','advisory_commitment','I received flowering-stage advisory'),q('co4q5','farm_enterprise','I started my preliminary yield estimate')] },
+  { week: 5, title: 'Pod Development',                questions: [q('co5q1','agronomy','Pod development is progressing well'),q('co5q2','agronomy','I continued black pod removal'),q('co5q3','climate_smart','I managed moisture stress during pod development'),q('co5q4','advisory_commitment','I reported pod counts to my agent'),q('co5q5','farm_enterprise','I updated my yield estimate')] },
+  { week: 6, title: 'Harvesting',                     questions: [q('co6q1','agronomy','I harvested only ripe pods'),q('co6q2','agronomy','I harvested at the correct interval','I harvested every 2–3 weeks during peak season.'),q('co6q3','climate_smart','I harvested during a dry weather window'),q('co6q4','advisory_commitment','I shared my harvest data with my agent'),q('co6q5','farm_enterprise','I recorded my harvest labour costs')] },
+  { week: 7, title: 'Fermentation & Drying',          questions: [q('co7q1','agronomy','I fermented my beans for the correct duration','I fermented for 5–7 days with regular turning.'),q('co7q2','agronomy','I dried my beans to safe moisture content'),q('co7q3','climate_smart','I used a raised platform for drying'),q('co7q4','advisory_commitment','I completed the fermentation/drying debrief'),q('co7q5','farm_enterprise','I recorded my processing costs')] },
+  { week: 8, title: 'Sale & Post-Harvest',            questions: [q('co8q1','agronomy','I graded my beans before sale'),q('co8q2','agronomy','I stored beans in a dry, ventilated space'),q('co8q3','climate_smart','I used a climate-smart storage method'),q('co8q4','advisory_commitment','I sold through my registered LBC'),q('co8q5','farm_enterprise','I calculated my gross margin'),q('co8q6','farm_enterprise','I started planning for next season')] },
+]
+
 // ─── built-in crops ───────────────────────────────────────────────────────────
 
 export const BUILT_IN_CROPS: CropDef[] = [
@@ -281,6 +292,7 @@ export const BUILT_IN_CROPS: CropDef[] = [
   { id: 'groundnut', name: 'Groundnut', season: '2025', builtIn: true },
   { id: 'cowpea',    name: 'Cowpea',    season: '2025', builtIn: true },
   { id: 'tomato',    name: 'Tomato',    season: '2025', builtIn: true },
+  { id: 'cocoa',     name: 'Cocoa',     season: '2025', builtIn: true },
 ]
 
 export const BUILT_IN_SEED_MAP: Record<string, Week[]> = {
@@ -292,6 +304,7 @@ export const BUILT_IN_SEED_MAP: Record<string, Week[]> = {
   groundnut: GROUNDNUT_SEED,
   cowpea:    COWPEA_SEED,
   tomato:    TOMATO_SEED,
+  cocoa:     COCOA_SEED,
 }
 
 // ─── baseline activities ──────────────────────────────────────────────────────

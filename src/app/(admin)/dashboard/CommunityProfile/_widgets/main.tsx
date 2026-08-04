@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { cn } from '@/lib/utils'
 import {
@@ -130,8 +131,14 @@ function CommunityCard({ c, onClick, onRemove }: { c: Community; onClick: () => 
   return (
     <div onClick={onClick}
       className="relative group rounded-xl border border-gray-200 bg-white overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-      <div className="h-32 flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
-        <Building2 className="w-10 h-10" style={{ color: 'var(--brand-green)' }} />
+      <div className="h-32 relative" style={{ backgroundColor: 'var(--brand-mint)' }}>
+        {c.imageUrl ? (
+          <Image src={c.imageUrl} alt={c.name} fill className="object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building2 className="w-10 h-10" style={{ color: 'var(--brand-green)' }} />
+          </div>
+        )}
       </div>
       <button
         onClick={e => { e.stopPropagation(); onRemove() }}
@@ -382,9 +389,13 @@ function CommunitySheet({
             />
           </div>
 
-          <div className="mx-6 mb-4 h-40 rounded-xl overflow-hidden flex items-center justify-center"
+          <div className="mx-6 mb-4 h-40 rounded-xl overflow-hidden relative flex items-center justify-center"
             style={{ backgroundColor: 'var(--brand-mint)' }}>
-            <Building2 className="w-12 h-12" style={{ color: 'var(--brand-green)' }} />
+            {community?.imageUrl ? (
+              <Image src={community.imageUrl} alt={community.name} fill className="object-cover" />
+            ) : (
+              <Building2 className="w-12 h-12" style={{ color: 'var(--brand-green)' }} />
+            )}
           </div>
 
           <div className="px-6 pb-6 space-y-5">

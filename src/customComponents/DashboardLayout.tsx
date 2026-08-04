@@ -10,7 +10,7 @@ import {
   Handshake, FileText, PieChart,
   BookOpen, ClipboardList, AlertTriangle,
   CalendarDays, Target, BarChart3, Settings2, Activity, ClipboardCheck,
-  FolderKanban, ShieldCheck,
+  FolderKanban, ShieldCheck, Landmark, GraduationCap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -24,6 +24,7 @@ type NavItem    = NavLink | NavSection
 
 const STAFF_NAV: NavItem[] = [
   { href: '/dashboard/Dashboard',           label: 'Dashboard',            icon: LayoutDashboard,   locked: false },
+  { href: '/dashboard/Governance',          label: 'Governance',           icon: Landmark,          locked: false },
   { href: '/dashboard/CommunityProfile',    label: 'Community Profile',    icon: Globe2,            locked: false },
   { href: '/dashboard/FarmersRegistry',     label: 'Farmers Registry',     icon: Users,             locked: false },
   { href: '/dashboard/ProgramsSetup',       label: 'Programs Setup',       icon: Building2,         locked: false },
@@ -33,6 +34,7 @@ const STAFF_NAV: NavItem[] = [
   { href: '/dashboard/RiskIntelligence',    label: 'Risk Intelligence',    icon: ShieldAlert,       locked: false },
   { href: '/dashboard/Reports',             label: 'Reports',              icon: BarChart2,         locked: false },
   { href: '/dashboard/CheckinConfig',       label: 'Check-in Config',      icon: SlidersHorizontal, locked: false },
+  { href: '/dashboard/TrainingMaterials',   label: 'Training Materials',   icon: GraduationCap,     locked: false },
   { section: true, label: 'Partners' },
   { href: '/dashboard/PartnerDirectory',    label: 'Partners',             icon: Handshake,         locked: false },
 ]

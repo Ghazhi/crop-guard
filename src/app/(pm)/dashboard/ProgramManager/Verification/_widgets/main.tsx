@@ -18,11 +18,16 @@ import {
   CheckCircle,
 } from 'lucide-react'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { SheetTemplate } from '@/customComponents/SheetTemplate'
+import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
+import { verifyFarmerCheckin, zoneForScore } from '../_logics/services'
+import { toast } from 'sonner'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -40,6 +45,7 @@ interface CohortProgress {
 interface ReviewRecord {
   id: string
   farmer: string
+  farmerId?: string
   community: string
   cohort: string
   submittedDate: string
@@ -47,6 +53,7 @@ interface ReviewRecord {
   reviewedBy: string
   priority: 'High' | 'Medium' | 'Low'
   status: 'Pending' | 'In Review'
+  pillarScores?: { p1: number; p2: number; p3: number; p4: number }
 }
 
 interface RevisitRecord {
@@ -99,9 +106,9 @@ const MOCK_COHORTS: CohortProgress[] = [
 ]
 
 const MOCK_REVIEW: ReviewRecord[] = [
-  { id: 'R001', farmer: 'Abena Asante',       community: 'Ahinsan',         cohort: 'Kumasi North',  submittedDate: '2026-07-01', type: 'Initial',      reviewedBy: '—',           priority: 'High',   status: 'Pending'   },
-  { id: 'R002', farmer: 'Kwaku Mensah',        community: 'Ejisu Town',      cohort: 'Ejisu',         submittedDate: '2026-07-02', type: 'Resubmission', reviewedBy: 'Ama Darko',   priority: 'Medium', status: 'In Review' },
-  { id: 'R003', farmer: 'Akosua Frimpong',     community: 'Bonwire',         cohort: 'Ejisu',         submittedDate: '2026-07-02', type: 'Initial',      reviewedBy: '—',           priority: 'Low',    status: 'Pending'   },
+  { id: 'R001', farmer: 'Ama Konadu',          farmerId: 'f-002', community: 'Mamponteng',      cohort: 'Kumasi Cohort A', submittedDate: '2026-07-01', type: 'Initial',      reviewedBy: '—',           priority: 'High',   status: 'Pending', pillarScores: { p1: 18, p2: 20, p3: 12, p4: 11 } },
+  { id: 'R002', farmer: 'Lydia Adjei',         farmerId: 'f-005', community: 'Mamponteng',      cohort: 'Kumasi Cohort A', submittedDate: '2026-07-02', type: 'Initial',      reviewedBy: 'Ama Darko',   priority: 'Medium', status: 'In Review', pillarScores: { p1: 22, p2: 21, p3: 14, p4: 15 } },
+  { id: 'R003', farmer: 'Salamatu Fuseini',    farmerId: 'f-007', community: 'Damongo',         cohort: 'Cohort 3 - Lingbensi', submittedDate: '2026-07-02', type: 'Initial', reviewedBy: '—',           priority: 'Low',    status: 'Pending', pillarScores: { p1: 10, p2: 12, p3: 8, p4: 9 } },
   { id: 'R004', farmer: 'Yaw Boateng',         community: 'Mampong Ashanti', cohort: 'Mampong',       submittedDate: '2026-07-03', type: 'Initial',      reviewedBy: 'Kofi Osei',   priority: 'High',   status: 'In Review' },
   { id: 'R005', farmer: 'Efua Darko',          community: 'Offinso Nkwanta', cohort: 'Offinso',       submittedDate: '2026-07-03', type: 'Resubmission', reviewedBy: '—',           priority: 'Medium', status: 'Pending'   },
   { id: 'R006', farmer: 'Kofi Acheampong',     community: 'Kwabre',          cohort: 'Kwabre West',   submittedDate: '2026-07-04', type: 'Initial',      reviewedBy: 'Ama Darko',   priority: 'Low',    status: 'In Review' },
@@ -373,6 +380,7 @@ function VerificationProgressTab() {
 // ─── Tab: Review Queue ────────────────────────────────────────────────────────
 
 function ReviewQueueTab() {
+  const [reviewQueue, setReviewQueue] = usePersistedState<ReviewRecord[]>('verif-review-queue', MOCK_REVIEW)
   const [search, setSearch] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [filterType, setFilterType] = useState('')
@@ -380,10 +388,12 @@ function ReviewQueueTab() {
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [reviewing, setReviewing] = useState<ReviewRecord | null>(null)
+  const [rejecting, setRejecting] = useState<ReviewRecord | null>(null)
 
   const activeFilterCount = [filterType, filterPriority, filterStatus].filter(Boolean).length
 
-  const filtered = MOCK_REVIEW.filter(r => {
+  const filtered = reviewQueue.filter(r => {
     const q = search.toLowerCase()
     const matchSearch = !q || r.farmer.toLowerCase().includes(q) || r.community.toLowerCase().includes(q) || r.cohort.toLowerCase().includes(q)
     const matchType = !filterType || r.type === filterType
@@ -403,6 +413,25 @@ function ReviewQueueTab() {
   function statusBadge(s: string) {
     if (s === 'In Review') return 'bg-blue-100 text-blue-700'
     return 'bg-yellow-100 text-yellow-700'
+  }
+
+  function handleApprove(record: ReviewRecord) {
+    if (record.farmerId && record.pillarScores) {
+      verifyFarmerCheckin(record.farmerId, record.pillarScores, 'You')
+      const score = record.pillarScores.p1 + record.pillarScores.p2 + record.pillarScores.p3 + record.pillarScores.p4
+      toast.success(`${record.farmer} verified — FRI ${score} (${zoneForScore(score)})`)
+    } else {
+      toast.success(`${record.farmer} approved`)
+    }
+    setReviewQueue(prev => prev.filter(r => r.id !== record.id))
+    setReviewing(null)
+  }
+
+  function handleReject(record: ReviewRecord) {
+    setReviewQueue(prev => prev.filter(r => r.id !== record.id))
+    toast.success(`${record.farmer}'s submission rejected`)
+    setRejecting(null)
+    setReviewing(null)
   }
 
   const REVIEW_COLUMNS: DatagridColumn<ReviewRecord>[] = [
@@ -430,11 +459,11 @@ function ReviewQueueTab() {
       key: 'id', id: 'actions', label: '',
       render: (_, r) => (
         <div className="flex items-center gap-1">
-          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Review" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => {}} />
+          <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Review" leftIcon={<Eye className="w-3.5 h-3.5" />} onClick={() => setReviewing(r)} />
           {r.reviewedBy === '—' ? (
-            <ButtonTemplate variant="outline" size="sm" tooltip="Assign to yourself" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} className="text-xs px-2 h-7" />
+            <ButtonTemplate variant="outline" size="sm" tooltip="Assign to yourself" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setReviewQueue(prev => prev.map(x => x.id === r.id ? { ...x, reviewedBy: 'You', status: 'In Review' } : x))} className="text-xs px-2 h-7" />
           ) : (
-            <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reassign" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => {}} />
+            <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Reassign" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setReviewQueue(prev => prev.map(x => x.id === r.id ? { ...x, reviewedBy: 'You' } : x))} />
           )}
         </div>
       ),
@@ -444,9 +473,9 @@ function ReviewQueueTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={<Clock className="w-5 h-5" />} label="Pending" value={MOCK_REVIEW.filter(r => r.status === 'Pending').length} sub="Awaiting reviewer assignment" iconBg="#fef3c7" iconColor="#d97706" />
-        <StatCard icon={<Eye className="w-5 h-5" />} label="In Review" value={MOCK_REVIEW.filter(r => r.status === 'In Review').length} sub="Currently being reviewed" iconBg="#dbeafe" iconColor="#2563eb" />
-        <StatCard icon={<AlertCircle className="w-5 h-5" />} label="High Priority" value={MOCK_REVIEW.filter(r => r.priority === 'High').length} sub="Require urgent attention" iconBg="#fee2e2" iconColor="#dc2626" />
+        <StatCard icon={<Clock className="w-5 h-5" />} label="Pending" value={reviewQueue.filter(r => r.status === 'Pending').length} sub="Awaiting reviewer assignment" iconBg="#fef3c7" iconColor="#d97706" />
+        <StatCard icon={<Eye className="w-5 h-5" />} label="In Review" value={reviewQueue.filter(r => r.status === 'In Review').length} sub="Currently being reviewed" iconBg="#dbeafe" iconColor="#2563eb" />
+        <StatCard icon={<AlertCircle className="w-5 h-5" />} label="High Priority" value={reviewQueue.filter(r => r.priority === 'High').length} sub="Require urgent attention" iconBg="#fee2e2" iconColor="#dc2626" />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
@@ -487,6 +516,65 @@ function ReviewQueueTab() {
           className="pt-3 border-t border-gray-100"
         />
       </div>
+
+      <SheetTemplate
+        open={!!reviewing}
+        onClose={() => setReviewing(null)}
+        title={reviewing?.farmer ?? ''}
+        subtitle={reviewing ? `${reviewing.community} · ${reviewing.cohort}` : undefined}
+        footer={
+          <>
+            <ButtonTemplate variant="outline" label="Reject" fullWidth onClick={() => reviewing && setRejecting(reviewing)} />
+            <ButtonTemplate variant="primary" label="Approve & Verify" fullWidth onClick={() => reviewing && handleApprove(reviewing)} />
+          </>
+        }
+      >
+        {reviewing && (
+          <div className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div><p className="text-xs text-gray-400">Submitted</p><p className="font-medium text-gray-900">{reviewing.submittedDate}</p></div>
+              <div><p className="text-xs text-gray-400">Type</p><p className="font-medium text-gray-900">{reviewing.type}</p></div>
+            </div>
+            {reviewing.pillarScores ? (
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Submitted Pillar Scores</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['Farm Management (P1)', reviewing.pillarScores.p1, 30],
+                    ['Climate Resilience (P2)', reviewing.pillarScores.p2, 30],
+                    ['Economic Inclusion (P3)', reviewing.pillarScores.p3, 20],
+                    ['Social Welfare (P4)', reviewing.pillarScores.p4, 20],
+                  ] as const).map(([label, score, max]) => (
+                    <div key={label} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <p className="text-[11px] text-gray-500">{label}</p>
+                      <p className="text-sm font-semibold text-gray-900">{score} / {max}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  Approving will set this farmer&apos;s FRI score to{' '}
+                  <span className="font-semibold text-gray-900">
+                    {reviewing.pillarScores.p1 + reviewing.pillarScores.p2 + reviewing.pillarScores.p3 + reviewing.pillarScores.p4}
+                  </span>{' '}
+                  ({zoneForScore(reviewing.pillarScores.p1 + reviewing.pillarScores.p2 + reviewing.pillarScores.p3 + reviewing.pillarScores.p4)}).
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No submission data linked to this record.</p>
+            )}
+          </div>
+        )}
+      </SheetTemplate>
+
+      <ConfirmModal
+        open={!!rejecting}
+        title="Reject Submission"
+        message={`Reject ${rejecting?.farmer ?? 'this farmer'}'s submission? They will need to resubmit.`}
+        confirmLabel="Reject"
+        variant="danger"
+        onConfirm={() => rejecting && handleReject(rejecting)}
+        onCancel={() => setRejecting(null)}
+      />
     </div>
   )
 }

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // extracted reference project — not part of this Next.js app
+    "boltproject/**",
   ]),
 ]);
 

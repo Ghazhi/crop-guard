@@ -28,7 +28,7 @@ export function ConfirmModal({
   const v = VARIANTS[variant]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={onCancel} />
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 flex flex-col gap-4">
         <div className="flex items-start gap-3">

@@ -42,7 +42,7 @@ export const COMMUNITIES: Community[] = [
     },
     gpsLat: 9.4221, gpsLng: -1.5832,
     leaderName: 'Chief Alhassan', leaderContact: '+233201234567',
-    imageUrl: null, createdAt: '2026-06-01',
+    imageUrl: '/assets/images/asinyo2.jpeg', createdAt: '2026-06-01',
   },
   {
     id: 'com-002',

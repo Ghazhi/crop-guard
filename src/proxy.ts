@@ -21,10 +21,12 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const session = parseSession(req)
 
-  // Root → redirect based on session
+  // Root → authenticated users go straight to their dashboard; logged-out users see the landing page
   if (pathname === '/') {
-    const dest = session ? (ROLE_HOME[session.role] ?? '/dashboard/Dashboard') : '/login'
-    return NextResponse.redirect(new URL(dest, req.url))
+    if (session) {
+      return NextResponse.redirect(new URL(ROLE_HOME[session.role] ?? '/dashboard/Dashboard', req.url))
+    }
+    return NextResponse.next()
   }
 
   // Login page → authenticated users go straight to their dashboard

@@ -15,7 +15,7 @@ export const FARMERS_LIST: Farmer[] = [
     currentFri: 61, currentZone: 'Resilience Builder', duplicateFlag: false,
   },
   {
-    id: 'f-002', fullName: 'Ama Konadu', phone: '0551234568',
+    id: 'f-002', fullName: 'Ama Konadu', phone: '0241334455',
     nationalId: 'GHA-0000000002', dateOfBirth: '1992-06-14', gender: 'female',
     region: 'ah', district: 'Kwabre East', community: 'Mamponteng',
     primaryCrop: 'maize', farmSize: '3.0',
@@ -24,7 +24,7 @@ export const FARMERS_LIST: Farmer[] = [
       cohortId: 'coh-005', cohortName: 'Kumasi Cohort A',
       agentName: 'Abdul Razak', status: 'active', currentStage: 1,
     },
-    currentFri: null, currentZone: null, duplicateFlag: false,
+    currentFri: null, currentZone: null, duplicateFlag: true,
   },
   {
     id: 'f-003', fullName: 'Faiza Sidik', phone: '0551234567',
@@ -246,7 +246,7 @@ export const FARMERS_LIST: Farmer[] = [
 
   // ── prog-006: Northern Sorghum Initiative (p-004 USAID Feed the Future) ────
   {
-    id: 'f-021', fullName: 'Alhassan Ibrahim', phone: '0241334455',
+    id: 'f-021', fullName: 'Alhassan Ibrahim', phone: '0241334455', // shares phone with f-002 (duplicateFlag demo)
     nationalId: 'GHA-400500600-1', dateOfBirth: '1985-06-12', gender: 'male',
     region: 'nr', district: 'Kumbungu', community: 'Kumbungu Town',
     primaryCrop: 'sorghum', farmSize: '4.5',
@@ -255,7 +255,7 @@ export const FARMERS_LIST: Farmer[] = [
       cohortId: 'coh-015', cohortName: 'Cohort A - Tamale',
       agentName: 'Kwame Asante', status: 'active', currentStage: 2,
     },
-    currentFri: 72, currentZone: 'Resilience Builder', duplicateFlag: false,
+    currentFri: 72, currentZone: 'Resilience Builder', duplicateFlag: true,
   },
   {
     id: 'f-022', fullName: 'Fatima Zakari', phone: '0551334456',

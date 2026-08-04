@@ -78,7 +78,7 @@ export function SelectTemplate({
         {...props}
       >
         {options.length === 0 ? (
-          <option value="" disabled>No options available</option>
+          <option value="" disabled>{placeholder ?? 'No options available'}</option>
         ) : placeholder && (
           <option value="" disabled>
             {placeholder}
@@ -98,7 +98,7 @@ export function SelectTemplate({
       )}
       {!error && (hint || options.length === 0) && (
         <p id={`${selectId}-hint`} className="text-xs text-gray-400">
-          {options.length === 0 ? 'No options available' : hint}
+          {options.length === 0 ? (placeholder ?? 'No options available') : hint}
         </p>
       )}
     </div>

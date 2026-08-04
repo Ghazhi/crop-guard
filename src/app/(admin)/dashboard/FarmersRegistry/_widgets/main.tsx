@@ -8,7 +8,10 @@ import {
   UserMinus, UserCog, Users, Check, GitBranch, UserPlus,
   FileText, UserCheck, Clock, CreditCard, Truck, PackageCheck,
   MapPin, BarChart2, ChevronUp, ChevronDown, SlidersHorizontal,
+  AlertTriangle, LayoutList, ClipboardList, Columns3,
 } from 'lucide-react'
+import { COOPERATIVES } from '@/dataCenter/cooperatives'
+import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -97,6 +100,20 @@ const GENDER_OPTIONS = [
 ]
 
 const CSV_FIELDS = 'full_name, phone, national_id, date_of_birth, gender, region_code, district, community, primary_crop, total_farm_size_ha'
+
+const REGISTRATION_COLUMNS = [
+  { key: 'farmerId',    label: 'Farmer ID' },
+  { key: 'name',        label: 'Name' },
+  { key: 'phone',       label: 'Phone' },
+  { key: 'nationalId',  label: 'National ID' },
+  { key: 'dob',         label: 'DOB' },
+  { key: 'gender',      label: 'Gender' },
+  { key: 'region',      label: 'Region' },
+  { key: 'district',    label: 'District' },
+  { key: 'community',   label: 'Community' },
+  { key: 'primaryCrop', label: 'Primary Crop' },
+  { key: 'farmSize',    label: 'Farm Size (ha)' },
+]
 
 // ── Shared filter select ───────────────────────────────────────────────────────
 
@@ -1362,6 +1379,17 @@ export function Main() {
   const [filterAgent,    setFilterAgent]    = usePersistedState('fr-agent', '')
   const [filterFriMin,   setFilterFriMin]   = usePersistedState('fr-fri-min', '')
   const [filterFriMax,   setFilterFriMax]   = usePersistedState('fr-fri-max', '')
+  const [filterCommunity,   setFilterCommunity]   = usePersistedState('fr-community', '')
+  const [filterCooperative, setFilterCooperative] = usePersistedState('fr-cooperative', '')
+
+  // View
+  const [viewMode, setViewMode] = usePersistedState<'enrolment' | 'registration'>('fr-view-mode', 'enrolment')
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const [visibleColumns, setVisibleColumns] = usePersistedState<Record<string, boolean>>('fr-columns', {
+    farmerId: true, name: true, phone: true, nationalId: true, dob: true,
+    gender: true, region: true, district: true, community: true,
+    primaryCrop: true, farmSize: true,
+  })
 
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -1387,6 +1415,10 @@ export function Main() {
   useEffect(() => { if (!filterProgram) setFilterCohort('') }, [filterProgram])
 
   const filteredCohorts = programs.find(p => p.id === filterProgram)?.cohorts ?? []
+  const communityOptions = useMemo(
+    () => Array.from(new Set(farmers.map(f => f.community).filter(Boolean))).sort(),
+    [farmers],
+  )
 
   const displayed = useMemo(() => farmers.filter(f => {
     if (search.trim()) {
@@ -1399,11 +1431,13 @@ export function Main() {
     if (filterEnrolled === 'unenrolled' && !!f.enrollment) return false
     if (filterZone  && f.currentZone           !== filterZone)  return false
     if (filterAgent && f.enrollment?.agentName !== filterAgent) return false
+    if (filterCommunity && f.community !== filterCommunity) return false
+    if (filterCooperative && FARMER_COOPERATIVE_MAP[f.id] !== filterCooperative) return false
     const mn = parseFloat(filterFriMin), mx = parseFloat(filterFriMax)
     if (!isNaN(mn) && (f.currentFri === null || f.currentFri < mn)) return false
     if (!isNaN(mx) && (f.currentFri === null || f.currentFri > mx)) return false
     return true
-  }), [farmers, search, filterProgram, filterCohort, filterEnrolled, filterZone, filterAgent, filterFriMin, filterFriMax])
+  }), [farmers, search, filterProgram, filterCohort, filterEnrolled, filterZone, filterAgent, filterCommunity, filterCooperative, filterFriMin, filterFriMax])
 
   const [page,     setPage]     = useState(1)
   const [pageSize, setPageSize] = usePersistedState('fr-page-size', 25)
@@ -1419,12 +1453,15 @@ export function Main() {
   const selectAll = () => setSelected(new Set(displayed.map(f => f.id)))
   const clearAll  = () => setSelected(new Set())
 
-  const activeFilterCount = [filterProgram, filterCohort, filterEnrolled, filterZone, filterAgent, filterFriMin, filterFriMax].filter(Boolean).length
+  const activeFilterCount = [filterProgram, filterCohort, filterEnrolled, filterZone, filterAgent, filterCommunity, filterCooperative, filterFriMin, filterFriMax].filter(Boolean).length
 
   function clearFilters() {
     setFilterProgram(''); setFilterCohort(''); setFilterEnrolled('')
-    setFilterZone(''); setFilterAgent(''); setFilterFriMin(''); setFilterFriMax('')
+    setFilterZone(''); setFilterAgent(''); setFilterCommunity(''); setFilterCooperative('')
+    setFilterFriMin(''); setFilterFriMax('')
   }
+
+  const duplicateCount = farmers.filter(f => f.duplicateFlag).length
 
   function handleAddSave(form: AddFarmerForm) {
     setFarmers(prev => [...prev, {
@@ -1474,7 +1511,16 @@ export function Main() {
         <div className="min-w-0">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Farmer Management</h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
-            {loading ? '…' : `${farmers.length} farmers`}
+            {loading ? '…' : (
+              <>
+                {farmers.length} farmers
+                {duplicateCount > 0 && (
+                  <span className="ml-1" style={{ color: 'var(--brand-amber, #E8963A)' }}>
+                    · {duplicateCount} duplicate flag{duplicateCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -1489,6 +1535,16 @@ export function Main() {
             onClick={() => setAddOpen(true)} />
         </div>
       </div>
+
+      {/* ── Duplicate warning banner ──────────────────────────────────────────── */}
+      {!loading && duplicateCount > 0 && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">{duplicateCount} farmer{duplicateCount !== 1 ? 's' : ''}</span> share a phone number with another record. Review and merge as needed.
+          </p>
+        </div>
+      )}
 
       {/* ── Statistics ──────────────────────────────────────────────────────── */}
       {statsOpen && (
@@ -1560,6 +1616,10 @@ export function Main() {
                 options={[{ value: '', label: 'All zones' }, ...ZONE_OPTIONS.map(z => ({ value: z, label: z.replace('Resilience ', '') }))]} />
               <FilterSelect label="Agent" value={filterAgent} onChange={setFilterAgent}
                 options={[{ value: '', label: 'All agents' }, ...MOCK_AGENTS.map(a => ({ value: a, label: a }))]} />
+              <FilterSelect label="Community" value={filterCommunity} onChange={setFilterCommunity}
+                options={[{ value: '', label: 'All communities' }, ...communityOptions.map(c => ({ value: c, label: c }))]} />
+              <FilterSelect label="Cooperative" value={filterCooperative} onChange={setFilterCooperative}
+                options={[{ value: '', label: 'All cooperatives' }, ...COOPERATIVES.map(c => ({ value: c.id, label: c.name }))]} />
               <div className="col-span-2 sm:col-span-1 lg:col-span-2 space-y-1">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">FRI Score</p>
                 <div className="flex items-center gap-1.5">
@@ -1594,6 +1654,18 @@ export function Main() {
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterAgent('')} />
                   </span>
                 )}
+                {filterCommunity && (
+                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                    {filterCommunity}
+                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterCommunity('')} />
+                  </span>
+                )}
+                {filterCooperative && (
+                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                    {COOPERATIVES.find(c => c.id === filterCooperative)?.name}
+                    <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterCooperative('')} />
+                  </span>
+                )}
                 <button onClick={clearFilters} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 ml-auto">
                   <X className="w-3 h-3" /> Clear all
                 </button>
@@ -1602,6 +1674,76 @@ export function Main() {
           </>
         )}
       </div>
+
+      {/* ── View toggle + Columns ─────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="flex items-center justify-between gap-2 flex-wrap px-1">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5">
+              <button
+                onClick={() => setViewMode('enrolment')}
+                className={cn(
+                  'flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium transition-colors',
+                  viewMode === 'enrolment' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                <ClipboardList className="w-3.5 h-3.5" /> Enrolment
+              </button>
+              <button
+                onClick={() => setViewMode('registration')}
+                className={cn(
+                  'flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium transition-colors',
+                  viewMode === 'registration' ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700',
+                )}
+              >
+                <LayoutList className="w-3.5 h-3.5" /> Registration
+              </button>
+            </div>
+          </div>
+
+          {viewMode === 'registration' && (
+            <div className="relative">
+              <button
+                onClick={() => setColumnsOpen(v => !v)}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:border-gray-300 transition-colors"
+              >
+                <Columns3 className="w-3.5 h-3.5" /> Columns
+                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', columnsOpen && 'rotate-180')} />
+              </button>
+              {columnsOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setColumnsOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1.5 z-20 w-56 rounded-xl border border-gray-100 bg-white shadow-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Toggle Columns</p>
+                      <button
+                        className="text-[11px] font-medium"
+                        style={{ color: 'var(--brand-green)' }}
+                        onClick={() => setVisibleColumns(Object.fromEntries(Object.keys(visibleColumns).map(k => [k, true])))}
+                      >
+                        Show all
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                      {REGISTRATION_COLUMNS.map(col => (
+                        <label key={col.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={visibleColumns[col.key] ?? true}
+                            onChange={() => setVisibleColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                            className="w-3.5 h-3.5 rounded border-gray-300 accent-(--brand-forest)"
+                          />
+                          {col.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Select-all bar ───────────────────────────────────────────────────── */}
       {!loading && displayed.length > 0 && (
@@ -1680,6 +1822,68 @@ export function Main() {
           <div className="mt-4 flex justify-center">
             <ButtonTemplate label="Add Farmer" leftIcon={<Plus className="w-4 h-4" />} onClick={() => setAddOpen(true)} />
           </div>
+        </div>
+      ) : viewMode === 'registration' ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="w-10 px-4 py-2.5"><div className="w-4 h-4" /></th>
+                {REGISTRATION_COLUMNS.filter(c => visibleColumns[c.key] ?? true).map(col => (
+                  <th key={col.key} className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((f, i) => {
+                const isSelected = selected.has(f.id)
+                const cols = REGISTRATION_COLUMNS.filter(c => visibleColumns[c.key] ?? true)
+                const cellValue = (key: string) => {
+                  switch (key) {
+                    case 'farmerId':    return f.id
+                    case 'name':        return f.fullName
+                    case 'phone':       return f.phone
+                    case 'nationalId':  return f.nationalId || '—'
+                    case 'dob':         return f.dateOfBirth || '—'
+                    case 'gender':      return f.gender || '—'
+                    case 'region':      return f.region || '—'
+                    case 'district':    return f.district || '—'
+                    case 'community':   return f.community || '—'
+                    case 'primaryCrop': return f.primaryCrop || '—'
+                    case 'farmSize':    return f.farmSize || '—'
+                    default:            return '—'
+                  }
+                }
+                return (
+                  <tr
+                    key={f.id}
+                    className={cn(
+                      'border-b border-gray-50 last:border-0 cursor-pointer transition-colors',
+                      isSelected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50',
+                    )}
+                    onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}
+                  >
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div
+                        className={cn(
+                          'w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors',
+                          isSelected ? 'bg-(--brand-dark) border-(--brand-dark)' : 'border-gray-200 hover:border-(--brand-mid)',
+                        )}
+                        onClick={() => toggleSelect(f.id)}
+                      >
+                        {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                    </td>
+                    {cols.map(col => (
+                      <td key={col.key} className="px-4 py-3 text-gray-700 whitespace-nowrap">{cellValue(col.key)}</td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">

@@ -42,10 +42,10 @@ const RISK_COLOR: Record<CreditRisk, string> = {
 
 const PILLAR_CFG: Record<string, { text: string; bg: string; bar: string }> = {
   P1:  { text: '#2C5F3F', bg: '#DCFCE7', bar: '#2C5F3F' },
-  P2:  { text: '#2B7BB9', bg: '#DBEAFE', bar: '#2B7BB9' },
+  P2:  { text: '#5A9E74', bg: '#E6F4EC', bar: '#5A9E74' },
   P3:  { text: '#B45309', bg: '#FEF3C7', bar: '#E8963A' },
   P4:  { text: '#B91C1C', bg: '#FEE2E2', bar: '#D94F3D' },
-  ECI: { text: '#2B7BB9', bg: '#DBEAFE', bar: '#2B7BB9' },
+  ECI: { text: '#5A9E74', bg: '#E6F4EC', bar: '#5A9E74' },
 }
 
 function friColor(score: number) {
@@ -456,7 +456,7 @@ function FarmerDetailSheet({ farmer, open, onClose }: {
                 <div className="rounded-xl px-4 py-3" style={{ background: '#EFF6FF' }}>
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs font-semibold" style={{ color: 'var(--brand-blue)' }}>
+                      <p className="text-xs font-semibold" style={{ color: 'var(--brand-mid)' }}>
                         ECI — Eligibility Index
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--brand-green)' }}>
@@ -464,7 +464,7 @@ function FarmerDetailSheet({ farmer, open, onClose }: {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-2xl font-bold leading-none" style={{ color: 'var(--brand-blue)' }}>
+                      <p className="text-2xl font-bold leading-none" style={{ color: 'var(--brand-mid)' }}>
                         {farmer.eci.score}
                         <span className="text-sm font-normal text-gray-400">/{farmer.eci.max}</span>
                       </p>

@@ -181,3 +181,9 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes scrollHint {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateY(12px); opacity: 0; }
+}

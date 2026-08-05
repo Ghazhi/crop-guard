@@ -46,7 +46,7 @@ const STATUS_VARIANT: Record<InterventionStatus, 'success' | 'warning' | 'neutra
 const TYPE_ICON_COLOR: Record<InterventionType, string> = {
   'Input Loan':    'var(--brand-forest)',
   'Cash Loan':     '#7c3aed',
-  'Insurance':     '#0369a1',
+  'Insurance':     '#5A9E74',
   'Advisory':      '#b45309',
   'Market Access': '#065f46',
 }
@@ -386,10 +386,20 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
   const [tab,          setTab]         = useState<EnrolTab>('eligible')
   const [search,       setSearch]      = useState('')
   const [selected,     setSelected]    = useState<Set<string>>(new Set())
-  const [entries,      setEntries]     = useState<EnrolledEntry[]>([{ farmerId: 'f-001', date: '6/21/2026' }])
-  const [appliedIds,   setAppliedIds]  = useState<Set<string>>(new Set())
-  const [rejectedIds,  setRejectedIds] = useState<Set<string>>(new Set())
-  const [suspended,    setSuspended]   = useState<Set<string>>(new Set())
+  const enrollKey = intervention ? `pm-op-enroll.${intervention.id}` : 'pm-op-enroll._none'
+  const [entries,      setEntries]     = usePersistedState<EnrolledEntry[]>(`${enrollKey}.entries`, [{ farmerId: 'f-001', date: '6/21/2026' }])
+  const [appliedIdList,   setAppliedIdList]  = usePersistedState<string[]>(`${enrollKey}.applied`, [])
+  const [rejectedIdList,  setRejectedIdList] = usePersistedState<string[]>(`${enrollKey}.rejected`, [])
+  const [suspendedList,   setSuspendedList]  = usePersistedState<string[]>(`${enrollKey}.suspended`, [])
+  const appliedIds  = useMemo(() => new Set(appliedIdList), [appliedIdList])
+  const rejectedIds = useMemo(() => new Set(rejectedIdList), [rejectedIdList])
+  const suspended   = useMemo(() => new Set(suspendedList), [suspendedList])
+  const setAppliedIds  = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setAppliedIdList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
+  const setRejectedIds = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setRejectedIdList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
+  const setSuspended   = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setSuspendedList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
   const [saving,       setSaving]      = useState(false)
   const [filterProg,   setFilterProg]  = useState('')
   const [filterCohort, setFilterCohort] = useState('')
@@ -890,7 +900,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function Main() {
-  const [interventions,       setInterventions]       = useState<Intervention[]>([])
+  const [interventions,       setInterventions]       = usePersistedState<Intervention[]>('pm-interventions', [])
   const [programs,            setPrograms]            = useState<ProgramOption[]>([])
   const [programsWithCohorts, setProgramsWithCohorts] = useState<ProgramWithCohorts[]>([])
   const [loading,             setLoading]             = useState(true)
@@ -910,7 +920,8 @@ export function Main() {
       const scoped = ivs
         .filter(iv => iv.enrolledCohorts.length === 0 || iv.enrolledCohorts.some(ec => isPmProgram(ec.programId)))
         .map(scopeIntervention)
-      setInterventions(scoped)
+      // don't clobber interventions already restored from sessionStorage (adds/edits from this session)
+      setInterventions(prev => prev.length > 0 ? prev : scoped)
       setPrograms(progs.filter(p => PM_PROGRAM_IDS.includes(p.id)))
       setProgramsWithCohorts(pwc.filter(p => PM_PROGRAM_IDS.includes(p.id)))
       setLoading(false)
@@ -1096,7 +1107,7 @@ export function Main() {
               </span>
             )}
             {filterStatus && (
-              <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                 {filterStatus}
                 <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterStatus('')} />
               </span>

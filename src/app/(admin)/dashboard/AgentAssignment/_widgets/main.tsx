@@ -446,8 +446,8 @@ function AgentCard({ agent, isActive, onFilter, onViewFarmers }: {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function Main() {
-  const [agents,   setAgents]   = useState<AgentSummary[]>([])
-  const [cohorts,  setCohorts]  = useState<CohortRow[]>([])
+  const [agents,   setAgents]   = usePersistedState<AgentSummary[]>('aa-agents', [])
+  const [cohorts,  setCohorts]  = usePersistedState<CohortRow[]>('aa-cohorts', [])
   const [programs, setPrograms] = useState<ProgramOption[]>([])
   const [loading,  setLoading]  = useState(true)
 
@@ -470,8 +470,14 @@ export function Main() {
 
   useEffect(() => {
     Promise.all([getAgents(), getCohorts(), getPrograms()]).then(([a, c, p]) => {
-      setAgents(a); setCohorts(c); setPrograms(p); setLoading(false)
+      // don't clobber assignments already restored from sessionStorage (usePersistedState
+      // hydrates synchronously in an effect, which always runs before this fetch resolves)
+      setAgents(prev => prev.length > 0 ? prev : a)
+      setCohorts(prev => prev.length > 0 ? prev : c)
+      setPrograms(p)
+      setLoading(false)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
 
@@ -662,7 +668,7 @@ export function Main() {
                   </span>
                 )}
                 {filterCohort && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {cohortOptions.find(c => c.cohortId === filterCohort)?.cohortName}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterCohort('')} />
                   </span>

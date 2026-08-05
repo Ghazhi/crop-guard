@@ -71,7 +71,7 @@ export const REPAY_ROWS: RepayRow[] = [
 export function fmt(n: number)    { return n.toLocaleString() }
 
 export function loanStatusStyle(s: LoanStatus): string {
-  if (s === 'Active')    return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (s === 'Active')    return 'bg-green-50 text-green-700 border-green-200'
   if (s === 'Completed') return 'bg-green-50 text-green-700 border-green-200'
   if (s === 'Defaulted') return 'bg-red-50 text-red-700 border-red-200'
   return 'bg-amber-50 text-amber-700 border-amber-200'
@@ -80,7 +80,7 @@ export function loanStatusStyle(s: LoanStatus): string {
 export function appStatusStyle(s: AppStatus): string {
   if (s === 'Approved')     return 'bg-green-50 text-green-700 border-green-200'
   if (s === 'Rejected')     return 'bg-red-50 text-red-700 border-red-200'
-  if (s === 'Under Review') return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (s === 'Under Review') return 'bg-green-50 text-green-700 border-green-200'
   return 'bg-amber-50 text-amber-700 border-amber-200'
 }
 

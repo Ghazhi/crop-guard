@@ -30,7 +30,7 @@ export const tokens = {
       mint: '#E6F4EC',
       amber: '#E8963A',
       red: '#D94F3D',
-      blue: '#2B7BB9',
+      blue: '#5A9E74',
       slate: '#4A5568',
       gray: '#EDF2F7',
     },

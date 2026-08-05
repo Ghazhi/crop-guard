@@ -5,8 +5,9 @@ import { usePersistedState } from '@/lib/usePersistedState'
 import {
   ChevronDown, Plus, Pencil, PowerOff,
   ToggleRight, Trash2, Users, GitBranch, Check, X, Eye, Calendar, Wheat,
-  LayoutGrid, List, BarChart2, ChevronUp, Search,
+  LayoutGrid, List, BarChart2, ChevronUp, Search, UserCog,
 } from 'lucide-react'
+import { Main as AgentAssignmentTab } from '@/app/(admin)/dashboard/AgentAssignment/_widgets/main'
 import { cn } from '@/lib/utils'
 import { CardTemplate } from '@/customComponents/CardTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
@@ -163,7 +164,7 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
       startDate:        initial?.startDate   ?? '',
       endDate:          initial?.endDate     ?? '',
       targetEnrollment: String(initial?.targetCount ?? 100),
-      crops:            initial?.crops       ?? [],
+      crops:            (initial?.crops ?? []).map(c => CROP_OPTIONS.find(o => o.label === c)?.value ?? c),
       regions:          [],
     })
   }, [open, initial])
@@ -184,7 +185,7 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
       startDate:   form.startDate,
       endDate:     form.endDate,
       targetCount: Number(form.targetEnrollment) || 100,
-      crops:       form.crops,
+      crops:       form.crops.map(v => CROP_OPTIONS.find(o => o.value === v)?.label ?? v),
       status:      initial?.status ?? 'Active',
     })
     toast.success(mode === 'create' ? `Program "${form.name}" created` : `Program "${form.name}" updated`)
@@ -743,7 +744,7 @@ function ProgramSheet({
       startDate:        program.startDate   ?? '',
       endDate:          program.endDate     ?? '',
       targetEnrollment: String(program.targetCount ?? 100),
-      crops:            program.crops       ?? [],
+      crops:            (program.crops ?? []).map(c => CROP_OPTIONS.find(o => o.label === c)?.value ?? c),
       regions:          [],
     })
   }, [mode, program])
@@ -754,7 +755,7 @@ function ProgramSheet({
     if (!form.name || !form.season || !form.startDate || !form.endDate || !form.crops.length) {
       toast.error('Please fill in all required fields'); return
     }
-    onSave({ name: form.name, description: form.description, season: form.season, startDate: form.startDate, endDate: form.endDate, targetCount: Number(form.targetEnrollment) || 100, crops: form.crops, status: program?.status ?? 'Active' })
+    onSave({ name: form.name, description: form.description, season: form.season, startDate: form.startDate, endDate: form.endDate, targetCount: Number(form.targetEnrollment) || 100, crops: form.crops.map(v => CROP_OPTIONS.find(o => o.value === v)?.label ?? v), status: program?.status ?? 'Active' })
     toast.success(`Program "${form.name}" updated`)
     onClose()
   }
@@ -958,9 +959,9 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
           </div>
           <div className={cn('flex items-center gap-2 flex-wrap', !isActive && 'opacity-50 pointer-events-none')}>
             <ButtonTemplate variant="outline" size="sm" isIcon={false}
-              leftIcon={<Users className="w-3.5 h-3.5" />}
+              leftIcon={cohortsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               label={`Cohorts (${program.cohorts.length})`}
-              onClick={() => setCohortsOpen(true)} />
+              onClick={() => setCohortsOpen(v => !v)} />
             <ButtonTemplate
               variant="primary" size="sm"
               leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -969,6 +970,27 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
             />
           </div>
         </div>
+
+        {/* Inline cohort list */}
+        {cohortsOpen && (
+          <div className="border-t border-gray-100">
+            {program.cohorts.length === 0 ? (
+              <div className="py-10 text-center text-sm text-gray-400">No cohorts yet.</div>
+            ) : (
+              program.cohorts.map(cohort => (
+                <CohortRow
+                  key={cohort.id}
+                  cohort={cohort}
+                  programs={allPrograms}
+                  programName={program.name}
+                  onUpdateCohort={handleUpdateCohort}
+                  onDeleteCohort={handleDeleteCohort}
+                  onRequestUnassignAgent={handleRequestUnassignAgent}
+                />
+              ))
+            )}
+          </div>
+        )}
       </CardTemplate>
 
       <ProgramSheet
@@ -979,41 +1001,6 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
         onSave={data => onUpdate({ ...program, ...data })}
       />
 
-      {/* Cohorts Sheet */}
-      <Sheet open={cohortsOpen} onOpenChange={v => { if (!v) setCohortsOpen(false) }}>
-        <SheetContent side="right" showCloseButton className="w-full sm:max-w-lg flex flex-col p-0 gap-0">
-          <SheetHeader className="px-6 py-4 border-b border-gray-100">
-            <SheetTitle style={{ color: 'var(--brand-forest)' }}>{program.name} — Cohorts</SheetTitle>
-            <p className="text-xs text-gray-400 mt-0.5">{program.cohorts.length} cohort{program.cohorts.length !== 1 ? 's' : ''}</p>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto">
-            {program.cohorts.length === 0 ? (
-              <div className="py-16 text-center text-sm text-gray-400">No cohorts yet.</div>
-            ) : (
-              <div>
-                {program.cohorts.map(cohort => (
-                  <CohortRow
-                    key={cohort.id}
-                    cohort={cohort}
-                    programs={allPrograms}
-                    programName={program.name}
-                    onUpdateCohort={handleUpdateCohort}
-                    onDeleteCohort={handleDeleteCohort}
-                    onRequestUnassignAgent={handleRequestUnassignAgent}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="shrink-0 px-6 py-4 border-t border-gray-100 bg-white">
-            <ButtonTemplate variant="primary" fullWidth
-              leftIcon={<Plus className="w-4 h-4" />}
-              label="Add Cohort"
-              onClick={() => { setCohortsOpen(false); setAddCohortOpen(true) }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <CohortFormSheet
         open={addCohortOpen}
@@ -1172,8 +1159,8 @@ function ProgramListRow({ program, onUpdate }: {
 
 /* ── Main ───────────────────────────────────────────────────────────────────── */
 
-export function Main() {
-  const [programs,   setPrograms]   = useState<Program[]>([])
+function ProgramsCohortsTab() {
+  const [programs,   setPrograms]   = usePersistedState<Program[]>('ps-programs', [])
   const [loading,    setLoading]    = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [viewMode,   setViewMode]   = usePersistedState<'card' | 'list'>('ps-view', 'card')
@@ -1181,7 +1168,13 @@ export function Main() {
   const [statsOpen,  setStatsOpen]  = usePersistedState('ps-stats', false)
 
   useEffect(() => {
-    getPrograms().then(data => { setPrograms(data); setLoading(false) })
+    // only seed from the mock fetch if nothing is already persisted, so
+    // CRUD edits made in a previous visit this session aren't clobbered
+    getPrograms().then(data => {
+      setPrograms(prev => prev.length ? prev : data)
+      setLoading(false)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleCreateProgram(data: ProgramFormData) {
@@ -1334,5 +1327,47 @@ export function Main() {
         onClose={() => setCreateOpen(false)}
       />
     </>
+  )
+}
+
+/* ── Top-level page shell (Programs & Cohorts / Agent Assignment) ────────────── */
+
+type ProgramsPageTab = 'cohorts' | 'agents'
+
+const PROGRAMS_PAGE_TABS: { id: ProgramsPageTab; Icon: React.ElementType; label: string }[] = [
+  { id: 'cohorts', Icon: GitBranch, label: 'Programs & Cohorts' },
+  { id: 'agents',  Icon: UserCog,   label: 'Agent Assignment'   },
+]
+
+export function Main() {
+  const [pageTab, setPageTab] = usePersistedState<ProgramsPageTab>('ps-page-tab', 'cohorts')
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="p-6 pb-0">
+        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit max-w-full overflow-x-auto">
+          {PROGRAMS_PAGE_TABS.map(({ id, Icon, label }) => {
+            const active = pageTab === id
+            return (
+              <button
+                key={id}
+                onClick={() => setPageTab(id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors shrink-0',
+                  active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                )}
+                style={active ? { color: 'var(--brand-forest)' } : {}}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {pageTab === 'cohorts' && <div className="-mt-4"><ProgramsCohortsTab /></div>}
+      {pageTab === 'agents' && <div className="-mt-4"><AgentAssignmentTab /></div>}
+    </div>
   )
 }

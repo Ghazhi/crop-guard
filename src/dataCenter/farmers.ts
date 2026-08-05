@@ -2,14 +2,14 @@ import type { FRIFarmer } from '@/app/(admin)/dashboard/FRIDashboard/_logics/int
 
 export const PILLARS_EMPTY = [
   { code: 'P1', name: 'Farm Management',    score: 0, max: 30, color: '#2C5F3F' },
-  { code: 'P2', name: 'Climate Resilience', score: 0, max: 30, color: '#2B7BB9' },
+  { code: 'P2', name: 'Climate Resilience', score: 0, max: 30, color: '#5A9E74' },
   { code: 'P3', name: 'Economic Inclusion', score: 0, max: 20, color: '#E8963A' },
   { code: 'P4', name: 'Social Welfare',     score: 0, max: 20, color: '#D94F3D' },
 ]
 
 export const BASELINE_PILLARS_EMPTY = [
   { code: 'P1', name: 'Agronomy',   score: 0, max: 30, color: '#2C5F3F' },
-  { code: 'P2', name: 'CSA',        score: 0, max: 30, color: '#2B7BB9' },
+  { code: 'P2', name: 'CSA',        score: 0, max: 30, color: '#5A9E74' },
   { code: 'P3', name: 'Advisory',   score: 0, max: 20, color: '#E8963A' },
   { code: 'P4', name: 'Enterprise', score: 0, max: 20, color: '#D94F3D' },
 ]
@@ -95,13 +95,13 @@ export const FARMERS: FRIFarmer[] = [
     checkinCount: 2, verifiedCheckins: 1, helpRequested: false, friTrend: 'up',
     pillars: [
       { code: 'P1', name: 'Farm Management',    score: 16, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'Climate Resilience', score: 22, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'Climate Resilience', score: 22, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Economic Inclusion', score: 10, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Social Welfare',     score: 13, max: 20, color: '#D94F3D' },
     ],
     baselinePillars: [
       { code: 'P1', name: 'Agronomy',   score: 16, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'CSA',        score: 22, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'CSA',        score: 22, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Advisory',   score: 10, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Enterprise', score: 13, max: 20, color: '#D94F3D' },
     ],
@@ -173,13 +173,13 @@ export const FARMERS: FRIFarmer[] = [
     checkinCount: 0, verifiedCheckins: 0, helpRequested: false, friTrend: 'flat',
     pillars: [
       { code: 'P1', name: 'Farm Management',    score: 25, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'Climate Resilience', score: 24, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'Climate Resilience', score: 24, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Economic Inclusion', score: 18, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Social Welfare',     score: 15, max: 20, color: '#D94F3D' },
     ],
     baselinePillars: [
       { code: 'P1', name: 'Agronomy',   score: 25, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'CSA',        score: 24, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'CSA',        score: 24, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Advisory',   score: 18, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Enterprise', score: 15, max: 20, color: '#D94F3D' },
     ],
@@ -226,13 +226,13 @@ export const FARMERS: FRIFarmer[] = [
     checkinCount: 0, verifiedCheckins: 0, helpRequested: false, friTrend: null,
     pillars: [
       { code: 'P1', name: 'Farm Management',    score: 18, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'Climate Resilience', score: 16, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'Climate Resilience', score: 16, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Economic Inclusion', score: 11, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Social Welfare',     score: 10, max: 20, color: '#D94F3D' },
     ],
     baselinePillars: [
       { code: 'P1', name: 'Agronomy',   score: 18, max: 30, color: '#2C5F3F' },
-      { code: 'P2', name: 'CSA',        score: 16, max: 30, color: '#2B7BB9' },
+      { code: 'P2', name: 'CSA',        score: 16, max: 30, color: '#5A9E74' },
       { code: 'P3', name: 'Advisory',   score: 11, max: 20, color: '#E8963A' },
       { code: 'P4', name: 'Enterprise', score: 10, max: 20, color: '#D94F3D' },
     ],

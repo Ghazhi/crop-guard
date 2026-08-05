@@ -1,0 +1,1 @@
+ALTER TABLE cohorts ADD COLUMN IF NOT EXISTS total_weeks integer NOT NULL DEFAULT 12;

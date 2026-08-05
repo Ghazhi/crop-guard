@@ -9,6 +9,9 @@ export interface FarmerEnrollment {
   agentName:   string | null
   status:      'active' | 'graduated' | 'withdrawn'
   currentStage: number
+  registeredAt?: string
+  baselineDone?: boolean
+  checkinOnTrack?: boolean | null
 }
 
 export interface Farmer {

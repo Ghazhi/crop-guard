@@ -14,7 +14,7 @@ export function Main() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Total Portfolio"    value={fmtGHS(FINANCIAL_KPI.totalPortfolio)}    sub="committed capital"              accent="#2B7BB9" />
+        <KpiCard label="Total Portfolio"    value={fmtGHS(FINANCIAL_KPI.totalPortfolio)}    sub="committed capital"              accent="#5A9E74" />
         <KpiCard label="Disbursed"          value={fmtGHS(FINANCIAL_KPI.disbursed)}          sub="to farmers"        trend="up"   accent="#22c55e" />
         <KpiCard label="Collected"          value={fmtGHS(FINANCIAL_KPI.collected)}          sub="repayments received" trend="up" accent="#10b981" />
         <KpiCard label="Outstanding"        value={fmtGHS(FINANCIAL_KPI.outstanding)}        sub="still to be repaid"             accent="#f59e0b" />
@@ -50,7 +50,7 @@ export function Main() {
         <SectionCard title="Portfolio Health Snapshot">
           <div className="p-5 space-y-3">
             {[
-              { label: 'Total Disbursed',    value: fmtGHS(FINANCIAL_KPI.disbursed),         color: 'text-blue-700'   },
+              { label: 'Total Disbursed',    value: fmtGHS(FINANCIAL_KPI.disbursed),         color: 'text-green-700'   },
               { label: 'Total Collected',    value: fmtGHS(FINANCIAL_KPI.collected),         color: 'text-green-700'  },
               { label: 'Collection Rate',    value: `${collectionRate}%`,                     color: 'text-green-700'  },
               { label: 'Outstanding Balance',value: fmtGHS(FINANCIAL_KPI.outstanding),        color: 'text-amber-700'  },

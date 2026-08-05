@@ -411,7 +411,7 @@ function ReviewQueueTab() {
   }
 
   function statusBadge(s: string) {
-    if (s === 'In Review') return 'bg-blue-100 text-blue-700'
+    if (s === 'In Review') return 'bg-green-100 text-green-700'
     return 'bg-yellow-100 text-yellow-700'
   }
 
@@ -474,7 +474,7 @@ function ReviewQueueTab() {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard icon={<Clock className="w-5 h-5" />} label="Pending" value={reviewQueue.filter(r => r.status === 'Pending').length} sub="Awaiting reviewer assignment" iconBg="#fef3c7" iconColor="#d97706" />
-        <StatCard icon={<Eye className="w-5 h-5" />} label="In Review" value={reviewQueue.filter(r => r.status === 'In Review').length} sub="Currently being reviewed" iconBg="#dbeafe" iconColor="#2563eb" />
+        <StatCard icon={<Eye className="w-5 h-5" />} label="In Review" value={reviewQueue.filter(r => r.status === 'In Review').length} sub="Currently being reviewed" iconBg="#E6F4EC" iconColor="#1A3D2B" />
         <StatCard icon={<AlertCircle className="w-5 h-5" />} label="High Priority" value={reviewQueue.filter(r => r.priority === 'High').length} sub="Require urgent attention" iconBg="#fee2e2" iconColor="#dc2626" />
       </div>
 
@@ -829,14 +829,14 @@ function SupportRequestsTab() {
   const displayed = pageSize > 0 ? filtered.slice((page - 1) * pageSize, page * pageSize) : filtered
 
   function typeBadge(t: string) {
-    if (t === 'Technical')  return 'bg-blue-100 text-blue-700'
+    if (t === 'Technical')  return 'bg-green-100 text-green-700'
     if (t === 'Data Query') return 'bg-purple-100 text-purple-700'
     return 'bg-gray-100 text-gray-600'
   }
 
   function statusBadge(s: string) {
     if (s === 'Open')        return 'bg-yellow-100 text-yellow-700'
-    if (s === 'In Progress') return 'bg-blue-100 text-blue-700'
+    if (s === 'In Progress') return 'bg-green-100 text-green-700'
     return 'bg-green-100 text-green-700'
   }
 

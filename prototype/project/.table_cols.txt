@@ -1,0 +1,103 @@
+cohort_agents: cohort_id, agent_id, is_primary, assigned_at, assigned_by
+employee_financial_details: id, employee_id, base_salary, allowances, overtime, other_benefits, gross_salary, deduction_type, tax_rate, bank_name, account_name, account_number, bank_branch, momo_number, created_at, updated_at, ssnit_employee_percentage, ssnit_employer_percentage, ssnit_total_percentage
+interventions_catalog: id, program_id, partner_id, name, type, season, description, value_description, min_fri, eligibility_rules, improvement_steps, capacity, status, approval_workflow, created_by, created_at, updated_at, cohort_id
+activity_logs: id, user_id, action, entity_type, entity_id, details, created_at
+users: id, organisation_id, role, full_name, phone, region_code, gender, avatar_url, preferred_language, is_active, last_login_at, created_at, updated_at, must_change_password, custom_role_id
+custom_roles: id, name, description, is_system, created_at, updated_at
+checkin_activities: id, checkin_id, activity_type, description, quantity, unit, photo_urls, gps_lat, gps_lng, recorded_at, metadata, created_at
+checkin_templates: id, organisation_id, title, crop_type, season, week_number, description, is_active, source_template_id, created_at, updated_at
+vendor_payments: id, payment_number, vendor_allocation_id, purchase_order_id, vendor_id, payment_date, amount_paid, payment_method, reference_number, bank_name, notes, status, created_by, created_at, updated_at
+receipts: id, receipt_number, proforma_invoice_id, customer_id, payment_method, payment_reference, amount_paid, received_by, payment_date, created_at, balance, payment_type
+checkin_questions: id, organisation_id, component, label, description, is_active, sort_order, created_at, updated_at, crop_type, week_number, week_title
+cooperative_farmers: cooperative_id, farmer_id, joined_at
+petty_cash_accounts: id, organisation_id, name, description, balance, currency, is_active, created_by, created_at, updated_at
+interventions: id, farmer_id, enrollment_id, agent_id, type, description, status, scheduled_at, completed_at, outcome, photo_urls, metadata, created_at, updated_at
+payroll_exclusions: id, employee_id, year, month, reason, excluded_by, created_at
+products: id, product_number, description, price, discount_rate, unit_price, quantity, reorder_level, created_at, updated_at, category, image_url, vendor_price
+cooperative_officers: id, cooperative_id, organisation_id, full_name, role, phone, term_start, term_end, is_active, created_at, updated_at, farmer_id
+enrollments: id, farmer_id, program_id, cohort_id, agent_id, status, enrolled_at, graduated_at, withdrawn_at, withdrawal_reason, notes, metadata, created_at, updated_at
+norvi_community_outputs: id, scope, scope_id, content, created_at, title, report_type, output_type, custom_prompt, auto_generated, generated_by
+waybills: id, waybill_number, order_id, order_number, receipt_number, customer_id, delivery_date, dispatch_rider_name, dispatch_rider_contact, notes, created_by, created_at
+cohorts: id, program_id, name, region_code, district, agent_id, target_count, is_active, created_at, updated_at, checkin_start_date, checkin_window_days, checkin_grace_days, start_mode, baseline_template_id, checkin_template_id, schedule_paused, paused_at, total_weeks, region, training_start_date, training_window_days, training_grace_days
+farmer_fri_scores: id, farmer_id, enrollment_id, checkin_id, organisation_id, week_number, total_score, p1_score, p2_score, p3_score, p4_score, eci_score, credit_score, zone, score_status, is_provisional, season_average, baseline_score, recommendation, raw_responses, created_at, updated_at, crop_type
+vendors: id, vendor_name, vendor_type, location, contact_name, contact_phone, contact_email, created_at, updated_at, vendor_id, email, telephone, country, address, website, status
+profiles: id, email, full_name, role, created_by, created_at, updated_at, custom_role_id
+cooperative_funds: id, cooperative_id, organisation_id, transaction_type, amount, member_name, transaction_date, description, created_at, updated_at, member_id, mode_of_payment, reference, received_by
+petty_cash_transactions: id, account_id, organisation_id, type, category, description, amount, receipt_url, transaction_date, recorded_by, notes, created_at, updated_at
+cohort_exposure_inputs: id, cohort_id, organisation_id, hazard_classification, actual_rainfall, historical_avg_rainfall, critical_alert_count, high_alert_count, medium_alert_count, in_critical_growth_stage, forecast_stress_flag, updated_by, created_at, updated_at
+farm_details: id, farmer_id, name, size_ha, crop_type, region_code, district, community, latitude, longitude, polygon_geojson, soil_type, irrigation, metadata, created_at, updated_at, region
+partners: id, organisation_id, name, type, contact_name, contact_phone, contact_email, regions, is_active, metadata, created_at, updated_at
+organisations: id, name, type, country, contact_email, contact_phone, logo_url, is_active, metadata, created_at, updated_at
+insurance_claims: id, policy_id, farmer_id, claim_date, incident_date, claim_amount, description, status, reviewed_by, reviewed_at, payout_amount, payout_date, notes, created_at, updated_at
+user_page_permissions: id, user_id, page_key, can_access, created_at, updated_at
+portfolio_assignments: id, user_id, program_id, cohort_id, granted_by, created_at
+norvi_outputs: id, farmer_id, farm_id, checkin_id, image_urls, prompt_summary, diagnosis, severity, recommendations, confidence, model_version, processed_at, metadata, created_at, output_type, enrollment_id, fri_score_id, week_number, is_provisional, content, custom_prompt
+weekly_checkins: id, enrollment_id, farmer_id, agent_id, cohort_id, week_number, season_week, status, submitted_at, approved_by, approved_at, notes, metadata, created_at, updated_at
+cooperative_resolutions: id, cooperative_id, organisation_id, title, description, proposed_by, vote_outcome, date_decided, implementation_status, created_at, updated_at
+employee_documents: id, employee_id, document_type, file_url, file_name, uploaded_at
+insurance_policies: id, organisation_id, farmer_id, policy_number, crop, coverage_amount, premium_amount, premium_paid, start_date, end_date, status, provider_name, notes, created_at, updated_at
+employees: id, employee_name, employee_id, employment_type, employment_status, gender, id_type, id_number, created_by, created_at, updated_at, email, phone_number, emergency_contact_name, emergency_contact_phone, emergency_contact_relation, department, position
+purchase_orders: id, po_number, order_id, vendor_id, vendor_allocation_id, subtotal, getfund_amount, nhil_amount, vat_amount, grand_amount, apply_vat, production_instructions, created_by, created_at, updated_at, currency, exchange_rate, ghs_subtotal, ghs_getfund_amount, ghs_nhil_amount, ghs_vat_amount, ghs_grand_amount, vendor_invoice_number
+farmer_intervention_applications: id, farmer_id, intervention_id, status, notes, created_by, applied_at, approved_at, created_at, updated_at, disbursed_amount, repayment_total, interest_rate, disbursement_date, repayment_due_date, repayment_frequency, approved_by, disbursed_by, disbursed_at, loan_duration_weeks
+user_departments: id, user_id, department_id, created_at
+weekly_activity_config: id, activity_code, pillar, label, description, sort_order, is_active, created_at, updated_at
+sustainability_attestations: id, organisation_id, farmer_id, attestation_type, season, attested_by, attestation_date, status, evidence_urls, notes, created_at, updated_at
+verifications: id, farmer_id, agent_id, type, status, scheduled_at, completed_at, score, notes, evidence_urls, metadata, created_at, updated_at
+enrollment_workflow: id, enrollment_id, opp_id, farmer_id, stage, stage_name, status, actor_id, actor_role, notes, reason_code, metadata, created_at, updated_at
+offtake_agreements: id, organisation_id, buyer_name, buyer_contact, buyer_phone, crop, total_volume_kg, unit_price_per_kg, contract_value, agreement_date, delivery_start, delivery_end, status, cohort_id, notes, created_by, created_at, updated_at
+baseline_assessments: id, enrollment_id, farmer_id, agent_id, crop_type, growth_stage, expected_yield_kg_ha, soil_ph, irrigation_available, inputs_used, photo_urls, assessed_at, metadata, created_at, updated_at, is_active, p1, p2, p3, p4, eci, total_score, zone, template_id
+proforma_invoices: id, pi_number, customer_id, date, status, subtotal, shipping, tax, total_amount, terms_conditions, bank_account_name, bank_name, bank_account_number, bank_sort_code, authorized_by, thank_you_note, created_at, updated_at, created_by, product_category, job_type, job_frequency
+training_templates: id, organisation_id, crop_type, week_number, week_title, title, topic, description, notes, is_active, sort_order, created_at, updated_at, bundle_id
+farmer_checkin_responses: id, checkin_id, activity_code, farmer_response, is_flagged, photo_url, created_at, updated_at, agent_response, evidence_url, verified_at, pillar
+vendor_allocation_orders: id, allocation_id, order_id, created_at
+invoices: id, invoice_number, proforma_invoice_id, customer_id, date, status, subtotal, shipping, tax, total_amount, created_at, updated_at
+verification_activities: id, verification_id, step, status, notes, evidence_urls, completed_at, metadata, created_at, updated_at
+vendor_allocations: id, allocation_number, order_id, vendor_id, allocation_date, expected_delivery_date, actual_delivery_date, job_status, priority, notes, created_by, created_at, updated_at
+inventory: id, product_id, warehouse_id, current_balance, damaged_goods, created_at, updated_at
+training_session_attendance: id, session_id, farmer_id, attended, notes, created_at
+baseline_templates: id, organisation_id, title, description, crop_type, p1_items, p2_items, p3_items, p4_items, include_eci, eci_items, is_active, created_at, updated_at
+vendor_documents: id, vendor_id, document_type, file_url, file_name, uploaded_at
+payroll_entries: id, payroll_run_id, employee_id, gross_salary, deductions, net_salary, status, payslip_url, created_at
+cooperatives: id, organisation_id, name, community_id, member_count, primary_crops, secondary_crops, farm_animals, chairman_name, secretary_name, created_by, created_at, updated_at, sort_order
+eligibility_rules: id, program_id, name, description, field, operator, value, benefit_label, benefit_amount, benefit_currency, is_active, created_at, updated_at
+cocobod_licenses: id, cooperative_id, organisation_id, lbc_name, license_number, agreement_start_date, agreement_end_date, seasonal_producer_price, premium_amount, premium_distribution_notes, season, created_at, updated_at
+cooperative_documents: id, cooperative_id, organisation_id, document_type, title, file_url, issue_date, expiry_date, status, created_at, updated_at
+stock_transactions: id, product_id, warehouse_id, transaction_type, quantity, transaction_date, supplier_id, qty_ordered, qty_received, qty_defect, reason, to_warehouse_id, order_reference, remarks, created_by, created_at, vendor_id, allocation_id
+cocoa_traceability_records: id, organisation_id, farmer_id, farm_id, cooperative_id, harvest_date, batch_weight_kg, fermentation_confirmed, drying_confirmed, drying_moisture_pct, lbc_receipt_number, cocobod_producer_price, premium_paid, sale_date, season, created_at, updated_at
+payroll_runs: id, run_number, month, year, status, total_gross, total_deductions, total_net, created_by, created_at, processed_at
+orders: id, order_number, receipt_id, receipt_number, customer_id, product_id, quantity, unit_price, total_amount, status, status_reason, notes, dispatch_rider_name, dispatch_rider_contact, order_date, created_by, created_at, updated_at, warehouse_id, inventory_deducted, delivery_status
+farmers: id, user_id, organisation_id, national_id, full_name, phone, date_of_birth, gender, region_code, district, community, gps_address, photo_url, biometric_ref, total_farm_size_ha, primary_crop, current_fri_score, risk_category, is_verified, verified_by, verified_at, metadata, created_at, updated_at, community_id, first_name, last_name, national_id_type, id_front_url, id_back_url, voice_consent_url, cooperative_id, program_id, cohort_id_ref, years_farm_experience, acres_cultivated, secondary_crop, secondary_crop_other, primary_crop_other, primary_bags_prev_season, secondary_bags_prev_season, owns_tractor, owns_house, marital_status, wives_count, children_count, other_business, other_business_specify, is_community_native, origin_if_not_native, community_preferences, other_agric_companies, other_agric_companies_specify, desired_assets, input_credit_participation, other_org_engagement, other_org_activities, other_org_name, asinyo_improvement_notes, is_draft, residential_address, secondary_occupation, disability, refugee_displaced, type_of_farming, estimated_yield_bags, farm_location, main_buyer_market, support_needed, loan_type, loan_tenor, preferred_repayment, average_income, account_type, account_number, bank_network, other_income_sources, existing_loans, farm_loss_history, agricultural_insurance, willing_to_sell_via_asinyo, willing_to_repay, declaration_date, support_seeds, support_fertilizer, support_credit_input_loan, support_tractor_ploughing, support_extension_agronomy, support_agrochemicals, support_market_access, support_storage, interpreter_name, interpreter_language, interpreter_address, farmer_id, has_disability, disability_specify, is_refugee_displaced, refugee_specify, primary_occupation, farming_type, bank_name, mobile_money_network, existing_loan_detail, has_agric_insurance, willing_sell_via_asinyo, willing_repay, region
+farmer_checkins: id, farmer_id, organisation_id, week_number, status, help_requested, challenge_notes, verified_at, verified_by, created_at, updated_at, is_verified, checkin_template_id, verification_mode, agent_verified_at, agent_verified_by, is_agent_only
+cooperative_meeting_attendance: id, meeting_id, cooperative_id, organisation_id, farmer_id, present, created_at, updated_at
+risk_flags: id, farmer_id, enrollment_id, flag_type, severity, description, triggered_by, is_resolved, resolved_by, resolved_at, metadata, created_at, updated_at
+repayment_schedule: id, application_id, installment_no, due_date, amount_due, amount_paid, status, paid_at, paid_by, notes, created_at, updated_at
+cohort_farmer_overrides: id, cohort_id, farmer_id, is_paused, paused_at, notes, created_at, updated_at
+suppliers: id, name, created_at
+field_reports: id, agent_id, program_id, cohort_id, report_type, period_start, period_end, content, attachments, submitted_at, reviewed_by, reviewed_at, metadata, created_at, updated_at, title
+advisory_notes: id, author_id, title, body, crop_type, week, created_at, updated_at
+custom_role_permissions: id, role_id, page_key, can_view, can_create, can_read, can_update, can_delete, created_at, updated_at
+fbo_registrations: id, cooperative_id, organisation_id, registration_number, registration_date, status, renewal_due_date, document_urls, notes, created_at, updated_at
+fri_scores: id, farmer_id, enrollment_id, score, category, method, rainfall_deviation, soil_moisture_index, pest_pressure, disease_incidence, input_compliance, confidence, component_scores, computed_at
+communities: id, organisation_id, name, region_code, district, nearest_town, socioeconomic_status, income_streams, income_streams_other, social_amenities, gps_lat, gps_lng, leader_name, leader_contact, created_by, created_at, updated_at, image_url, region
+purchase_order_line_items: id, purchase_order_id, item_number, description, quantity, unit_price, line_total, created_at, ghs_unit_price, ghs_line_total
+customers: id, company_name, customer_name, contact_number, email, address, created_at, updated_at, customer_number
+cooperative_report_configs: id, cooperative_id, organisation_id, report_type, auto_generate, frequency, day_of_month, day_of_week, custom_prompt, last_generated_at, created_at, updated_at
+enrollments_opp: id, enrollment_id, farmer_id, product_type, status, coverage_amount_ghs, premium_ghs, principal_ghs, interest_rate, term_months, start_date, end_date, policy_number, loan_number, disbursed_at, due_date, outstanding_balance_ghs, issued_by, metadata, created_at, updated_at
+cooperative_compliance: id, cooperative_id, organisation_id, certification_type, registration_number, issue_date, expiry_date, status, notes, created_at, updated_at, document_url
+programs: id, organisation_id, name, description, crop_season, crop_types, regions, start_date, end_date, target_enrollment, is_active, settings, created_at, updated_at
+departments: id, organisation_id, name, description, head_user_id, is_active, created_at, updated_at
+training_material_views: id, material_id, farmer_id, user_id, viewed_at
+cooperative_meetings: id, cooperative_id, organisation_id, meeting_type, meeting_date, location, attendance_count, agenda, minutes, document_urls, created_at, updated_at
+training_farmer_overrides: id, organisation_id, farmer_id, template_id, status, notes, created_at, updated_at
+training_sessions: id, organisation_id, title, description, session_type, crop_type, cohort_id, scheduled_date, start_time, end_time, location, meeting_link, status, created_at, updated_at, program_id, cooperative_id
+audit_logs: id, actor_id, action, table_name, record_id, old_data, new_data, ip_address, user_agent, created_at
+agents: id, organisation_id, agent_code, supervisor_id, region_codes, districts, is_active, target_farmers, certified_crops, created_at, updated_at
+training_materials: id, template_id, file_path, file_name, mime_type, file_size, display_label, sort_order, created_at
+invoice_line_items: id, proforma_invoice_id, invoice_id, item_number, description, quantity, unit_price, line_total, created_at, product_id, custom_product_id
+checkin_template_items: id, checkin_template_id, component, activity_code, label, description, sort_order, is_active, created_at, updated_at, week_number, week_title
+fund_request_items: id, request_id, description, quantity, unit_cost, total_cost, created_at
+farm_polygons: id, farm_id, organisation_id, polygon_geojson, area_ha, mapping_date, mapped_by, verification_status, created_at, updated_at
+training_bundles: id, organisation_id, title, crop_type, season, description, is_active, sort_order, created_at, updated_at, total_weeks
+fund_requests: id, organisation_id, title, description, requested_by, total_amount, currency, status, priority, purpose_category, needed_by_date, approved_by, approved_at, rejection_reason, paid_at, payment_reference, notes, created_at, updated_at, invoice_url
+employee_monthly_payments: id, employee_id, year, month, allowances, overtime, other_benefits, notes, created_by, created_at, updated_at
+warehouses: id, name, created_at, location, description

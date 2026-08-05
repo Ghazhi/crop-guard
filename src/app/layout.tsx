@@ -44,7 +44,7 @@ export default function RootLayout({
               success: '!bg-white !text-[#1A3D2B] [&_[data-icon]]:text-[#3D7A56]',
               error: '!bg-white !text-[#D94F3D] [&_[data-icon]]:text-[#D94F3D]',
               warning: '!bg-white !text-[#E8963A] [&_[data-icon]]:text-[#E8963A]',
-              info: '!bg-white !text-[#2B7BB9] [&_[data-icon]]:text-[#2B7BB9]',
+              info: '!bg-white !text-[#5A9E74] [&_[data-icon]]:text-[#5A9E74]',
             },
           }}
         />

@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, Building2, UserCog, TrendingUp,
-  Zap, ShieldAlert, BarChart2, SlidersHorizontal, Globe2,
+  LayoutDashboard, Users, Building2,
+  Zap, BarChart2, SlidersHorizontal, Globe2,
   Menu, X, LogOut, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock,
   Handshake, FileText, PieChart,
   BookOpen, ClipboardList, AlertTriangle,
-  CalendarDays, Target, BarChart3, Settings2, Activity, ClipboardCheck,
-  FolderKanban, ShieldCheck, Landmark, GraduationCap,
+  Target, BarChart3, Settings2, ClipboardCheck,
+  FolderKanban, ShieldCheck, Landmark, GraduationCap, Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -25,16 +25,15 @@ type NavItem    = NavLink | NavSection
 const STAFF_NAV: NavItem[] = [
   { href: '/dashboard/Dashboard',           label: 'Dashboard',            icon: LayoutDashboard,   locked: false },
   { href: '/dashboard/Governance',          label: 'Governance',           icon: Landmark,          locked: false },
-  { href: '/dashboard/CommunityProfile',    label: 'Community Profile',    icon: Globe2,            locked: false },
-  { href: '/dashboard/FarmersRegistry',     label: 'Farmers Registry',     icon: Users,             locked: false },
-  { href: '/dashboard/ProgramsSetup',       label: 'Programs Setup',       icon: Building2,         locked: false },
-  { href: '/dashboard/AgentAssignment',     label: 'Agent Assignment',     icon: UserCog,           locked: false },
-  { href: '/dashboard/FRIDashboard',        label: 'FRI Dashboard',        icon: TrendingUp,        locked: false },
-  { href: '/dashboard/OpportunityPathways', label: 'Opportunity Pathways', icon: Zap,               locked: false },
-  { href: '/dashboard/RiskIntelligence',    label: 'Risk Intelligence',    icon: ShieldAlert,       locked: false },
-  { href: '/dashboard/Reports',             label: 'Reports',              icon: BarChart2,         locked: false },
-  { href: '/dashboard/CheckinConfig',       label: 'Check-in Config',      icon: SlidersHorizontal, locked: false },
-  { href: '/dashboard/TrainingMaterials',   label: 'Training Materials',   icon: GraduationCap,     locked: false },
+  // { href: '/dashboard/CommunityProfile',    label: 'Community Profile',    icon: Globe2,            locked: false },
+  { href: '/dashboard/FarmersRegistry',     label: 'Registry',             icon: Users,             locked: false },
+  { href: '/dashboard/ProgramsSetup',       label: 'Programs',             icon: Building2,         locked: false },
+  { href: '/dashboard/EnrollmentWorkflow',  label: 'Enrollment',           icon: ClipboardCheck,    locked: false },
+  { href: '/dashboard/Insights',            label: 'Insights',             icon: Sparkles,          locked: false },
+  { href: '/dashboard/OpportunityPathways', label: 'Opportunities',        icon: Zap,               locked: false },
+  // { href: '/dashboard/CheckinConfig',       label: 'Check-in Config',      icon: SlidersHorizontal, locked: false },
+  // { href: '/dashboard/TrainingMaterials',   label: 'Training Materials',   icon: GraduationCap,     locked: false },
+  { href: '/dashboard/Configuration',       label: 'Configuration',        icon: Settings2,         locked: false },
   { section: true, label: 'Partners' },
   { href: '/dashboard/PartnerDirectory',    label: 'Partners',             icon: Handshake,         locked: false },
 ]

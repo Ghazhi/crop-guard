@@ -63,7 +63,7 @@ export const COMMUNITIES: Community[] = [
     },
     gpsLat: 9.5735, gpsLng: -1.4106,
     leaderName: 'Tommy Basig Timothy', leaderContact: null,
-    imageUrl: null, createdAt: '2026-06-02',
+    imageUrl: '/assets/images/asinyo9.jpeg', createdAt: '2026-06-02',
   },
   {
     id: 'com-003',
@@ -84,7 +84,7 @@ export const COMMUNITIES: Community[] = [
     },
     gpsLat: null, gpsLng: null,
     leaderName: 'Chief Razak', leaderContact: null,
-    imageUrl: null, createdAt: '2026-06-10',
+    imageUrl: '/assets/images/asinyo9-hero.jpeg', createdAt: '2026-06-10',
   },
   {
     id: 'com-004',
@@ -105,7 +105,7 @@ export const COMMUNITIES: Community[] = [
     },
     gpsLat: 6.6930, gpsLng: -1.6215,
     leaderName: 'Nana Kwame Boateng', leaderContact: '+233241234567',
-    imageUrl: null, createdAt: '2026-06-12',
+    imageUrl: '/assets/images/farmer.jpeg', createdAt: '2026-06-12',
   },
   {
     id: 'com-005',
@@ -126,7 +126,7 @@ export const COMMUNITIES: Community[] = [
     },
     gpsLat: 6.7805, gpsLng: -1.5432,
     leaderName: 'Opanyin Asare', leaderContact: '+233551234568',
-    imageUrl: null, createdAt: '2026-06-14',
+    imageUrl: '/assets/images/asinyo2-copy.jpeg', createdAt: '2026-06-14',
   },
 ]
 

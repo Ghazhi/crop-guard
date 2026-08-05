@@ -244,7 +244,7 @@ export function Main() {
             <StatCard icon={CheckCircle2} iconBg="bg-green-50"  iconColor="text-green-600"  label="Verified Farmers"   value={verifiedFarmers}
               sub={<span className="text-xs font-medium" style={{ color: 'var(--brand-green)' }}>{verifiedPct}% of total</span>} />
             <StatCard icon={Layers}      iconBg="bg-[#E6F4EC]" iconColor="text-[#2C5F3F]"  label="Active Enrollments"  value={activeEnroll} />
-            <StatCard icon={TrendingUp}  iconBg="bg-blue-50"   iconColor="text-blue-500"    label="Avg FRI Score"       value={avgFri} />
+            <StatCard icon={TrendingUp}  iconBg="bg-green-50"   iconColor="text-green-500"    label="Avg FRI Score"       value={avgFri} />
             <StatCard icon={AlertTriangle} iconBg="bg-amber-50" iconColor="text-amber-500"  label="Open Risk Flags"    value={openRiskFlags} />
             <StatCard icon={Clock}       iconBg="bg-[#E6F4EC]" iconColor="text-[#2C5F3F]"  label="Check-ins (7 days)"  value={checkinsLast7} />
           </div>

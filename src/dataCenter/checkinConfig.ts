@@ -332,7 +332,7 @@ export const BASELINE_SEED: BaselineActivity[] = [
 
 export const BASELINE_PILLARS: { id: 'p1'|'p2'|'p3'|'p4'; label: string; color: string; strip: string }[] = [
   { id: 'p1', label: 'P1: Agronomy Readiness',         color: '#2C5F3F', strip: '#f0f7f2' },
-  { id: 'p2', label: 'P2: CSA & Climate-Smart',        color: '#2B7BB9', strip: '#eff6ff' },
+  { id: 'p2', label: 'P2: CSA & Climate-Smart',        color: '#5A9E74', strip: '#E6F4EC' },
   { id: 'p3', label: 'P3: Advisory & Commitment',      color: '#E8963A', strip: '#fffbeb' },
   { id: 'p4', label: 'P4: Farm Enterprise Discipline', color: '#D94F3D', strip: '#fef2f2' },
 ]
@@ -340,7 +340,7 @@ export const BASELINE_PILLARS: { id: 'p1'|'p2'|'p3'|'p4'; label: string; color: 
 // ─── pillar display config ────────────────────────────────────────────────────
 
 export const PILLARS: { id: Pillar; label: string; shortLabel: string; strip: string; text: string }[] = [
-  { id: 'agronomy',            label: 'Agronomy',                    shortLabel: 'Agronomy',                    strip: 'bg-blue-50',   text: 'text-blue-700'  },
+  { id: 'agronomy',            label: 'Agronomy',                    shortLabel: 'Agronomy',                    strip: 'bg-green-50',   text: 'text-green-700'  },
   { id: 'climate_smart',       label: 'Climate Smart',               shortLabel: 'Climate Smart',               strip: 'bg-green-50',  text: 'text-green-700' },
   { id: 'advisory_commitment', label: 'Advisory & Commitment',       shortLabel: 'Advisory & Commitment',       strip: 'bg-amber-50',  text: 'text-amber-700' },
   { id: 'farm_enterprise',     label: 'Farm Enterprise Discipline',  shortLabel: 'Farm Enterprise Discipline',  strip: 'bg-gray-100',  text: 'text-gray-500'  },

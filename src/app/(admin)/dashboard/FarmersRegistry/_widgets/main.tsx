@@ -9,9 +9,11 @@ import {
   FileText, UserCheck, Clock, CreditCard, Truck, PackageCheck,
   MapPin, BarChart2, ChevronUp, ChevronDown, SlidersHorizontal,
   AlertTriangle, LayoutList, ClipboardList, Columns3,
+  Calendar, CheckCircle2, Circle, XCircle,
 } from 'lucide-react'
 import { COOPERATIVES } from '@/dataCenter/cooperatives'
 import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
+import { REGIONS } from '@/dataCenter/communityProfile'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -28,7 +30,7 @@ import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 
 import { getFarmers, getProgramOptions } from '../_logics/functions'
-import type { Farmer, FriZone, ProgramOption } from '../_logics/interface'
+import type { Farmer, FarmerEnrollment, FriZone, ProgramOption } from '../_logics/interface'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,29 @@ const ZONE_RISK: Record<FriZone, string> = {
   'Resilience Builder': 'Managed Risk',
   'Resilience Learner': 'Elevated Risk',
   'Resilience Starter': 'Critical Risk',
+}
+
+function hashOf(id: string) {
+  return id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+}
+
+/** Enrolment workflow detail — reads real values from the enrollment where present, else derives a stable placeholder from the farmer id so every enrolled row shows something. */
+function enrolmentWorkflowDetail(farmerId: string, enr: FarmerEnrollment) {
+  const h = hashOf(farmerId)
+  const registeredAt = enr.registeredAt ?? new Date(2026, (h % 8), 1 + (h % 27)).toISOString().slice(0, 10)
+  const baselineDone = enr.baselineDone ?? (h % 3 !== 0)
+  const checkinOnTrack = enr.checkinOnTrack !== undefined ? enr.checkinOnTrack : (h % 4 === 0 ? null : h % 2 === 0)
+  return { registeredAt, baselineDone, checkinOnTrack }
+}
+
+function regionLabel(regionCode: string) {
+  return REGIONS.find(r => r.code.toLowerCase() === regionCode.toLowerCase())?.name ?? regionCode
+}
+
+function communityDetail(f: Farmer) {
+  const cooperativeId = FARMER_COOPERATIVE_MAP[f.id]
+  const cooperativeName = cooperativeId ? COOPERATIVES.find(c => c.id === cooperativeId)?.name ?? null : null
+  return { communityName: f.community, cooperativeName, region: f.region ? regionLabel(f.region) : '' }
 }
 
 const ZONE_OPTIONS: FriZone[] = [
@@ -100,6 +125,14 @@ const GENDER_OPTIONS = [
 ]
 
 const CSV_FIELDS = 'full_name, phone, national_id, date_of_birth, gender, region_code, district, community, primary_crop, total_farm_size_ha'
+
+const ENROLMENT_COLUMNS = [
+  { key: 'farmerDetails',      label: 'Farmer Details' },
+  { key: 'programInformation', label: 'Program Information' },
+  { key: 'communityDetails',   label: 'Community Details' },
+  { key: 'enrolmentWorkflow',  label: 'Enrolment Workflow' },
+  { key: 'friScore',           label: 'FRI Score' },
+]
 
 const REGISTRATION_COLUMNS = [
   { key: 'farmerId',    label: 'Farmer ID' },
@@ -874,7 +907,7 @@ function EnrollSheet({ open, onClose, farmerCount, programs }: {
       bodyClassName="px-6 py-5 space-y-4"
       footer={<><ButtonTemplate variant="outline" label="Cancel" fullWidth onClick={onClose} /><ButtonTemplate label={saving ? 'Enrolling…' : `Enroll ${farmerCount}`} fullWidth isDisabled={saving || !programId} onClick={handleEnroll} /></>}
     >
-      <div className="rounded-lg px-4 py-3 text-sm text-blue-700 bg-blue-50">
+      <div className="rounded-lg px-4 py-3 text-sm text-green-700 bg-green-50">
         Farmers already enrolled in the selected program will have their cohort updated.
       </div>
       <div className="space-y-1.5">
@@ -1366,7 +1399,7 @@ function FarmerStatsPanel({ farmers }: { farmers: Farmer[] }) {
 // ── Main widget ────────────────────────────────────────────────────────────────
 
 export function Main() {
-  const [farmers,  setFarmers]  = useState<Farmer[]>([])
+  const [farmers,  setFarmers]  = usePersistedState<Farmer[]>('fr-farmers', [])
   const [programs, setPrograms] = useState<ProgramOption[]>([])
   const [loading,  setLoading]  = useState(true)
 
@@ -1390,6 +1423,10 @@ export function Main() {
     gender: true, region: true, district: true, community: true,
     primaryCrop: true, farmSize: true,
   })
+  const [visibleEnrolmentColumns, setVisibleEnrolmentColumns] = usePersistedState<Record<string, boolean>>('fr-enrolment-columns', {
+    farmerDetails: true, programInformation: true, communityDetails: true,
+    enrolmentWorkflow: true, friScore: true,
+  })
 
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -1407,7 +1444,9 @@ export function Main() {
 
   useEffect(() => {
     Promise.all([getFarmers(), getProgramOptions()]).then(([f, p]) => {
-      setFarmers(f); setPrograms(p); setLoading(false)
+      // don't clobber farmers already restored from sessionStorage (edits/adds from this session)
+      setFarmers(prev => prev.length > 0 ? prev : f)
+      setPrograms(p); setLoading(false)
     })
   }, [])
 
@@ -1643,25 +1682,25 @@ export function Main() {
                   </span>
                 )}
                 {filterZone && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {filterZone.replace('Resilience ', '')}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterZone('')} />
                   </span>
                 )}
                 {filterAgent && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {filterAgent}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterAgent('')} />
                   </span>
                 )}
                 {filterCommunity && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {filterCommunity}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterCommunity('')} />
                   </span>
                 )}
                 {filterCooperative && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {COOPERATIVES.find(c => c.id === filterCooperative)?.name}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterCooperative('')} />
                   </span>
@@ -1701,7 +1740,7 @@ export function Main() {
             </div>
           </div>
 
-          {viewMode === 'registration' && (
+          {(viewMode === 'registration' || viewMode === 'enrolment') && (
             <div className="relative">
               <button
                 onClick={() => setColumnsOpen(v => !v)}
@@ -1716,26 +1755,48 @@ export function Main() {
                   <div className="absolute right-0 top-full mt-1.5 z-20 w-56 rounded-xl border border-gray-100 bg-white shadow-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Toggle Columns</p>
-                      <button
-                        className="text-[11px] font-medium"
-                        style={{ color: 'var(--brand-green)' }}
-                        onClick={() => setVisibleColumns(Object.fromEntries(Object.keys(visibleColumns).map(k => [k, true])))}
-                      >
-                        Show all
-                      </button>
+                      {viewMode === 'registration' ? (
+                        <button
+                          className="text-[11px] font-medium"
+                          style={{ color: 'var(--brand-green)' }}
+                          onClick={() => setVisibleColumns(Object.fromEntries(Object.keys(visibleColumns).map(k => [k, true])))}
+                        >
+                          Show all
+                        </button>
+                      ) : (
+                        <button
+                          className="text-[11px] font-medium"
+                          style={{ color: 'var(--brand-green)' }}
+                          onClick={() => setVisibleEnrolmentColumns(Object.fromEntries(Object.keys(visibleEnrolmentColumns).map(k => [k, true])))}
+                        >
+                          Show all
+                        </button>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
-                      {REGISTRATION_COLUMNS.map(col => (
-                        <label key={col.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={visibleColumns[col.key] ?? true}
-                            onChange={() => setVisibleColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
-                            className="w-3.5 h-3.5 rounded border-gray-300 accent-(--brand-forest)"
-                          />
-                          {col.label}
-                        </label>
-                      ))}
+                      {viewMode === 'registration'
+                        ? REGISTRATION_COLUMNS.map(col => (
+                            <label key={col.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={visibleColumns[col.key] ?? true}
+                                onChange={() => setVisibleColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                                className="w-3.5 h-3.5 rounded border-gray-300 accent-(--brand-forest)"
+                              />
+                              {col.label}
+                            </label>
+                          ))
+                        : ENROLMENT_COLUMNS.map(col => (
+                            <label key={col.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={visibleEnrolmentColumns[col.key] ?? true}
+                                onChange={() => setVisibleEnrolmentColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                                className="w-3.5 h-3.5 rounded border-gray-300 accent-(--brand-forest)"
+                              />
+                              {col.label}
+                            </label>
+                          ))}
                     </div>
                   </div>
                 </>
@@ -1861,7 +1922,7 @@ export function Main() {
                     key={f.id}
                     className={cn(
                       'border-b border-gray-50 last:border-0 cursor-pointer transition-colors',
-                      isSelected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50',
+                      isSelected ? 'bg-green-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50',
                     )}
                     onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}
                   >
@@ -1890,10 +1951,21 @@ export function Main() {
           {/* Column header */}
           <div className="flex items-center px-4 py-2.5 border-b border-gray-100 bg-gray-50/80 min-w-max">
             <div className="w-20 shrink-0" />
-            <p className="w-50 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Farmer Details</p>
-            <p className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Program Information</p>
-            <p className="w-40 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Enrolment Workflow</p>
-            <p className="w-40 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">FRI Score</p>
+            {(visibleEnrolmentColumns.farmerDetails ?? true) && (
+              <p className="w-56 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Farmer Details</p>
+            )}
+            {(visibleEnrolmentColumns.programInformation ?? true) && (
+              <p className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Program Information</p>
+            )}
+            {(visibleEnrolmentColumns.communityDetails ?? true) && (
+              <p className="w-44 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Community Details</p>
+            )}
+            {(visibleEnrolmentColumns.enrolmentWorkflow ?? true) && (
+              <p className="w-56 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Enrolment Workflow</p>
+            )}
+            {(visibleEnrolmentColumns.friScore ?? true) && (
+              <p className="w-40 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">FRI Score</p>
+            )}
             <p className="w-28 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-4">Actions</p>
           </div>
 
@@ -1906,10 +1978,10 @@ export function Main() {
               return (
                 <div key={f.id} className={cn(
                   'flex items-stretch transition-colors',
-                  isSelected ? 'bg-blue-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'
+                  isSelected ? 'bg-green-50' : i % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'
                 )}>
-                  {/* Checkbox + Avatar */}
-                  <div className="flex items-center gap-3 py-4 pl-4 pr-2 w-20 shrink-0">
+                  {/* Checkbox */}
+                  <div className="flex items-center py-4 pl-4 pr-2 w-20 shrink-0">
                     <div
                       className={cn(
                         'w-4 h-4 rounded border-2 flex items-center justify-center cursor-pointer transition-colors shrink-0',
@@ -1919,27 +1991,41 @@ export function Main() {
                     >
                       {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
                     </div>
-                    <PersonAvatar name={f.fullName} size={32} />
                   </div>
 
                   {/* Farmer Details */}
-                  <div className="flex flex-col justify-center py-4 pr-5 w-50 shrink-0 cursor-pointer border-r border-gray-100"
+                  {(visibleEnrolmentColumns.farmerDetails ?? true) && (
+                  <div className="flex items-center gap-3 py-4 pr-5 w-56 shrink-0 cursor-pointer border-r border-gray-100"
                     onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}>
-                    <p className="font-semibold text-sm leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
-                      {f.fullName}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[11px] text-gray-400 font-mono">{f.phone}</span>
-                      <span className="text-gray-200">·</span>
-                      {enr ? (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-emerald-100 text-emerald-700">Active</span>
-                      ) : (
-                        <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full leading-none">Not enrolled</span>
-                      )}
+                    <PersonAvatar name={f.fullName} size={40} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-semibold text-sm leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
+                          {f.fullName}
+                        </p>
+                        {f.duplicateFlag && <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[11px] text-gray-400 font-mono">
+                          <span className="text-[9px] text-gray-300 uppercase tracking-wide mr-0.5">Ph</span>{f.phone}
+                        </span>
+                        <span className="text-gray-200 text-[10px]">·</span>
+                        <span className="text-[11px] font-mono" style={{ color: 'var(--brand-mid)' }}>
+                          <span className="text-[9px] text-gray-300 uppercase tracking-wide mr-0.5">ID</span>{f.nationalId}
+                        </span>
+                        <span className="text-gray-200 text-[10px]">·</span>
+                        {enr ? (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-emerald-100 text-emerald-700">Active</span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full leading-none">Not enrolled</span>
+                        )}
+                      </div>
                     </div>
                   </div>
+                  )}
 
                   {/* Program Information */}
+                  {(visibleEnrolmentColumns.programInformation ?? true) && (
                   <div className="flex flex-col justify-center py-4 px-5 flex-1 min-w-0 cursor-pointer border-r border-gray-100"
                     onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}>
                     {enr ? (
@@ -1962,13 +2048,28 @@ export function Main() {
                       <span className="text-[11px] text-gray-300">—</span>
                     )}
                   </div>
+                  )}
+
+                  {/* Community Details */}
+                  {(visibleEnrolmentColumns.communityDetails ?? true) && (() => {
+                    const cd = communityDetail(f)
+                    return (
+                      <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-44 cursor-pointer border-r border-gray-100"
+                        onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}>
+                        <p className="text-xs font-medium leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>{cd.communityName || '—'}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{cd.cooperativeName ?? 'No cooperative'}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cd.region || '—'}</p>
+                      </div>
+                    )
+                  })()}
 
                   {/* Enrolment Workflow */}
-                  <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-40 cursor-pointer border-r border-gray-100"
+                  {(visibleEnrolmentColumns.enrolmentWorkflow ?? true) && (
+                  <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-56 cursor-pointer border-r border-gray-100"
                     onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}>
                     {enr && (enr.currentStage ?? 0) > 0 ? (
                       <>
-                        <div className="flex gap-px mb-1.5">
+                        <div className="flex gap-px mb-2">
                           {WORKFLOW_STAGES.map(s => (
                             <div key={s.stage} className={cn(
                               'h-1 rounded-sm flex-1',
@@ -1977,7 +2078,40 @@ export function Main() {
                             )} />
                           ))}
                         </div>
-                        <span className="text-[11px] font-medium flex items-center gap-1" style={{ color: 'var(--brand-forest)' }}>
+                        {(() => {
+                          const wf = enrolmentWorkflowDetail(f.id, enr)
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                                Reg: {new Date(wf.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                              {wf.baselineDone ? (
+                                <span className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" /> Baseline done
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                  <Circle className="w-3 h-3 shrink-0" /> Baseline pending
+                                </span>
+                              )}
+                              {wf.checkinOnTrack === true ? (
+                                <span className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+                                  <CheckCircle2 className="w-3 h-3 shrink-0" /> Check-in: On track
+                                </span>
+                              ) : wf.checkinOnTrack === false ? (
+                                <span className="flex items-center gap-1.5 text-[11px] text-red-500">
+                                  <XCircle className="w-3 h-3 shrink-0" /> Check-in: Missed
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                  <Circle className="w-3 h-3 shrink-0" /> No schedule
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })()}
+                        <span className="text-[11px] font-medium flex items-center gap-1 mt-1.5" style={{ color: 'var(--brand-forest)' }}>
                           <GitBranch className="w-2.5 h-2.5 shrink-0 text-gray-400" />
                           {stageDef?.name ?? `Stage ${enr.currentStage}`}
                         </span>
@@ -1987,8 +2121,10 @@ export function Main() {
                       <span className="text-[11px] text-gray-300">—</span>
                     )}
                   </div>
+                  )}
 
                   {/* FRI Score */}
+                  {(visibleEnrolmentColumns.friScore ?? true) && (
                   <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-40 cursor-pointer border-r border-gray-100"
                     onClick={() => { setFocusFarmer(f); setFarmerMode('view') }}>
                     {f.currentFri !== null ? (
@@ -2007,6 +2143,7 @@ export function Main() {
                       <span className="text-xs text-gray-300">No score</span>
                     )}
                   </div>
+                  )}
 
                   {/* Actions */}
                   <div className="flex items-center py-4 px-3 w-28 shrink-0 gap-1.5">

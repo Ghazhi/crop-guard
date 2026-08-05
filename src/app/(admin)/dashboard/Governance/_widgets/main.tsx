@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Landmark, Users2, CalendarDays, Gavel, ShieldCheck, Wallet, FileText,
   Plus, Pencil, Trash2, Search, MapPin, ChevronLeft, ChevronRight, Sprout,
   Globe2, Truck, Sparkles, AlertCircle, CheckCircle2, XCircle, TrendingUp,
-  Download, RefreshCw,
+  Download, RefreshCw, GraduationCap, Award, ClipboardList,
 } from 'lucide-react'
 import { Main as CommunityProfileMain } from '@/app/(admin)/dashboard/CommunityProfile/_widgets/main'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -25,7 +26,7 @@ import { cn } from '@/lib/utils'
 import type {
   GovTab, Officer, OfficerRole, Meeting, MeetingType,
   Resolution, VoteOutcome, ImplementationStatus,
-  ComplianceItem, CertificationType, ComplianceStatus,
+  ComplianceItem, CertificationType, ComplianceStatus, FboRegistration, FboStatus, CocobodLicense,
   FundTransaction, FundTransactionType, PaymentMode,
   GovernanceDocument, DocumentType, TraceabilityRecord,
 } from '../_logics/interface'
@@ -33,9 +34,9 @@ import type {
 // ─── Seed data for sub-tabs ────────────────────────────────────────────────────
 
 const SEED_OFFICERS: Officer[] = [
-  { id: 'off-001', cooperativeId: 'coop-001', name: 'Kwabena Owusu', role: 'Chairman',       phone: '024-111-2222', termStart: '2023-01', termEnd: '2026-01', isActive: true },
-  { id: 'off-002', cooperativeId: 'coop-001', name: 'Efua Adjei',    role: 'Secretary',       phone: '020-333-4444', termStart: '2023-01', termEnd: '2026-01', isActive: true },
-  { id: 'off-003', cooperativeId: 'coop-002', name: 'Alhassan Mahama', role: 'Chairman',      phone: '054-555-6666', termStart: '2022-06', termEnd: '2025-06', isActive: true },
+  { id: 'off-001', cooperativeId: 'coop-001', name: 'Ama Mensah',  role: 'Chairperson', phone: '0241234567', termStart: '2023-01', termEnd: '2026-01', isActive: true },
+  { id: 'off-002', cooperativeId: 'coop-001', name: 'Ama Konadu',  role: 'Secretary',   phone: '0241334455', termStart: '2023-01', termEnd: '2026-01', isActive: true },
+  { id: 'off-003', cooperativeId: 'coop-002', name: 'Faiza Sidik', role: 'Chairperson', phone: '0551234567', termStart: '2022-06', termEnd: '2025-06', isActive: true },
 ]
 
 const SEED_MEETINGS: Meeting[] = [
@@ -48,9 +49,12 @@ const SEED_RESOLUTIONS: Resolution[] = [
 ]
 
 const SEED_COMPLIANCE: ComplianceItem[] = [
-  { id: 'cmp-001', cooperativeId: 'coop-001', certificationType: 'Fair Trade', issueDate: '2024-05-01', expiryDate: '2027-05-01', status: 'Valid' },
-  { id: 'cmp-002', cooperativeId: 'coop-006', certificationType: 'COCOBOD License', issueDate: '2023-02-10', expiryDate: '2026-02-10', status: 'Expiring Soon' },
+  { id: 'cmp-001', cooperativeId: 'coop-001', certificationType: 'Fairtrade Certification', registrationNumber: null, issueDate: '2024-05-01', expiryDate: '2027-05-01', status: 'Valid', notes: null },
+  { id: 'cmp-002', cooperativeId: 'coop-006', certificationType: 'COCOBOD License', registrationNumber: null, issueDate: '2023-02-10', expiryDate: '2026-02-10', status: 'Expiring Soon', notes: null },
 ]
+
+const SEED_FBO_REGISTRATIONS: FboRegistration[] = []
+const SEED_COCOBOD_LICENSES: CocobodLicense[] = []
 
 const SEED_FUNDS: FundTransaction[] = [
   { id: 'fnd-001', cooperativeId: 'coop-001', transactionType: 'Contribution', amount: 5000, modeOfPayment: 'Mobile Money', transactionDate: '2026-02-01', notes: 'Monthly member dues' },
@@ -69,12 +73,16 @@ const SEED_TRACEABILITY: TraceabilityRecord[] = [
 
 // ─── Static option lists ───────────────────────────────────────────────────────
 
-const OFFICER_ROLES: OfficerRole[] = ['Chairman', 'Secretary', 'Treasurer', 'Vice Chairman', 'Organizer']
+const OFFICER_ROLES: OfficerRole[] = ['Chairperson', 'Vice Chairperson', 'Secretary', 'Treasurer', 'Executive Member']
 const MEETING_TYPES: MeetingType[] = ['AGM', 'Executive', 'General', 'Emergency']
 const VOTE_OUTCOMES: VoteOutcome[] = ['Passed', 'Rejected', 'Deferred']
 const IMPLEMENTATION_STATUSES: ImplementationStatus[] = ['Pending', 'In Progress', 'Completed']
-const CERTIFICATION_TYPES: CertificationType[] = ['Organic Certification', 'Fair Trade', 'Rainforest Alliance', 'COCOBOD License']
+const CERTIFICATION_TYPES: CertificationType[] = [
+  'FBO Registration (Dept. of Cooperatives)', 'COCOBOD License', 'Fairtrade Certification',
+  'Organic Certification', 'UTZ / Rainforest Alliance',
+]
 const COMPLIANCE_STATUSES: ComplianceStatus[] = ['Valid', 'Expiring Soon', 'Expired']
+const FBO_STATUSES: FboStatus[] = ['Registered', 'Pending', 'Lapsed']
 const FUND_TYPES: FundTransactionType[] = ['Contribution', 'Withdrawal', 'Loan Disbursement', 'Loan Repayment']
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'Mobile Money', 'Bank Transfer']
 const DOCUMENT_TYPES: DocumentType[] = ['Constitution', 'Registration Certificate', 'Meeting Minutes', 'Financial Statement', 'Other']
@@ -97,20 +105,29 @@ function implVariant(v: ImplementationStatus): 'success' | 'info' | 'neutral' {
   return 'neutral'
 }
 
-function complianceVariant(v: ComplianceStatus): 'success' | 'warning' | 'danger' {
-  if (v === 'Valid') return 'success'
-  if (v === 'Expiring Soon') return 'warning'
-  return 'danger'
+const GOV_TABS: { id: Exclude<GovTab, 'cooperatives'>; Icon: React.ElementType; label: string }[] = [
+  { id: 'leadership',  Icon: Users2,        label: 'Leadership'  },
+  { id: 'meetings',    Icon: CalendarDays,  label: 'Meetings'    },
+  { id: 'training',    Icon: GraduationCap, label: 'Training'    },
+  { id: 'resolutions', Icon: Gavel,         label: 'Resolutions' },
+  { id: 'compliance',  Icon: ShieldCheck,   label: 'Compliance'  },
+  { id: 'funds',       Icon: Wallet,        label: 'Funds'       },
+  { id: 'documents',   Icon: FileText,      label: 'Documents'   },
+]
+
+/** Farmers in a cooperative not already holding another active officer role there (except the one currently in `currentOfficerId`). */
+function availableFarmersFor(cooperativeId: string, officers: Officer[], currentOfficerId?: string) {
+  const takenFarmerNames = new Set(
+    officers
+      .filter(o => o.cooperativeId === cooperativeId && o.isActive && o.id !== currentOfficerId)
+      .map(o => o.name),
+  )
+  return FARMERS_LIST.filter(f => FARMER_COOPERATIVE_MAP[f.id] === cooperativeId && !takenFarmerNames.has(f.fullName))
 }
 
-const GOV_TABS: { id: Exclude<GovTab, 'cooperatives'>; Icon: React.ElementType; label: string }[] = [
-  { id: 'leadership',  Icon: Users2,       label: 'Leadership'  },
-  { id: 'meetings',    Icon: CalendarDays, label: 'Meetings'    },
-  { id: 'resolutions', Icon: Gavel,        label: 'Resolutions' },
-  { id: 'compliance',  Icon: ShieldCheck,  label: 'Compliance'  },
-  { id: 'funds',       Icon: Wallet,       label: 'Funds'       },
-  { id: 'documents',   Icon: FileText,     label: 'Documents'   },
-]
+function todayStamp() {
+  return new Date().toISOString().slice(0, 7)
+}
 
 const PAGE_SIZE = 8
 
@@ -140,15 +157,28 @@ function DetailStat({ icon: Icon, label, value }: { icon: React.ElementType; lab
   )
 }
 
+type GovSectionTab = 'cooperative' | 'governance' | 'insights' | 'reports'
+
+const GOV_SECTION_TABS: { id: GovSectionTab; Icon: React.ElementType; label: string }[] = [
+  { id: 'cooperative', Icon: Landmark, label: 'Cooperative' },
+  { id: 'governance',  Icon: Gavel,    label: 'Governance'  },
+  { id: 'insights',    Icon: Sparkles, label: 'Insights'    },
+  { id: 'reports',     Icon: FileText, label: 'Reports'     },
+]
+
 function CooperativeGovernance() {
-  const [cooperatives, setCooperatives] = usePersistedState<Cooperative[]>('gov-cooperatives', COOPERATIVES)
+  const [cooperatives] = usePersistedState<Cooperative[]>('gov-cooperatives', COOPERATIVES)
   const [officers, setOfficers]         = usePersistedState<Officer[]>('gov-officers', SEED_OFFICERS)
   const [meetings, setMeetings]         = usePersistedState<Meeting[]>('gov-meetings', SEED_MEETINGS)
   const [resolutions, setResolutions]   = usePersistedState<Resolution[]>('gov-resolutions', SEED_RESOLUTIONS)
   const [compliance, setCompliance]     = usePersistedState<ComplianceItem[]>('gov-compliance', SEED_COMPLIANCE)
+  const [fboRegistrations, setFboRegistrations] = usePersistedState<FboRegistration[]>('gov-fbo', SEED_FBO_REGISTRATIONS)
+  const [cocobodLicenses, setCocobodLicenses]   = usePersistedState<CocobodLicense[]>('gov-cocobod', SEED_COCOBOD_LICENSES)
   const [funds, setFunds]               = usePersistedState<FundTransaction[]>('gov-funds', SEED_FUNDS)
   const [documents, setDocuments]       = usePersistedState<GovernanceDocument[]>('gov-documents', SEED_DOCUMENTS)
 
+  const [statsOpen, setStatsOpen] = usePersistedState('gov-stats', false)
+  const [sectionTab, setSectionTab] = usePersistedState<GovSectionTab>('gov-section-tab', 'cooperative')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [govTab, setGovTab] = useState<Exclude<GovTab, 'cooperatives'>>('leadership')
 
@@ -163,93 +193,177 @@ function CooperativeGovernance() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <SummaryCard icon={Landmark}    label="Cooperatives"  value={cooperatives.length} />
-        <SummaryCard icon={Users2}      label="Total Members" value={totalMembers} />
-        <SummaryCard icon={ShieldCheck} label="Active Certs"   value={activeCerts} />
-        <SummaryCard icon={Gavel}       label="Resolutions"    value={resolutions.length} />
+      {/* collapsible statistics */}
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => setStatsOpen(v => !v)}
+          className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 hover:text-gray-700 transition-colors w-fit"
+        >
+          <ChevronRight className={cn('w-3.5 h-3.5 transition-transform', statsOpen && 'rotate-90')} />
+          Statistics
+        </button>
+        {statsOpen && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <SummaryCard icon={Landmark}    label="Cooperatives"  value={cooperatives.length} />
+            <SummaryCard icon={Users2}      label="Total Members" value={totalMembers} />
+            <SummaryCard icon={ShieldCheck} label="Active Certs"   value={activeCerts} />
+            <SummaryCard icon={Gavel}       label="Resolutions"    value={resolutions.length} />
+          </div>
+        )}
       </div>
 
-      {/* body: cooperative list + detail */}
+      {/* second-level tabs */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-fit max-w-full">
+        {GOV_SECTION_TABS.map(({ id, Icon, label }) => {
+          const active = sectionTab === id
+          return (
+            <button
+              key={id}
+              onClick={() => setSectionTab(id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
+                active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
+              )}
+              style={active ? { color: 'var(--brand-forest)' } : {}}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <CooperativeSidebar
           cooperatives={cooperatives}
-          setCooperatives={setCooperatives}
           selectedId={selectedId}
-          onSelect={id => { setSelectedId(id); setGovTab('leadership') }}
+          onSelect={id => setSelectedId(id)}
         />
 
-        <div className="lg:col-span-2 min-w-0">
-          {!selectedCoop ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
-              <Gavel className="w-12 h-12 mb-3 opacity-30" />
-              <p className="text-sm">Select a cooperative from the list</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {/* banner header */}
-              <div className="rounded-2xl p-5 text-white" style={{ background: 'var(--brand-forest)' }}>
-                <div className="flex items-center gap-3 mb-4">
+        <div className="lg:col-span-2 min-w-0 flex flex-col gap-4">
+          {sectionTab === 'cooperative' && (
+            !selectedCoop ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+                <Gavel className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">Select a cooperative from the list</p>
+              </div>
+            ) : (
+              <CooperativeDetailPanel
+                coop={selectedCoop}
+                officers={officers}
+                setOfficers={setOfficers}
+              />
+            )
+          )}
+
+          {sectionTab === 'governance' && (
+            !selectedCoop ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+                <Gavel className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl p-5 text-white flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
-                    <Landmark className="w-5 h-5 text-white" />
+                    <Gavel className="w-5 h-5 text-white" />
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-base font-semibold truncate">Governance — {selectedCoop.name}</h2>
-                    <p className="text-xs text-white/70 truncate">{selectedCoop.region} · {selectedCoop.communityName}</p>
+                    <p className="text-xs text-white/70 truncate">{selectedCoop.region} · {selectedCoop.communityName} · {selectedCoop.memberCount} members · Created {selectedCoop.since}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <DetailStat icon={Users2}   label="Members"     value={String(selectedCoop.memberCount)} />
-                  <DetailStat icon={Landmark} label="Chairperson" value={selectedCoop.chairmanName || '—'} />
-                  <DetailStat icon={FileText} label="Secretary"   value={selectedCoop.secretaryName || '—'} />
-                  <DetailStat icon={Sprout}   label="Primary Crops" value={selectedCoop.primaryCrops.length ? selectedCoop.primaryCrops.join(', ') : '—'} />
+
+                {/* horizontal pill sub-tabs */}
+                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-fit max-w-full">
+                  {GOV_TABS.map(({ id, Icon, label }) => {
+                    const active = govTab === id
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setGovTab(id)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
+                          active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                        )}
+                        style={active ? { color: 'var(--brand-forest)' } : {}}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* sub-tab content */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  {govTab === 'leadership' && (
+                    <LeadershipTab officers={officers} setOfficers={setOfficers} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                  )}
+                  {govTab === 'meetings' && (
+                    <MeetingsTab meetings={meetings} setMeetings={setMeetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                  )}
+                  {govTab === 'training' && (
+                    <TrainingPlaceholderTab />
+                  )}
+                  {govTab === 'resolutions' && (
+                    <ResolutionsTab resolutions={resolutions} setResolutions={setResolutions} meetings={meetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                  )}
+                  {govTab === 'compliance' && (
+                    <ComplianceTab
+                      compliance={compliance} setCompliance={setCompliance}
+                      fboRegistrations={fboRegistrations} setFboRegistrations={setFboRegistrations}
+                      cocobodLicenses={cocobodLicenses} setCocobodLicenses={setCocobodLicenses}
+                      scopeId={selectedCoop.id}
+                    />
+                  )}
+                  {govTab === 'funds' && (
+                    <FundsTab funds={funds} setFunds={setFunds} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                  )}
+                  {govTab === 'documents' && (
+                    <DocumentsTab documents={documents} setDocuments={setDocuments} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                  )}
                 </div>
               </div>
+            )
+          )}
 
-              {/* horizontal pill sub-tabs */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-fit max-w-full">
-                {GOV_TABS.map(({ id, Icon, label }) => {
-                  const active = govTab === id
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setGovTab(id)}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
-                        active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
-                      )}
-                      style={active ? { color: 'var(--brand-forest)' } : {}}
-                    >
-                      <Icon className="w-3.5 h-3.5" />
-                      {label}
-                    </button>
-                  )
-                })}
+          {sectionTab === 'insights' && (
+            !selectedCoop ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+                <Sparkles className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
               </div>
+            ) : (
+              <CooperativeInsightsTab
+                key={selectedCoop.id}
+                coop={selectedCoop}
+                meetings={meetings.filter(m => m.cooperativeId === selectedCoop.id)}
+                resolutions={resolutions.filter(r => r.cooperativeId === selectedCoop.id)}
+                compliance={compliance.filter(c => c.cooperativeId === selectedCoop.id)}
+                funds={funds.filter(f => f.cooperativeId === selectedCoop.id)}
+              />
+            )
+          )}
 
-              {/* sub-tab content */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                {govTab === 'leadership' && (
-                  <LeadershipTab officers={officers} setOfficers={setOfficers} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
-                {govTab === 'meetings' && (
-                  <MeetingsTab meetings={meetings} setMeetings={setMeetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
-                {govTab === 'resolutions' && (
-                  <ResolutionsTab resolutions={resolutions} setResolutions={setResolutions} meetings={meetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
-                {govTab === 'compliance' && (
-                  <ComplianceTab compliance={compliance} setCompliance={setCompliance} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
-                {govTab === 'funds' && (
-                  <FundsTab funds={funds} setFunds={setFunds} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
-                {govTab === 'documents' && (
-                  <DocumentsTab documents={documents} setDocuments={setDocuments} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                )}
+          {sectionTab === 'reports' && (
+            !selectedCoop ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+                <FileText className="w-12 h-12 mb-3 opacity-30" />
+                <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
               </div>
-            </div>
+            ) : (
+              <CooperativeReportsTab
+                key={selectedCoop.id}
+                coop={selectedCoop}
+                officers={officers.filter(o => o.cooperativeId === selectedCoop.id)}
+                meetings={meetings.filter(m => m.cooperativeId === selectedCoop.id)}
+                resolutions={resolutions.filter(r => r.cooperativeId === selectedCoop.id)}
+                compliance={compliance.filter(c => c.cooperativeId === selectedCoop.id)}
+                funds={funds.filter(f => f.cooperativeId === selectedCoop.id)}
+                documents={documents.filter(d => d.cooperativeId === selectedCoop.id)}
+              />
+            )
           )}
         </div>
       </div>
@@ -257,99 +371,230 @@ function CooperativeGovernance() {
   )
 }
 
+// ─── Cooperative detail panel (banner + inline officer edit form + farmer list) ─
+
+function CooperativeDetailPanel({
+  coop, officers, setOfficers,
+}: {
+  coop: Cooperative
+  officers: Officer[]
+  setOfficers: (v: Officer[] | ((prev: Officer[]) => Officer[])) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [chairpersonFarmerId, setChairpersonFarmerId] = useState('')
+  const [secretaryFarmerId, setSecretaryFarmerId] = useState('')
+
+  const farmersInCoop = FARMERS_LIST.filter(f => FARMER_COOPERATIVE_MAP[f.id] === coop.id)
+
+  const activeChairperson = officers.find(o => o.cooperativeId === coop.id && o.role === 'Chairperson' && o.isActive) ?? null
+  const activeSecretary = officers.find(o => o.cooperativeId === coop.id && o.role === 'Secretary' && o.isActive) ?? null
+
+  function farmerIdForOfficer(officer: Officer | null) {
+    if (!officer) return ''
+    return farmersInCoop.find(f => f.fullName === officer.name)?.id ?? ''
+  }
+
+  function openEdit() {
+    setChairpersonFarmerId(farmerIdForOfficer(activeChairperson))
+    setSecretaryFarmerId(farmerIdForOfficer(activeSecretary))
+    setEditing(true)
+  }
+
+  const chairpersonOptions = [
+    { value: '', label: '— None —' },
+    ...availableFarmersFor(coop.id, officers, activeChairperson?.id).map(f => ({ value: f.id, label: f.fullName })),
+  ]
+  const secretaryOptions = [
+    { value: '', label: '— None —' },
+    ...availableFarmersFor(coop.id, officers, activeSecretary?.id).map(f => ({ value: f.id, label: f.fullName })),
+  ]
+
+  function saveOfficers() {
+    setOfficers(prev => {
+      let next = prev.map(o => {
+        if (o.cooperativeId === coop.id && o.isActive && (o.role === 'Chairperson' || o.role === 'Secretary')) {
+          return { ...o, isActive: false }
+        }
+        return o
+      })
+
+      if (chairpersonFarmerId) {
+        const farmer = FARMERS_LIST.find(f => f.id === chairpersonFarmerId)
+        if (farmer) {
+          const existing = next.find(o => o.id === activeChairperson?.id)
+          if (existing && farmerIdForOfficer(activeChairperson) === chairpersonFarmerId) {
+            next = next.map(o => o.id === existing.id ? { ...o, isActive: true } : o)
+          } else {
+            next = [...next, {
+              id: `off-${Date.now()}-chair`,
+              cooperativeId: coop.id,
+              name: farmer.fullName,
+              role: 'Chairperson',
+              phone: farmer.phone,
+              termStart: todayStamp(),
+              termEnd: '',
+              isActive: true,
+            }]
+          }
+        }
+      }
+
+      if (secretaryFarmerId) {
+        const farmer = FARMERS_LIST.find(f => f.id === secretaryFarmerId)
+        if (farmer) {
+          const existing = next.find(o => o.id === activeSecretary?.id)
+          if (existing && farmerIdForOfficer(activeSecretary) === secretaryFarmerId) {
+            next = next.map(o => o.id === existing.id ? { ...o, isActive: true } : o)
+          } else {
+            next = [...next, {
+              id: `off-${Date.now()}-sec`,
+              cooperativeId: coop.id,
+              name: farmer.fullName,
+              role: 'Secretary',
+              phone: farmer.phone,
+              termStart: todayStamp(),
+              termEnd: '',
+              isActive: true,
+            }]
+          }
+        }
+      }
+
+      return next
+    })
+    setEditing(false)
+  }
+
+  return (
+    <>
+      <div className="rounded-2xl p-5 text-white" style={{ background: 'var(--brand-forest)' }}>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
+              <Landmark className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold truncate">{coop.name}</h2>
+              <p className="text-xs text-white/70 truncate">{coop.region} · {coop.communityName} · {coop.memberCount} members · Since {coop.since}</p>
+            </div>
+          </div>
+          {!editing && (
+            <ButtonTemplate
+              variant="outline"
+              size="sm"
+              label="Edit"
+              leftIcon={<Pencil className="w-3.5 h-3.5" />}
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 shrink-0"
+              onClick={openEdit}
+            />
+          )}
+        </div>
+
+        {!editing && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <DetailStat icon={Users2}   label="Members"     value={String(coop.memberCount)} />
+            <DetailStat icon={Landmark} label="Chairperson" value={activeChairperson?.name || '—'} />
+            <DetailStat icon={FileText} label="Secretary"   value={activeSecretary?.name || '—'} />
+            <DetailStat icon={Sprout}   label="Primary Crops" value={coop.primaryCrops.length ? coop.primaryCrops.join(', ') : '—'} />
+          </div>
+        )}
+      </div>
+
+      {editing && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+          <InputTemplate label="Cooperative Name" value={coop.name} isDisabled className="bg-gray-100 text-gray-400 cursor-not-allowed" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SelectTemplate label="Chairperson" options={chairpersonOptions} value={chairpersonFarmerId} onChange={e => setChairpersonFarmerId(e.target.value)} />
+            <SelectTemplate label="Secretary" options={secretaryOptions} value={secretaryFarmerId} onChange={e => setSecretaryFarmerId(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2">
+            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setEditing(false)} />
+            <ButtonTemplate variant="primary" label="Save" onClick={saveOfficers} />
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Users2 className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
+          <h3 className="text-sm font-bold text-gray-900">Farmers in Cooperative ({farmersInCoop.length})</h3>
+        </div>
+        {farmersInCoop.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">No farmers linked to this cooperative yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {farmersInCoop.map(f => (
+              <div key={f.id} className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{f.fullName}</p>
+                  <p className="text-[11px] text-gray-500 truncate">{f.phone} · {f.primaryCrop} · {f.district}</p>
+                </div>
+                <BadgeTemplate
+                  label={f.currentFri !== null ? `FRI ${f.currentFri}` : 'Unscored'}
+                  variant={f.currentFri !== null ? 'success' : 'neutral'}
+                  size="sm"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ─── Cooperative sidebar (master list) ─────────────────────────────────────────
 
 function CooperativeSidebar({
-  cooperatives, setCooperatives, selectedId, onSelect,
+  cooperatives, selectedId, onSelect,
 }: {
   cooperatives: Cooperative[]
-  setCooperatives: (v: Cooperative[] | ((prev: Cooperative[]) => Cooperative[])) => void
   selectedId: string | null
   onSelect: (id: string) => void
 }) {
   const [search, setSearch] = useState('')
   const [regionFilter, setRegionFilter] = useState('all')
+  const [communityFilter, setCommunityFilter] = useState('all')
   const [page, setPage] = useState(1)
-  const [editing, setEditing] = useState<Cooperative | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [deleting, setDeleting] = useState<Cooperative | null>(null)
-  const [form, setForm] = useState<Partial<Cooperative>>({})
-  const [nameError, setNameError] = useState<string | undefined>()
 
   const regionOptions = [
     { value: 'all', label: 'All Regions' },
     ...Array.from(new Set(cooperatives.map(c => c.region))).map(r => ({ value: r, label: r })),
   ]
+  const communityOptions = [
+    { value: 'all', label: 'All Communities' },
+    ...Array.from(new Set(cooperatives.map(c => c.communityName))).map(c => ({ value: c, label: c })),
+  ]
 
   const filtered = useMemo(() => cooperatives.filter(c =>
     (regionFilter === 'all' || c.region === regionFilter) &&
+    (communityFilter === 'all' || c.communityName === communityFilter) &&
     (c.name.toLowerCase().includes(search.toLowerCase()) ||
      c.communityName.toLowerCase().includes(search.toLowerCase()))
-  ), [cooperatives, search, regionFilter])
+  ), [cooperatives, search, regionFilter, communityFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const hasActiveFilter = search.trim() !== '' || regionFilter !== 'all'
+  const hasActiveFilter = search.trim() !== '' || regionFilter !== 'all' || communityFilter !== 'all'
 
   function clearFilters() {
     setSearch('')
     setRegionFilter('all')
+    setCommunityFilter('all')
     setPage(1)
   }
 
-  function openAdd() {
-    setForm({ name: '', communityName: '', region: '', district: '', memberCount: 0, primaryCrops: [], chairmanName: '', secretaryName: '', status: 'Active', since: '' })
-    setNameError(undefined)
-    setAdding(true)
-  }
-
-  function saveNew() {
-    if (!form.name?.trim()) { setNameError('Name is required'); return }
-    const c: Cooperative = {
-      id: `coop-${Date.now()}`,
-      name: form.name ?? '',
-      communityName: form.communityName ?? '',
-      region: form.region ?? '',
-      district: form.district ?? '',
-      memberCount: Number(form.memberCount ?? 0),
-      primaryCrops: typeof form.primaryCrops === 'string' ? (form.primaryCrops as unknown as string).split(',').map(s => s.trim()).filter(Boolean) : (form.primaryCrops ?? []),
-      chairmanName: form.chairmanName ?? '',
-      secretaryName: form.secretaryName ?? '',
-      status: form.status ?? 'Active',
-      since: form.since ?? '',
-    }
-    setCooperatives(prev => [...prev, c])
-    setAdding(false)
-  }
-
-  function saveEdit() {
-    if (!editing) return
-    if (!form.name?.trim()) { setNameError('Name is required'); return }
-    setCooperatives(prev => prev.map(c => c.id === editing.id ? {
-      ...c,
-      ...form,
-      primaryCrops: typeof form.primaryCrops === 'string' ? (form.primaryCrops as unknown as string).split(',').map(s => s.trim()).filter(Boolean) : (form.primaryCrops ?? c.primaryCrops),
-      memberCount: Number(form.memberCount ?? c.memberCount),
-    } as Cooperative : c))
-    setEditing(null)
-  }
-
-  function confirmDelete() {
-    if (!deleting) return
-    setCooperatives(prev => prev.filter(c => c.id !== deleting.id))
-    if (selectedId === deleting.id) onSelect('')
-    setDeleting(null)
-  }
-
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-bold text-gray-900">Cooperatives</h2>
-        <ButtonTemplate variant="primary" size="sm" isIcon tooltip="Add Cooperative" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
       </div>
 
       <InputTemplate placeholder="Search cooperatives..." leftIcon={<Search className="w-3.5 h-3.5" />} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} size="sm" />
-      <SelectTemplate size="sm" options={regionOptions} value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setPage(1) }} />
+      <div className="grid grid-cols-2 gap-2">
+        <SelectTemplate size="sm" options={regionOptions} value={regionFilter} onChange={e => { setRegionFilter(e.target.value); setPage(1) }} />
+        <SelectTemplate size="sm" options={communityOptions} value={communityFilter} onChange={e => { setCommunityFilter(e.target.value); setPage(1) }} />
+      </div>
 
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-gray-400">{filtered.length} cooperative{filtered.length !== 1 ? 's' : ''}</p>
@@ -387,15 +632,7 @@ function CooperativeSidebar({
                     <Landmark className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{coop.name}</p>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3 h-3" />}
-                          onClick={e => { e.stopPropagation(); setEditing(coop); setForm(coop); setNameError(undefined) }} />
-                        <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3 h-3" />}
-                          onClick={e => { e.stopPropagation(); setDeleting(coop) }} />
-                      </div>
-                    </div>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{coop.name}</p>
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
                       <span className="flex items-center gap-1 text-[11px] text-gray-500">
                         <Users2 className="w-3 h-3" />{coop.memberCount}
@@ -440,82 +677,6 @@ function CooperativeSidebar({
         </div>
       )}
 
-      {/* Add sheet */}
-      <SheetTemplate
-        open={adding}
-        onClose={() => setAdding(false)}
-        title="Add Cooperative"
-        footer={
-          <div className="col-span-2 flex justify-end gap-2">
-            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setAdding(false)} />
-            <ButtonTemplate variant="primary" label="Save" onClick={saveNew} />
-          </div>
-        }
-      >
-        <CooperativeForm form={form} setForm={setForm} nameError={nameError} clearNameError={() => setNameError(undefined)} />
-      </SheetTemplate>
-
-      {/* Edit sheet */}
-      <SheetTemplate
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        title="Edit Cooperative"
-        footer={
-          <div className="col-span-2 flex justify-end gap-2">
-            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setEditing(null)} />
-            <ButtonTemplate variant="primary" label="Save" onClick={saveEdit} />
-          </div>
-        }
-      >
-        <CooperativeForm form={form} setForm={setForm} nameError={nameError} clearNameError={() => setNameError(undefined)} />
-      </SheetTemplate>
-
-      <ConfirmModal
-        open={!!deleting}
-        title="Delete Cooperative"
-        message={`Are you sure you want to delete "${deleting?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(null)}
-      />
-    </div>
-  )
-}
-
-// ─── Cooperative add/edit form ─────────────────────────────────────────────────
-
-function CooperativeForm({
-  form, setForm, nameError, clearNameError,
-}: {
-  form: Partial<Cooperative>
-  setForm: (v: Partial<Cooperative>) => void
-  nameError?: string
-  clearNameError?: () => void
-}) {
-  return (
-    <div className="px-6 py-5 flex flex-col gap-4">
-      <InputTemplate label="Name" isRequired error={nameError} value={form.name ?? ''} onChange={e => { setForm({ ...form, name: e.target.value }); clearNameError?.() }} />
-      <InputTemplate label="Community" value={form.communityName ?? ''} onChange={e => setForm({ ...form, communityName: e.target.value })} />
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate label="Region" value={form.region ?? ''} onChange={e => setForm({ ...form, region: e.target.value })} />
-        <InputTemplate label="District" value={form.district ?? ''} onChange={e => setForm({ ...form, district: e.target.value })} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate label="Members" type="number" value={form.memberCount ?? 0} onChange={e => setForm({ ...form, memberCount: Number(e.target.value) })} />
-        <SelectTemplate
-          label="Status"
-          options={(['Active', 'Inactive', 'Dormant'] as CooperativeStatus[]).map(s => ({ value: s, label: s }))}
-          value={form.status ?? 'Active'}
-          onChange={e => setForm({ ...form, status: e.target.value as CooperativeStatus })}
-        />
-      </div>
-      <InputTemplate label="Primary Crops (comma separated)" value={Array.isArray(form.primaryCrops) ? form.primaryCrops.join(', ') : (form.primaryCrops ?? '')} onChange={e => setForm({ ...form, primaryCrops: e.target.value as unknown as string[] })} />
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate label="Chairman" value={form.chairmanName ?? ''} onChange={e => setForm({ ...form, chairmanName: e.target.value })} />
-        <InputTemplate label="Secretary" value={form.secretaryName ?? ''} onChange={e => setForm({ ...form, secretaryName: e.target.value })} />
-      </div>
-      <InputTemplate label="Member Since (YYYY-MM)" placeholder="2024-01" value={form.since ?? ''} onChange={e => setForm({ ...form, since: e.target.value })} />
     </div>
   )
 }
@@ -535,7 +696,8 @@ function LeadershipTab({
   const [editing, setEditing] = useState<Officer | null>(null)
   const [deleting, setDeleting] = useState<Officer | null>(null)
   const [form, setForm] = useState<Partial<Officer>>({})
-  const [nameError, setNameError] = useState<string | undefined>()
+  const [farmerId, setFarmerId] = useState('')
+  const [farmerError, setFarmerError] = useState<string | undefined>()
 
   const filtered = officers.filter(o => o.cooperativeId === scopeId)
 
@@ -549,27 +711,37 @@ function LeadershipTab({
     { key: 'id', label: '', id: 'actions', render: (_v, row) => (
       <div className="flex items-center gap-1 justify-end">
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row); setNameError(undefined) }} />
+          onClick={() => {
+            setEditing(row)
+            setForm(row)
+            setFarmerId(FARMERS_LIST.find(f => f.fullName === row.name && FARMER_COOPERATIVE_MAP[f.id] === row.cooperativeId)?.id ?? '')
+            setFarmerError(undefined)
+          }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
           onClick={() => setDeleting(row)} />
       </div>
     ) },
   ]
 
+  const cooperativeIdForForm = form.cooperativeId ?? scopeId
+  const farmerOptions = availableFarmersFor(cooperativeIdForForm, officers, editing?.id).map(f => ({ value: f.id, label: f.fullName }))
+
   function openAdd() {
-    setForm({ cooperativeId: scopeId, role: 'Chairman', isActive: true })
-    setNameError(undefined)
+    setForm({ cooperativeId: scopeId, role: 'Executive Member', isActive: true })
+    setFarmerId('')
+    setFarmerError(undefined)
     setAdding(true)
   }
 
   function saveNew() {
-    if (!form.name?.trim()) { setNameError('Name is required'); return }
+    const farmer = FARMERS_LIST.find(f => f.id === farmerId)
+    if (!farmer) { setFarmerError('Select an officer'); return }
     const o: Officer = {
       id: `off-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
-      name: form.name ?? '',
-      role: form.role ?? 'Chairman',
-      phone: form.phone ?? '',
+      name: farmer.fullName,
+      role: form.role ?? 'Executive Member',
+      phone: farmer.phone,
       termStart: form.termStart ?? '',
       termEnd: form.termEnd ?? '',
       isActive: form.isActive ?? true,
@@ -580,8 +752,9 @@ function LeadershipTab({
 
   function saveEdit() {
     if (!editing) return
-    if (!form.name?.trim()) { setNameError('Name is required'); return }
-    setOfficers(prev => prev.map(o => o.id === editing.id ? { ...o, ...form } as Officer : o))
+    const farmer = FARMERS_LIST.find(f => f.id === farmerId)
+    if (!farmer) { setFarmerError('Select an officer'); return }
+    setOfficers(prev => prev.map(o => o.id === editing.id ? { ...o, ...form, name: farmer.fullName, phone: farmer.phone } as Officer : o))
     setEditing(null)
   }
 
@@ -615,13 +788,21 @@ function LeadershipTab({
         }
       >
         <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value })} />
-          <InputTemplate label="Name" isRequired error={nameError} value={form.name ?? ''} onChange={e => { setForm({ ...form, name: e.target.value }); setNameError(undefined) }} />
-          <SelectTemplate label="Role" options={OFFICER_ROLES.map(r => ({ value: r, label: r }))} value={form.role ?? 'Chairman'} onChange={e => setForm({ ...form, role: e.target.value as OfficerRole })} />
-          <InputTemplate label="Phone" value={form.phone ?? ''} onChange={e => setForm({ ...form, phone: e.target.value })} />
+          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => { setForm({ ...form, cooperativeId: e.target.value }); setFarmerId('') }} />
+          <SelectTemplate
+            label="Select Officer (Farmer)"
+            isRequired
+            error={farmerError}
+            options={farmerOptions}
+            placeholder={farmerOptions.length ? 'Choose a farmer...' : 'No farmers in this cooperative'}
+            value={farmerId}
+            onChange={e => { setFarmerId(e.target.value); setFarmerError(undefined) }}
+          />
+          <SelectTemplate label="Role" options={OFFICER_ROLES.map(r => ({ value: r, label: r }))} value={form.role ?? 'Executive Member'} onChange={e => setForm({ ...form, role: e.target.value as OfficerRole })} />
+          <CheckboxTemplate label="Active" checked={form.isActive ?? true} onChange={() => setForm({ ...form, isActive: !form.isActive })} />
           <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Term Start (YYYY-MM)" value={form.termStart ?? ''} onChange={e => setForm({ ...form, termStart: e.target.value })} />
-            <InputTemplate label="Term End (YYYY-MM)" value={form.termEnd ?? ''} onChange={e => setForm({ ...form, termEnd: e.target.value })} />
+            <InputTemplate label="Term Start" type="date" value={form.termStart ?? ''} onChange={e => setForm({ ...form, termStart: e.target.value })} />
+            <InputTemplate label="Term End" type="date" value={form.termEnd ?? ''} onChange={e => setForm({ ...form, termEnd: e.target.value })} />
           </div>
         </div>
       </SheetTemplate>
@@ -853,103 +1034,253 @@ function ResolutionsTab({
 
 // ─── Compliance tab ─────────────────────────────────────────────────────────────
 
+function ComplianceRow({ icon: Icon, title, subtitle, badge, onDelete }: {
+  icon: React.ElementType; title: string; subtitle: React.ReactNode; badge?: { label: string; variant: 'success' | 'warning' | 'danger' }; onDelete: () => void
+}) {
+  return (
+    <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
+      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--brand-mint)' }}>
+        <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brand-forest)' }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
+        {subtitle && <p className="text-xs text-gray-500 truncate">{subtitle}</p>}
+      </div>
+      {badge && <BadgeTemplate label={badge.label} variant={badge.variant} size="sm" />}
+      <button onClick={onDelete} className="p-1 text-gray-400 hover:text-red-500 shrink-0">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}
+
+function complianceBadge(status: ComplianceStatus, expiryDate: string): { label: string; variant: 'success' | 'warning' | 'danger' } {
+  if (status === 'Expired') return { label: 'Expired', variant: 'danger' }
+  if (status === 'Expiring Soon') return { label: 'Expiring Soon', variant: 'warning' }
+  if (expiryDate) {
+    const days = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000)
+    if (days < 0) return { label: 'Expired', variant: 'danger' }
+    if (days <= 90) return { label: `Expires in ${days}d`, variant: 'warning' }
+  }
+  return { label: 'Active', variant: 'success' }
+}
+
 function ComplianceTab({
-  compliance, setCompliance, cooperatives, scopeId, coopName,
+  compliance, setCompliance, fboRegistrations, setFboRegistrations, cocobodLicenses, setCocobodLicenses, scopeId,
 }: {
   compliance: ComplianceItem[]
   setCompliance: (v: ComplianceItem[] | ((prev: ComplianceItem[]) => ComplianceItem[])) => void
-  cooperatives: Cooperative[]
+  fboRegistrations: FboRegistration[]
+  setFboRegistrations: (v: FboRegistration[] | ((prev: FboRegistration[]) => FboRegistration[])) => void
+  cocobodLicenses: CocobodLicense[]
+  setCocobodLicenses: (v: CocobodLicense[] | ((prev: CocobodLicense[]) => CocobodLicense[])) => void
   scopeId: string
-  coopName: (id: string) => string
 }) {
-  const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<ComplianceItem | null>(null)
-  const [deleting, setDeleting] = useState<ComplianceItem | null>(null)
-  const [form, setForm] = useState<Partial<ComplianceItem>>({})
+  const [showCertForm, setShowCertForm] = useState(false)
+  const [showFboForm, setShowFboForm] = useState(false)
+  const [showLicenseForm, setShowLicenseForm] = useState(false)
+  const [certForm, setCertForm] = useState<Partial<ComplianceItem>>({})
+  const [fboForm, setFboForm] = useState<Partial<FboRegistration>>({})
+  const [licenseForm, setLicenseForm] = useState<Partial<CocobodLicense>>({})
 
-  const filtered = compliance.filter(c => c.cooperativeId === scopeId)
+  const certs = compliance.filter(c => c.cooperativeId === scopeId)
+  const fbos = fboRegistrations.filter(f => f.cooperativeId === scopeId)
+  const licenses = cocobodLicenses.filter(l => l.cooperativeId === scopeId)
 
-  const columns: DatagridColumn<ComplianceItem>[] = [
-    { key: 'certificationType', label: 'Certification' },
-    { key: 'cooperativeId', label: 'Cooperative', render: v => coopName(v as string) },
-    { key: 'issueDate', label: 'Issued' },
-    { key: 'expiryDate', label: 'Expires' },
-    { key: 'status', label: 'Status', render: v => <BadgeTemplate label={v as string} variant={complianceVariant(v as ComplianceStatus)} size="sm" /> },
-    { key: 'id', label: '', id: 'actions', render: (_v, row) => (
-      <div className="flex items-center gap-1 justify-end">
-        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row) }} />
-        <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-          onClick={() => setDeleting(row)} />
-      </div>
-    ) },
-  ]
-
-  function openAdd() {
-    setForm({ cooperativeId: scopeId, certificationType: 'Fair Trade', status: 'Valid' })
-    setAdding(true)
+  function openAddCert() {
+    setCertForm({ cooperativeId: scopeId, certificationType: 'Fairtrade Certification', status: 'Valid' })
+    setShowCertForm(true)
   }
-
-  function saveNew() {
-    const c: ComplianceItem = {
+  function saveCert() {
+    if (!certForm.certificationType) return
+    setCompliance(prev => [...prev, {
       id: `cmp-${Date.now()}`,
-      cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
-      certificationType: form.certificationType ?? 'Fair Trade',
-      issueDate: form.issueDate ?? '',
-      expiryDate: form.expiryDate ?? '',
-      status: form.status ?? 'Valid',
-    }
-    setCompliance(prev => [...prev, c])
-    setAdding(false)
+      cooperativeId: scopeId,
+      certificationType: certForm.certificationType!,
+      registrationNumber: certForm.registrationNumber || null,
+      issueDate: certForm.issueDate ?? '',
+      expiryDate: certForm.expiryDate ?? '',
+      status: certForm.status ?? 'Valid',
+      notes: certForm.notes || null,
+    }])
+    setShowCertForm(false)
   }
 
-  function saveEdit() {
-    if (!editing) return
-    setCompliance(prev => prev.map(c => c.id === editing.id ? { ...c, ...form } as ComplianceItem : c))
-    setEditing(null)
+  function openAddFbo() {
+    setFboForm({ cooperativeId: scopeId, status: 'Pending' })
+    setShowFboForm(true)
+  }
+  function saveFbo() {
+    setFboRegistrations(prev => [...prev, {
+      id: `fbo-${Date.now()}`,
+      cooperativeId: scopeId,
+      registrationNumber: fboForm.registrationNumber || null,
+      registrationDate: fboForm.registrationDate || null,
+      status: fboForm.status ?? 'Pending',
+      renewalDueDate: fboForm.renewalDueDate || null,
+      notes: fboForm.notes || null,
+    }])
+    setShowFboForm(false)
   }
 
-  function confirmDelete() {
-    if (!deleting) return
-    setCompliance(prev => prev.filter(c => c.id !== deleting.id))
-    setDeleting(null)
+  function openAddLicense() {
+    setLicenseForm({ cooperativeId: scopeId })
+    setShowLicenseForm(true)
+  }
+  function saveLicense() {
+    if (!licenseForm.lbcName?.trim()) return
+    setCocobodLicenses(prev => [...prev, {
+      id: `lic-${Date.now()}`,
+      cooperativeId: scopeId,
+      lbcName: licenseForm.lbcName!.trim(),
+      licenseNumber: licenseForm.licenseNumber || null,
+      agreementStartDate: licenseForm.agreementStartDate || null,
+      agreementEndDate: licenseForm.agreementEndDate || null,
+      seasonalProducerPrice: licenseForm.seasonalProducerPrice ?? null,
+      premiumAmount: licenseForm.premiumAmount ?? null,
+      season: licenseForm.season || null,
+      premiumDistributionNotes: licenseForm.premiumDistributionNotes || null,
+    }])
+    setShowLicenseForm(false)
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
-          <h2 className="text-base font-bold text-gray-900">Compliance</h2>
+    <div className="flex flex-col gap-5">
+      {/* Certifications */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Certifications</h3>
+          <ButtonTemplate variant="outline" size="sm" label="Add" leftIcon={<Plus className="w-3 h-3" />} onClick={openAddCert} />
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Certification" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        {certs.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No certifications recorded.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {certs.map(c => {
+              const badge = complianceBadge(c.status, c.expiryDate)
+              return (
+                <ComplianceRow key={c.id} icon={Award} title={c.certificationType}
+                  subtitle={c.registrationNumber ? `Reg: ${c.registrationNumber}` : undefined}
+                  badge={badge}
+                  onDelete={() => setCompliance(prev => prev.filter(x => x.id !== c.id))} />
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      <DatagridTemplate columns={columns} data={filtered} rowKey="id" defaultPageSize={10} pageSizeOptions={[10, 25, 50, 0]} emptyLabel="No compliance records found" />
+      {/* FBO Registration */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">FBO Registration</h3>
+          <ButtonTemplate variant="outline" size="sm" label="Add" leftIcon={<Plus className="w-3 h-3" />} onClick={openAddFbo} />
+        </div>
+        {fbos.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No FBO registration recorded.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {fbos.map(f => (
+              <ComplianceRow key={f.id} icon={Landmark} title={f.registrationNumber ?? 'No reg number'}
+                subtitle={`Status: ${f.status}${f.renewalDueDate ? ` · Renewal: ${f.renewalDueDate}` : ''}`}
+                onDelete={() => setFboRegistrations(prev => prev.filter(x => x.id !== f.id))} />
+            ))}
+          </div>
+        )}
+      </div>
 
+      {/* COCOBOD / LBC Licenses */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">COCOBOD / LBC Licenses</h3>
+          <ButtonTemplate variant="outline" size="sm" label="Add" leftIcon={<Plus className="w-3 h-3" />} onClick={openAddLicense} />
+        </div>
+        {licenses.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No LBC license recorded.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {licenses.map(l => (
+              <ComplianceRow key={l.id} icon={ShieldCheck} title={l.lbcName}
+                subtitle={`${l.licenseNumber ?? 'No license #'}${l.seasonalProducerPrice != null ? ` · Producer Price: GHS ${l.seasonalProducerPrice}/ton` : ''}${l.premiumAmount != null ? ` · Premium: GHS ${l.premiumAmount}` : ''}`}
+                onDelete={() => setCocobodLicenses(prev => prev.filter(x => x.id !== l.id))} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Add Certification sheet */}
       <SheetTemplate
-        open={adding || !!editing}
-        onClose={() => { setAdding(false); setEditing(null) }}
-        title={editing ? 'Edit Certification' : 'Add Certification'}
+        open={showCertForm}
+        onClose={() => setShowCertForm(false)}
+        title="Add Certification"
         footer={
           <div className="col-span-2 flex justify-end gap-2">
-            <ButtonTemplate variant="outline" label="Cancel" onClick={() => { setAdding(false); setEditing(null) }} />
-            <ButtonTemplate variant="primary" label="Save" onClick={editing ? saveEdit : saveNew} />
+            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setShowCertForm(false)} />
+            <ButtonTemplate variant="primary" label="Add Certification" onClick={saveCert} />
           </div>
         }
       >
         <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value })} />
-          <SelectTemplate label="Certification Type" options={CERTIFICATION_TYPES.map(t => ({ value: t, label: t }))} value={form.certificationType ?? 'Fair Trade'} onChange={e => setForm({ ...form, certificationType: e.target.value as CertificationType })} />
+          <SelectTemplate label="Type" options={CERTIFICATION_TYPES.map(t => ({ value: t, label: t }))}
+            value={certForm.certificationType ?? 'Fairtrade Certification'}
+            onChange={e => setCertForm({ ...certForm, certificationType: e.target.value as CertificationType })} />
+          <InputTemplate label="Registration #" value={certForm.registrationNumber ?? ''} onChange={e => setCertForm({ ...certForm, registrationNumber: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Issue Date" type="date" value={form.issueDate ?? ''} onChange={e => setForm({ ...form, issueDate: e.target.value })} />
-            <InputTemplate label="Expiry Date" type="date" value={form.expiryDate ?? ''} onChange={e => setForm({ ...form, expiryDate: e.target.value })} />
+            <InputTemplate label="Issue Date" type="date" value={certForm.issueDate ?? ''} onChange={e => setCertForm({ ...certForm, issueDate: e.target.value })} />
+            <InputTemplate label="Expiry Date" type="date" value={certForm.expiryDate ?? ''} onChange={e => setCertForm({ ...certForm, expiryDate: e.target.value })} />
           </div>
-          <SelectTemplate label="Status" options={COMPLIANCE_STATUSES.map(s => ({ value: s, label: s }))} value={form.status ?? 'Valid'} onChange={e => setForm({ ...form, status: e.target.value as ComplianceStatus })} />
+          <SelectTemplate label="Status" options={COMPLIANCE_STATUSES.map(s => ({ value: s, label: s }))} value={certForm.status ?? 'Valid'} onChange={e => setCertForm({ ...certForm, status: e.target.value as ComplianceStatus })} />
+          <InputTemplate label="Notes" value={certForm.notes ?? ''} onChange={e => setCertForm({ ...certForm, notes: e.target.value })} />
         </div>
       </SheetTemplate>
 
-      <ConfirmModal open={!!deleting} title="Delete Certification" message={`Delete "${deleting?.certificationType}" record?`} confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
+      {/* Add FBO Registration sheet */}
+      <SheetTemplate
+        open={showFboForm}
+        onClose={() => setShowFboForm(false)}
+        title="Add FBO Registration"
+        footer={
+          <div className="col-span-2 flex justify-end gap-2">
+            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setShowFboForm(false)} />
+            <ButtonTemplate variant="primary" label="Add FBO Registration" onClick={saveFbo} />
+          </div>
+        }
+      >
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <InputTemplate label="Registration #" value={fboForm.registrationNumber ?? ''} onChange={e => setFboForm({ ...fboForm, registrationNumber: e.target.value })} />
+          <InputTemplate label="Registration Date" type="date" value={fboForm.registrationDate ?? ''} onChange={e => setFboForm({ ...fboForm, registrationDate: e.target.value })} />
+          <SelectTemplate label="Status" options={FBO_STATUSES.map(s => ({ value: s, label: s }))} value={fboForm.status ?? 'Pending'} onChange={e => setFboForm({ ...fboForm, status: e.target.value as FboStatus })} />
+          <InputTemplate label="Renewal Due" type="date" value={fboForm.renewalDueDate ?? ''} onChange={e => setFboForm({ ...fboForm, renewalDueDate: e.target.value })} />
+          <InputTemplate label="Notes" value={fboForm.notes ?? ''} onChange={e => setFboForm({ ...fboForm, notes: e.target.value })} />
+        </div>
+      </SheetTemplate>
+
+      {/* Add LBC License sheet */}
+      <SheetTemplate
+        open={showLicenseForm}
+        onClose={() => setShowLicenseForm(false)}
+        title="Add LBC License"
+        footer={
+          <div className="col-span-2 flex justify-end gap-2">
+            <ButtonTemplate variant="outline" label="Cancel" onClick={() => setShowLicenseForm(false)} />
+            <ButtonTemplate variant="primary" label="Add License" isDisabled={!licenseForm.lbcName?.trim()} onClick={saveLicense} />
+          </div>
+        }
+      >
+        <div className="px-6 py-5 flex flex-col gap-4">
+          <InputTemplate label="LBC Name" isRequired value={licenseForm.lbcName ?? ''} onChange={e => setLicenseForm({ ...licenseForm, lbcName: e.target.value })} />
+          <InputTemplate label="License #" value={licenseForm.licenseNumber ?? ''} onChange={e => setLicenseForm({ ...licenseForm, licenseNumber: e.target.value })} />
+          <div className="grid grid-cols-2 gap-3">
+            <InputTemplate label="Agreement Start" type="date" value={licenseForm.agreementStartDate ?? ''} onChange={e => setLicenseForm({ ...licenseForm, agreementStartDate: e.target.value })} />
+            <InputTemplate label="Agreement End" type="date" value={licenseForm.agreementEndDate ?? ''} onChange={e => setLicenseForm({ ...licenseForm, agreementEndDate: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <InputTemplate label="Producer Price (GHS/ton)" type="number" value={licenseForm.seasonalProducerPrice?.toString() ?? ''} onChange={e => setLicenseForm({ ...licenseForm, seasonalProducerPrice: e.target.value === '' ? null : Number(e.target.value) })} />
+            <InputTemplate label="Premium (GHS)" type="number" value={licenseForm.premiumAmount?.toString() ?? ''} onChange={e => setLicenseForm({ ...licenseForm, premiumAmount: e.target.value === '' ? null : Number(e.target.value) })} />
+          </div>
+          <InputTemplate label="Season" placeholder="e.g. 2025/2026" value={licenseForm.season ?? ''} onChange={e => setLicenseForm({ ...licenseForm, season: e.target.value })} />
+          <InputTemplate label="Premium Distribution Notes" value={licenseForm.premiumDistributionNotes ?? ''} onChange={e => setLicenseForm({ ...licenseForm, premiumDistributionNotes: e.target.value })} />
+        </div>
+      </SheetTemplate>
     </div>
   )
 }
@@ -1173,6 +1504,25 @@ function DocumentsTab({
   )
 }
 
+// ─── Training placeholder tab ───────────────────────────────────────────────────
+
+function TrainingPlaceholderTab() {
+  const router = useRouter()
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
+      <GraduationCap className="w-12 h-12 mb-1 opacity-30" />
+      <p className="text-sm text-center max-w-sm">Training records for this cooperative are managed in Training Materials.</p>
+      <ButtonTemplate
+        variant="outline"
+        size="sm"
+        label="Go to Training Materials"
+        leftIcon={<GraduationCap className="w-3.5 h-3.5" />}
+        onClick={() => router.push('/dashboard/TrainingMaterials')}
+      />
+    </div>
+  )
+}
+
 // ─── Traceability tab ───────────────────────────────────────────────────────────
 
 function TraceStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
@@ -1317,11 +1667,11 @@ function TraceabilityTab() {
       </div>
 
       {/* cross-module info callout */}
-      <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 flex gap-3">
-        <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-        <div className="text-xs text-blue-800 space-y-1">
+      <div className="rounded-xl border border-green-100 bg-green-50 p-4 flex gap-3">
+        <AlertCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+        <div className="text-xs text-green-800 space-y-1">
           <p className="font-semibold">How Traceability links to other modules</p>
-          <ul className="list-disc list-inside space-y-0.5 text-blue-700">
+          <ul className="list-disc list-inside space-y-0.5 text-green-700">
             <li>Farmers &amp; Farms → Farmers Registry module (farmer details, farm sizes)</li>
             <li>Cooperatives → Governance module (member rosters, compliance records)</li>
             <li>Offtake Agreements → Credits module (receipt numbers, producer prices)</li>
@@ -1385,7 +1735,7 @@ function TraceabilityTab() {
 
 // ─── Insights tab ───────────────────────────────────────────────────────────────
 
-function InsightsStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
+function InsightsStat({ icon: Icon, label, value, negative }: { icon: React.ElementType; label: string; value: string | number; negative?: boolean }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-2">
@@ -1394,12 +1744,325 @@ function InsightsStat({ icon: Icon, label, value }: { icon: React.ElementType; l
         </div>
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className={cn('text-2xl font-bold', negative ? 'text-red-600' : 'text-gray-900')}>{value}</p>
     </div>
   )
 }
 
-function InsightsTab() {
+// ─── Per-cooperative Insights tab ────────────────────────────────────────────────
+
+function fundNetBalance(funds: FundTransaction[]) {
+  return funds.reduce((sum, f) => sum + (f.transactionType === 'Withdrawal' || f.transactionType === 'Loan Disbursement' ? -f.amount : f.amount), 0)
+}
+
+function CooperativeInsightsTab({
+  coop, meetings, resolutions, compliance, funds,
+}: {
+  coop: Cooperative
+  meetings: Meeting[]
+  resolutions: Resolution[]
+  compliance: ComplianceItem[]
+  funds: FundTransaction[]
+}) {
+  const [customPromptOpen, setCustomPromptOpen] = useState(false)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [insight, setInsight] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
+
+  const farmersInCoop = FARMERS_LIST.filter(f => FARMER_COOPERATIVE_MAP[f.id] === coop.id)
+  const scoredFarmers = farmersInCoop.filter(f => f.currentFri !== null)
+  const avgFri = scoredFarmers.length
+    ? Math.round(scoredFarmers.reduce((s, f) => s + (f.currentFri ?? 0), 0) / scoredFarmers.length)
+    : null
+  const fundBalance = fundNetBalance(funds)
+
+  function handleGenerate() {
+    setGenerating(true)
+    setTimeout(() => {
+      const pendingResolutions = resolutions.filter(r => r.implementationStatus !== 'Completed').length
+      const expiring = compliance.filter(c => c.status === 'Expiring Soon' || c.status === 'Expired').length
+      const sentences = [
+        `${coop.name} has ${farmersInCoop.length} linked farmer${farmersInCoop.length !== 1 ? 's' : ''}, of whom ${scoredFarmers.length} ${scoredFarmers.length !== 1 ? 'are' : 'is'} verified with an average FRI score of ${avgFri ?? '—'}.`,
+        `${meetings.length} meeting${meetings.length !== 1 ? 's' : ''} recorded and ${resolutions.length} resolution${resolutions.length !== 1 ? 's' : ''} passed, of which ${pendingResolutions} ${pendingResolutions !== 1 ? 'are' : 'is'} still pending implementation.`,
+        compliance.length > 0
+          ? `Compliance stands at ${compliance.length} certification${compliance.length !== 1 ? 's' : ''} on record${expiring > 0 ? `, with ${expiring} expiring soon or expired` : ''}.`
+          : 'No compliance certifications are currently on record.',
+        `The fund balance is GHS ${fundBalance.toLocaleString()} across ${coop.memberCount} members.`,
+        pendingResolutions > 0 || expiring > 0
+          ? 'Norvi recommends prioritizing pending resolutions and any expiring certifications to keep this cooperative in good standing.'
+          : 'Governance records for this cooperative are current — no urgent follow-up items identified.',
+      ]
+      setInsight(customPrompt.trim() ? `Regarding "${customPrompt.trim()}": ${sentences.join(' ')}` : sentences.join(' '))
+      setGenerating(false)
+    }, 500)
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-2xl p-5 text-white" style={{ background: 'var(--brand-forest)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold truncate">Insights for {coop.name}</h2>
+            <p className="text-xs text-white/70 truncate">{coop.region} · {coop.communityName} · {coop.memberCount} members · Since {coop.since}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <InsightsStat icon={Users2}       label="Linked Farmers"  value={farmersInCoop.length} />
+        <InsightsStat icon={TrendingUp}   label="Avg FRI Score"   value={avgFri ?? '—'} />
+        <InsightsStat icon={CheckCircle2} label="Verified"        value={scoredFarmers.length} />
+        <InsightsStat icon={CalendarDays} label="Meetings"        value={meetings.length} />
+        <InsightsStat icon={Gavel}        label="Resolutions"     value={resolutions.length} />
+        <InsightsStat icon={Wallet}       label="Fund Balance"    value={`GHS ${fundBalance.toLocaleString()}`} negative={fundBalance < 0} />
+        <InsightsStat icon={ShieldCheck}  label="Certifications"  value={compliance.length} />
+        <InsightsStat icon={Award}        label="Members"         value={coop.memberCount} />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-gray-100">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">AI-Generated Insights</p>
+            <p className="text-xs text-gray-500">Descriptive analysis, key findings, trends &amp; recommended actions</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <ButtonTemplate variant="outline" size="sm" label="Custom Prompt" leftIcon={<ClipboardList className="w-3.5 h-3.5" />} onClick={() => setCustomPromptOpen(v => !v)} />
+            <ButtonTemplate
+              variant="primary"
+              size="sm"
+              label={insight ? 'Regenerate' : 'Generate Insights'}
+              leftIcon={generating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              isDisabled={generating}
+              onClick={handleGenerate}
+            />
+          </div>
+        </div>
+
+        {customPromptOpen && (
+          <div className="px-4 pt-4">
+            <textarea
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-(--brand-green) focus:ring-2 focus:ring-(--brand-green)/20"
+              rows={3}
+              placeholder="e.g. Analyze governance risks and recommend interventions for this cooperative..."
+              value={customPrompt}
+              onChange={e => setCustomPrompt(e.target.value)}
+            />
+          </div>
+        )}
+
+        <div className="p-5">
+          {generating ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <Sparkles className="w-6 h-6 animate-pulse" style={{ color: 'var(--brand-forest)' }} />
+              <p className="text-sm text-gray-400">Norvi is analyzing cooperative data…</p>
+            </div>
+          ) : insight ? (
+            <p className="text-sm text-gray-700 leading-relaxed">{insight}</p>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 gap-4">
+              <p className="text-sm text-gray-400">No insight generated yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Per-cooperative Reports tab ─────────────────────────────────────────────────
+
+type ReportTypeId = 'demographics' | 'compliance' | 'funds' | 'resolutions' | 'meetings' | 'governance-health' | 'ai-custom'
+
+const REPORT_TYPES: { id: ReportTypeId; Icon: React.ElementType; label: string; description: string }[] = [
+  { id: 'demographics',      Icon: Users2,       label: 'Member Demographics', description: 'Farmer count, verification status, and crop distribution' },
+  { id: 'compliance',        Icon: ShieldCheck,  label: 'Compliance Summary',  description: 'All certifications, FBO registrations, and LBC licenses' },
+  { id: 'funds',             Icon: Wallet,       label: 'Fund Balance Sheet',  description: 'Contributions, savings, loans, and repayments' },
+  { id: 'resolutions',       Icon: Gavel,        label: 'Resolution Tracker',  description: 'Vote outcomes and implementation status' },
+  { id: 'meetings',          Icon: CalendarDays, label: 'Meeting Attendance',  description: 'Meeting history and attendance records' },
+  { id: 'governance-health', Icon: Landmark,     label: 'Governance Health',   description: 'Leadership roster completeness and document status' },
+  { id: 'ai-custom',         Icon: Sparkles,     label: 'AI On-The-Go Report', description: 'Generate a custom report on any topic' },
+]
+
+interface SavedReport {
+  id: string
+  reportType: ReportTypeId
+  text: string
+  generatedAt: string
+}
+
+function CooperativeReportsTab({
+  coop, officers, meetings, resolutions, compliance, funds, documents,
+}: {
+  coop: Cooperative
+  officers: Officer[]
+  meetings: Meeting[]
+  resolutions: Resolution[]
+  compliance: ComplianceItem[]
+  funds: FundTransaction[]
+  documents: GovernanceDocument[]
+}) {
+  const [reportType, setReportType] = useState<ReportTypeId>('demographics')
+  const [customPromptOpen, setCustomPromptOpen] = useState(false)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [savedReports, setSavedReports] = usePersistedState<SavedReport[]>(`gov-reports-${coop.id}`, [])
+
+  const activeType = REPORT_TYPES.find(r => r.id === reportType)!
+  const farmersInCoop = FARMERS_LIST.filter(f => FARMER_COOPERATIVE_MAP[f.id] === coop.id)
+  const reportsForType = savedReports.filter(r => r.reportType === reportType)
+
+  function buildReportText(): string {
+    switch (reportType) {
+      case 'demographics': {
+        const verified = farmersInCoop.filter(f => f.currentFri !== null).length
+        const cropCounts = farmersInCoop.reduce<Record<string, number>>((acc, f) => { acc[f.primaryCrop] = (acc[f.primaryCrop] ?? 0) + 1; return acc }, {})
+        const cropBreakdown = Object.entries(cropCounts).map(([crop, n]) => `${crop} (${n})`).join(', ') || 'no crops on record'
+        return `${coop.name} has ${farmersInCoop.length} farmer${farmersInCoop.length !== 1 ? 's' : ''} linked, of whom ${verified} ${verified !== 1 ? 'are' : 'is'} verified. Crop distribution: ${cropBreakdown}.`
+      }
+      case 'compliance': {
+        const valid = compliance.filter(c => c.status === 'Valid').length
+        const expiring = compliance.filter(c => c.status !== 'Valid').length
+        return `${coop.name} holds ${compliance.length} certification${compliance.length !== 1 ? 's' : ''} on record: ${valid} valid and ${expiring} expiring soon or expired.`
+      }
+      case 'funds': {
+        const balance = fundNetBalance(funds)
+        const contributions = funds.filter(f => f.transactionType === 'Contribution').reduce((s, f) => s + f.amount, 0)
+        const loans = funds.filter(f => f.transactionType === 'Loan Disbursement').reduce((s, f) => s + f.amount, 0)
+        return `${coop.name}'s fund balance is GHS ${balance.toLocaleString()}, with GHS ${contributions.toLocaleString()} in contributions and GHS ${loans.toLocaleString()} disbursed as loans, across ${funds.length} transaction${funds.length !== 1 ? 's' : ''}.`
+      }
+      case 'resolutions': {
+        const passed = resolutions.filter(r => r.voteOutcome === 'Passed').length
+        const completed = resolutions.filter(r => r.implementationStatus === 'Completed').length
+        return `${coop.name} has passed ${passed} of ${resolutions.length} resolution${resolutions.length !== 1 ? 's' : ''} put to vote, and fully implemented ${completed} of them.`
+      }
+      case 'meetings': {
+        const totalAttendance = meetings.reduce((s, m) => s + m.attendanceCount, 0)
+        const avgAttendance = meetings.length ? Math.round(totalAttendance / meetings.length) : 0
+        return `${coop.name} has held ${meetings.length} meeting${meetings.length !== 1 ? 's' : ''}, with an average attendance of ${avgAttendance} member${avgAttendance !== 1 ? 's' : ''} per meeting.`
+      }
+      case 'governance-health': {
+        const activeOfficers = officers.filter(o => o.isActive).length
+        const hasChair = officers.some(o => o.role === 'Chairperson' && o.isActive)
+        const hasSec = officers.some(o => o.role === 'Secretary' && o.isActive)
+        return `${coop.name} has ${activeOfficers} active officer${activeOfficers !== 1 ? 's' : ''} on record (Chairperson ${hasChair ? 'assigned' : 'vacant'}, Secretary ${hasSec ? 'assigned' : 'vacant'}), and ${documents.length} governance document${documents.length !== 1 ? 's' : ''} on file.`
+      }
+      case 'ai-custom':
+      default:
+        return `${coop.name} overview: ${farmersInCoop.length} farmers, ${meetings.length} meetings, ${resolutions.length} resolutions, ${compliance.length} certifications, GHS ${fundNetBalance(funds).toLocaleString()} fund balance.`
+    }
+  }
+
+  function handleGenerate() {
+    setGenerating(true)
+    setTimeout(() => {
+      const base = buildReportText()
+      const text = customPrompt.trim() ? `Regarding "${customPrompt.trim()}": ${base}` : base
+      setSavedReports(prev => [{ id: `rpt-${Date.now()}`, reportType, text, generatedAt: new Date().toLocaleString() }, ...prev])
+      setGenerating(false)
+      setCustomPrompt('')
+    }, 500)
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="rounded-2xl p-5 text-white" style={{ background: 'var(--brand-forest)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold truncate">Reports for {coop.name}</h2>
+            <p className="text-xs text-white/70 truncate">{coop.region} · {coop.communityName} · {coop.memberCount} members · Since {coop.since}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {REPORT_TYPES.map(({ id, Icon, label }) => {
+          const active = reportType === id
+          return (
+            <button
+              key={id}
+              onClick={() => { setReportType(id); setCustomPromptOpen(false) }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border',
+                active ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300',
+              )}
+              style={active ? { background: 'var(--brand-forest)' } : {}}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <activeType.Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-forest)' }} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{activeType.label}</p>
+              <p className="text-xs text-gray-500 truncate">{activeType.description}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <ButtonTemplate variant="outline" size="sm" label="Custom Prompt" leftIcon={<ClipboardList className="w-3.5 h-3.5" />} onClick={() => setCustomPromptOpen(v => !v)} />
+            <ButtonTemplate
+              variant="primary"
+              size="sm"
+              label="Generate"
+              leftIcon={generating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              isDisabled={generating}
+              onClick={handleGenerate}
+            />
+          </div>
+        </div>
+
+        {customPromptOpen && (
+          <div className="px-4 pt-4">
+            <textarea
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm outline-none focus:border-(--brand-green) focus:ring-2 focus:ring-(--brand-green)/20"
+              rows={3}
+              placeholder="e.g. Focus on compliance gaps and upcoming renewal deadlines..."
+              value={customPrompt}
+              onChange={e => setCustomPrompt(e.target.value)}
+            />
+          </div>
+        )}
+
+        {generating && (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <Sparkles className="w-6 h-6 animate-pulse" style={{ color: 'var(--brand-forest)' }} />
+            <p className="text-sm text-gray-400">Generating report…</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-bold text-gray-900">Saved Reports ({reportsForType.length})</h3>
+        {reportsForType.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-10 text-gray-400">
+            <FileText className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-sm">No saved reports for this type yet.</p>
+          </div>
+        ) : (
+          reportsForType.map(r => (
+            <div key={r.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <p className="text-sm text-gray-700 leading-relaxed">{r.text}</p>
+              <p className="text-[11px] text-gray-400 mt-2">Generated on {r.generatedAt}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function OrgInsightsTab() {
   const [cooperatives] = usePersistedState<Cooperative[]>('gov-cooperatives', COOPERATIVES)
   const [officers] = usePersistedState<Officer[]>('gov-officers', SEED_OFFICERS)
   const [meetings] = usePersistedState<Meeting[]>('gov-meetings', SEED_MEETINGS)
@@ -1413,7 +2076,7 @@ function InsightsTab() {
   const [generating, setGenerating] = useState(false)
 
   const scopeOptions = [
-    { value: 'all', label: 'All Cooperatives' },
+    { value: 'all', label: 'All Cooperatives (Org-wide)' },
     ...cooperatives.map(c => ({ value: c.id, label: c.name })),
   ]
 
@@ -1437,10 +2100,10 @@ function InsightsTab() {
       const activeCerts = scopedCompliance.filter(c => c.status === 'Valid').length
       const expiring = scopedCompliance.filter(c => c.status === 'Expiring Soon' || c.status === 'Expired').length
       const pendingResolutions = scopedResolutions.filter(r => r.implementationStatus !== 'Completed').length
-      const scopeLabel = scope === 'all' ? 'across all cooperatives' : `for ${cooperatives.find(c => c.id === scope)?.name ?? 'this cooperative'}`
-
       const sentences = [
-        `${scopedCoops.length} cooperative${scopedCoops.length !== 1 ? 's' : ''} ${scopeLabel} represent ${totalMembers} members, with ${linkedFarmers} farmers and ${scopedOfficers.length} active officer${scopedOfficers.length !== 1 ? 's' : ''} on record.`,
+        scope === 'all'
+          ? `${scopedCoops.length} cooperative${scopedCoops.length !== 1 ? 's' : ''} org-wide represent ${totalMembers} members, with ${linkedFarmers} farmers and ${scopedOfficers.length} active officer${scopedOfficers.length !== 1 ? 's' : ''} on record.`
+          : `${cooperatives.find(c => c.id === scope)?.name ?? 'This cooperative'} represents ${totalMembers} members, with ${linkedFarmers} farmers and ${scopedOfficers.length} active officer${scopedOfficers.length !== 1 ? 's' : ''} on record.`,
         `${scopedMeetings.length} meeting${scopedMeetings.length !== 1 ? 's' : ''} recorded and ${scopedResolutions.length} resolution${scopedResolutions.length !== 1 ? 's' : ''} passed, of which ${pendingResolutions} ${pendingResolutions !== 1 ? 'are' : 'is'} still pending implementation.`,
         activeCerts > 0 || expiring > 0
           ? `Compliance stands at ${activeCerts} active certification${activeCerts !== 1 ? 's' : ''}${expiring > 0 ? `, with ${expiring} expiring soon or expired and needing renewal` : ''}.`
@@ -1583,11 +2246,7 @@ export function Main() {
           <TraceabilityTab />
         </div>
       )}
-      {pageTab === 'insights' && (
-        <div className="p-6 pt-0">
-          <InsightsTab />
-        </div>
-      )}
+      {pageTab === 'insights' && <div className="p-6 pt-0"><OrgInsightsTab /></div>}
     </div>
   )
 }

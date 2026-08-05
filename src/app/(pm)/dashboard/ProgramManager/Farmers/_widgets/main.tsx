@@ -869,7 +869,7 @@ function EnrollSheet({ open, onClose, farmerCount, programs }: {
       bodyClassName="px-6 py-5 space-y-4"
       footer={<><ButtonTemplate variant="outline" label="Cancel" fullWidth onClick={onClose} /><ButtonTemplate label={saving ? 'Enrolling…' : `Enroll ${farmerCount}`} fullWidth isDisabled={saving || !programId} onClick={handleEnroll} /></>}
     >
-      <div className="rounded-lg px-4 py-3 text-sm text-blue-700 bg-blue-50">
+      <div className="rounded-lg px-4 py-3 text-sm text-green-700 bg-green-50">
         Farmers already enrolled in the selected program will have their cohort updated.
       </div>
       <div className="space-y-1.5">
@@ -1361,7 +1361,7 @@ function FarmerStatsPanel({ farmers }: { farmers: Farmer[] }) {
 // ── Main widget ────────────────────────────────────────────────────────────────
 
 export function Main() {
-  const [farmers,  setFarmers]  = useState<Farmer[]>([])
+  const [farmers,  setFarmers]  = usePersistedState<Farmer[]>('pm-farmers', [])
   const [programs, setPrograms] = useState<ProgramOption[]>([])
   const [loading,  setLoading]  = useState(true)
 
@@ -1391,7 +1391,9 @@ export function Main() {
 
   useEffect(() => {
     Promise.all([getFarmers(), getProgramOptions()]).then(([f, p]) => {
-      setFarmers(scopeFarmersToPm(f)); setPrograms(scopeProgramsToPm(p)); setLoading(false)
+      // don't clobber farmers already restored from sessionStorage (edits/adds from this session)
+      setFarmers(prev => prev.length > 0 ? prev : scopeFarmersToPm(f))
+      setPrograms(scopeProgramsToPm(p)); setLoading(false)
     })
   }, [])
 
@@ -1595,13 +1597,13 @@ export function Main() {
                   </span>
                 )}
                 {filterZone && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {filterZone.replace('Resilience ', '')}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterZone('')} />
                   </span>
                 )}
                 {filterAgent && (
-                  <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                  <span className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
                     {filterAgent}
                     <X className="w-3 h-3 cursor-pointer" onClick={() => setFilterAgent('')} />
                   </span>
@@ -1714,7 +1716,7 @@ export function Main() {
               return (
                 <div key={f.id} className={cn(
                   'flex items-stretch transition-colors',
-                  isSelected ? 'bg-blue-50' : 'hover:bg-gray-50/60'
+                  isSelected ? 'bg-green-50' : 'hover:bg-gray-50/60'
                 )}>
                   {/* Checkbox + Avatar */}
                   <div className="flex items-center gap-3 py-4 pl-4 pr-2 w-20 shrink-0">

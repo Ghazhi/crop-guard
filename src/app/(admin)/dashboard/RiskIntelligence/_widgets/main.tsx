@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { AlertTriangle, RefreshCw, TrendingUp, Activity, Filter, ChevronDown, Zap } from 'lucide-react'
+import { AlertTriangle, RefreshCw, TrendingUp, Activity, Filter, ChevronDown, Zap, Layers, Target } from 'lucide-react'
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -37,16 +37,35 @@ const REGION_LABEL: Record<string, string> = {
   ah: 'Ashanti', sa: 'Savannah', nr: 'Northern', ue: 'Upper East', uw: 'Upper West',
 }
 
-type RiskTab    = 'overview' | 'at-risk' | 'by-region' | 'trends' | 'norvi-ai'
+type RiskTab    = 'overview' | 'at-risk' | 'by-region' | 'by-program' | 'by-cohort' | 'trends' | 'norvi-ai'
 type RiskFilter = 'all' | 'high' | 'medium' | 'low'
 
-// Mock days since last check-in per farmer
-const CHECKIN_DAYS: Record<string, number> = {
+interface GroupRisk {
+  id:          string
+  name:        string
+  programName: string
+  farmerCount: number
+  high:        number
+  medium:      number
+  low:         number
+  avgFri:      number
+  checkinRate: number
+}
+
+// Mock days since last check-in per farmer — a few hand-picked, the rest derived
+// deterministically from the farmer id so every record has a plausible value.
+const CHECKIN_DAYS_OVERRIDE: Record<string, number> = {
   'f-001': 78, 'f-002': 80, 'f-003': 5, 'f-004': 12, 'f-005': 95, 'f-006': 45,
 }
 
+function checkinDaysFor(farmerId: string): number {
+  if (farmerId in CHECKIN_DAYS_OVERRIDE) return CHECKIN_DAYS_OVERRIDE[farmerId]
+  const hash = farmerId.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  return hash % 100
+}
+
 function riskTag(f: Farmer): string {
-  const days = CHECKIN_DAYS[f.id] ?? 0
+  const days = checkinDaysFor(f.id)
   if (days > 30) return 'Missed check-ins'
   if ((f.currentFri ?? 0) < 50) return 'Low FRI Score'
   return 'Below Avg FRI'
@@ -85,6 +104,202 @@ function StatCard({ icon, iconBg, label, value, trend }: {
   )
 }
 
+// ── Group risk panel (shared by By Program / By Cohort) ────────────────────────
+function GroupRiskPanel({
+  groups, allFarmers, scopeKey, selectedId, onSelect, selectorLabel, emptyIcon, emptyLabel, chartTitle,
+}: {
+  groups: GroupRisk[]
+  allFarmers: Farmer[]
+  scopeKey: 'programId' | 'cohortId'
+  selectedId: string
+  onSelect: (id: string) => void
+  selectorLabel: string
+  emptyIcon: React.ReactNode
+  emptyLabel: string
+  chartTitle: string
+}) {
+  if (groups.length === 0) {
+    return (
+      <div className="text-center py-16 text-gray-400">
+        {emptyIcon}
+        <p className="text-sm">{emptyLabel}</p>
+      </div>
+    )
+  }
+
+  const selected = selectedId !== 'all' ? groups.find(g => g.id === selectedId) : undefined
+
+  if (selected) {
+    const groupFarmers = allFarmers.filter(f => f.enrollment?.[scopeKey] === selected.id)
+    const atRisk = groupFarmers.filter(f => riskLevel(f) !== 'Low')
+    return (
+      <div className="space-y-4">
+        <div className="w-72">
+          <select
+            value={selectedId}
+            onChange={e => onSelect(e.target.value)}
+            className={SELECT_CLS}
+            style={SELECT_STYLE}
+          >
+            <option value="all">{selectorLabel}</option>
+            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-red-100 px-5 py-4">
+            <p className="text-2xl font-bold text-red-600">{selected.high}</p>
+            <p className="text-xs text-gray-500 mt-0.5">High Risk</p>
+          </div>
+          <div className="bg-white rounded-xl border border-amber-100 px-5 py-4">
+            <p className="text-2xl font-bold text-amber-600">{selected.medium}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Medium Risk</p>
+          </div>
+          <div className="bg-white rounded-xl border border-emerald-100 px-5 py-4">
+            <p className="text-2xl font-bold text-emerald-600">{selected.low}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Low Risk</p>
+          </div>
+          <div className="bg-white rounded-xl border border-blue-100 px-5 py-4">
+            <p className="text-2xl font-bold text-blue-600">{selected.avgFri}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Avg FRI Score</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <p className="text-sm font-semibold text-gray-800 mb-4">Risk Distribution — {selected.name}</p>
+          <div className="flex items-center gap-6">
+            <ResponsiveContainer width="55%" height={200}>
+              <PieChart>
+                <Pie
+                  data={[{ name: 'High', value: selected.high }, { name: 'Medium', value: selected.medium }, { name: 'Low', value: selected.low }]}
+                  cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value"
+                >
+                  {[RISK_COLOR.High, RISK_COLOR.Medium, RISK_COLOR.Low].map((c, i) => <Cell key={i} fill={c} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="space-y-3 flex-1">
+              {(['High', 'Medium', 'Low'] as const).map(label => {
+                const count = label === 'High' ? selected.high : label === 'Medium' ? selected.medium : selected.low
+                return (
+                  <div key={label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ background: RISK_COLOR[label] }} />
+                      <span className="text-sm text-gray-600">{label}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">{count}</span>
+                  </div>
+                )
+              })}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Check-in Rate</span>
+                  <span className="text-sm font-semibold text-blue-600">{selected.checkinRate}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <p className="text-sm font-semibold text-gray-800 px-5 pt-5 pb-3">At-Risk Farmers — {selected.name}</p>
+          <div className="divide-y divide-gray-50">
+            {atRisk.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">No at-risk farmers in this group.</p>
+            ) : atRisk.map(f => (
+              <div key={f.id} className="px-5 py-3 flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: RISK_COLOR[riskLevel(f)] }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{f.fullName}</p>
+                  <p className="text-xs text-gray-500">{REGION_LABEL[f.region] ?? f.region}</p>
+                </div>
+                <span className="text-sm font-bold" style={{ color: RISK_COLOR[riskLevel(f)] }}>FRI {f.currentFri ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="w-72">
+        <select
+          value={selectedId}
+          onChange={e => onSelect(e.target.value)}
+          className={SELECT_CLS}
+          style={SELECT_STYLE}
+        >
+          <option value="all">{selectorLabel}</option>
+          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+        </select>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <p className="text-sm font-semibold text-gray-800 mb-4">{chartTitle}</p>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={groups} margin={{ left: 0, right: 16, top: 4, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip cursor={{ fill: '#f9fafb' }} />
+            <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 16 }} />
+            <Bar dataKey="high"   name="High"   stackId="a" fill="#ef4444" />
+            <Bar dataKey="medium" name="Medium" stackId="a" fill="#f59e0b" />
+            <Bar dataKey="low"    name="Low"    stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {groups.map(g => (
+          <div
+            key={g.id}
+            onClick={() => onSelect(g.id)}
+            className="bg-white rounded-xl border border-gray-100 p-5 cursor-pointer hover:border-(--brand-mid) hover:shadow-sm transition-all"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900 truncate">{g.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">
+                  {scopeKey === 'cohortId' && g.programName ? `${g.programName} · ` : ''}
+                  {g.farmerCount} farmers · Click to view details
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="text-xs font-semibold text-red-600">{g.high}</span>
+                <div className="w-2 h-2 rounded-full bg-amber-500 ml-1" />
+                <span className="text-xs font-semibold text-amber-600">{g.medium}</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 ml-1" />
+                <span className="text-xs font-semibold text-emerald-600">{g.low}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-2.5">
+                <p className="text-xs text-gray-500">Avg FRI Score</p>
+                <p className="text-lg font-bold text-gray-900 mt-0.5">{g.avgFri}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-2.5">
+                <p className="text-xs text-gray-500">Check-in Rate</p>
+                <p className="text-lg font-bold text-gray-900 mt-0.5">{g.checkinRate}%</p>
+              </div>
+            </div>
+            {g.high > 0 && (
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                <AlertTriangle className="w-3 h-3" />
+                {g.high} high-risk farmer{g.high !== 1 ? 's' : ''} need attention
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function Main() {
   const [tab,         setTab]       = useState<RiskTab>('overview')
@@ -94,6 +309,8 @@ export function Main() {
   const [filterCohort,  setFilterCohort]  = usePersistedState('risk-cohort', '')
   const [insight,    setInsight]    = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
+  const [selectedProgramId, setSelectedProgramId] = useState('all')
+  const [selectedCohortId,  setSelectedCohortId]  = useState('all')
 
   const allFarmers = FARMERS_LIST as Farmer[]
 
@@ -156,6 +373,47 @@ export function Main() {
     return { high, medium, low, avgFri, riskDist, riskFactors, byRegion }
   }, [farmers])
 
+  const checkinRateFor = (group: Farmer[]) => {
+    const checkinCount = group.filter(f => checkinDaysFor(f.id) <= 30).length
+    return group.length ? Math.round((checkinCount / group.length) * 100) : 0
+  }
+
+  const programRisks = useMemo<GroupRisk[]>(() => {
+    return programs.map(p => {
+      const group = allFarmers.filter(f => f.enrollment?.programId === p.id)
+      const withFri = group.filter(f => f.currentFri !== null)
+      return {
+        id:          p.id,
+        name:        p.name,
+        programName: p.name,
+        farmerCount: group.length,
+        high:        group.filter(f => riskLevel(f) === 'High').length,
+        medium:      group.filter(f => riskLevel(f) === 'Medium').length,
+        low:         group.filter(f => riskLevel(f) === 'Low').length,
+        avgFri:      withFri.length ? Math.round(withFri.reduce((s, f) => s + (f.currentFri ?? 0), 0) / withFri.length) : 0,
+        checkinRate: checkinRateFor(group),
+      }
+    }).filter(p => p.farmerCount > 0)
+  }, [programs, allFarmers])
+
+  const cohortRisks = useMemo<GroupRisk[]>(() => {
+    return programs.flatMap(p => p.cohorts.map(c => {
+      const group = allFarmers.filter(f => f.enrollment?.cohortId === c.id)
+      const withFri = group.filter(f => f.currentFri !== null)
+      return {
+        id:          c.id,
+        name:        c.name,
+        programName: p.name,
+        farmerCount: group.length,
+        high:        group.filter(f => riskLevel(f) === 'High').length,
+        medium:      group.filter(f => riskLevel(f) === 'Medium').length,
+        low:         group.filter(f => riskLevel(f) === 'Low').length,
+        avgFri:      withFri.length ? Math.round(withFri.reduce((s, f) => s + (f.currentFri ?? 0), 0) / withFri.length) : 0,
+        checkinRate: checkinRateFor(group),
+      }
+    })).filter(c => c.farmerCount > 0)
+  }, [programs, allFarmers])
+
   function handleRefresh() {
     setRefreshed(true)
     setTimeout(() => setRefreshed(false), 800)
@@ -191,6 +449,8 @@ export function Main() {
     { key: 'overview',   label: 'Overview'       },
     { key: 'at-risk',    label: 'At-Risk Farmers' },
     { key: 'by-region',  label: 'By Region'       },
+    { key: 'by-program', label: 'By Program'      },
+    { key: 'by-cohort',  label: 'By Cohort'       },
     { key: 'trends',     label: 'Trends'          },
     { key: 'norvi-ai',   label: 'Norvi AI'        },
   ]
@@ -263,10 +523,10 @@ export function Main() {
           trend="4%"
         />
         <StatCard
-          icon={<AlertTriangle className="w-4 h-4 text-blue-400" />}
-          iconBg="bg-blue-50"
+          icon={<AlertTriangle className="w-4 h-4 text-green-500" />}
+          iconBg="bg-green-50"
           label="Check-in Rate"
-          value="0%"
+          value={`${farmers.length ? Math.round((farmers.filter(f => checkinDaysFor(f.id) <= 30).length / farmers.length) * 100) : 0}%`}
           trend="2%"
         />
       </div>
@@ -426,7 +686,7 @@ export function Main() {
               <div className="divide-y divide-gray-100">
                 {displayed.map(f => {
                   const risk  = riskLevel(f)
-                  const days  = CHECKIN_DAYS[f.id] ?? 0
+                  const days  = checkinDaysFor(f.id)
                   const tag   = riskTag(f)
                   const rCode = (f.region ?? '').toUpperCase()
 
@@ -484,6 +744,36 @@ export function Main() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
+
+      {/* ── By Program ── */}
+      {tab === 'by-program' && (
+        <GroupRiskPanel
+          groups={programRisks}
+          allFarmers={allFarmers}
+          scopeKey="programId"
+          selectedId={selectedProgramId}
+          onSelect={setSelectedProgramId}
+          selectorLabel="All Programs (Overview)"
+          emptyIcon={<Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />}
+          emptyLabel="No program data available."
+          chartTitle="Program Risk Comparison"
+        />
+      )}
+
+      {/* ── By Cohort ── */}
+      {tab === 'by-cohort' && (
+        <GroupRiskPanel
+          groups={cohortRisks}
+          allFarmers={allFarmers}
+          scopeKey="cohortId"
+          selectedId={selectedCohortId}
+          onSelect={setSelectedCohortId}
+          selectorLabel="All Cohorts (Overview)"
+          emptyIcon={<Target className="w-10 h-10 mx-auto mb-3 opacity-30" />}
+          emptyLabel="No cohort data available."
+          chartTitle="Cohort Risk Comparison"
+        />
       )}
 
       {/* ── Trends ── */}

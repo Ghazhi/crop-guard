@@ -1,6 +1,6 @@
-export type GovTab = 'cooperatives' | 'leadership' | 'meetings' | 'resolutions' | 'compliance' | 'funds' | 'documents'
+export type GovTab = 'cooperatives' | 'leadership' | 'meetings' | 'training' | 'resolutions' | 'compliance' | 'funds' | 'documents'
 
-export type OfficerRole = 'Chairman' | 'Secretary' | 'Treasurer' | 'Vice Chairman' | 'Organizer'
+export type OfficerRole = 'Chairperson' | 'Vice Chairperson' | 'Secretary' | 'Treasurer' | 'Executive Member'
 
 export interface Officer {
   id:            string
@@ -39,16 +39,45 @@ export interface Resolution {
   datePassed:            string
 }
 
-export type CertificationType   = 'Organic Certification' | 'Fair Trade' | 'Rainforest Alliance' | 'COCOBOD License'
+export type CertificationType =
+  'FBO Registration (Dept. of Cooperatives)' | 'COCOBOD License' | 'Fairtrade Certification' |
+  'Organic Certification' | 'UTZ / Rainforest Alliance'
 export type ComplianceStatus    = 'Valid' | 'Expiring Soon' | 'Expired'
 
 export interface ComplianceItem {
   id:                 string
   cooperativeId:      string
   certificationType:  CertificationType
+  registrationNumber: string | null
   issueDate:          string
   expiryDate:         string
   status:             ComplianceStatus
+  notes:              string | null
+}
+
+export type FboStatus = 'Registered' | 'Pending' | 'Lapsed'
+
+export interface FboRegistration {
+  id:                  string
+  cooperativeId:       string
+  registrationNumber:  string | null
+  registrationDate:    string | null
+  status:              FboStatus
+  renewalDueDate:      string | null
+  notes:               string | null
+}
+
+export interface CocobodLicense {
+  id:                        string
+  cooperativeId:             string
+  lbcName:                   string
+  licenseNumber:             string | null
+  agreementStartDate:        string | null
+  agreementEndDate:          string | null
+  seasonalProducerPrice:     number | null
+  premiumAmount:             number | null
+  season:                    string | null
+  premiumDistributionNotes:  string | null
 }
 
 export type FundTransactionType = 'Contribution' | 'Withdrawal' | 'Loan Disbursement' | 'Loan Repayment'

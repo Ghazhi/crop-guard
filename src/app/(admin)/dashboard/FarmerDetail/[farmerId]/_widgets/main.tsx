@@ -105,7 +105,7 @@ const ECI_ITEMS: { label: string; max: number }[] = [
 
 const PILLAR_META = {
   p1: { label: 'P1 — AGRONOMY',  color: '#2C5F3F' },
-  p2: { label: 'P2 — CSA',       color: '#2B7BB9' },
+  p2: { label: 'P2 — CSA',       color: '#5A9E74' },
   p3: { label: 'P3 — ADVISORY',  color: '#E8963A' },
   p4: { label: 'P4 — ENTERPRISE',color: '#D94F3D' },
 }
@@ -249,10 +249,10 @@ function ItemScoresPanel({ weekData, eciScore, farmerId }: { weekData: WeekScore
           <PillarSection pillar="p3" items={p3Items} scores={p3Scores} />
           <PillarSection pillar="p4" items={p4Items} scores={p4Scores} />
           <div className="pt-3">
-            <p className="text-xs font-bold tracking-wide mb-1" style={{ color: '#2B7BB9' }}>ECI ITEMS</p>
+            <p className="text-xs font-bold tracking-wide mb-1" style={{ color: '#5A9E74' }}>ECI ITEMS</p>
             <div className="divide-y divide-gray-50">
               {ECI_ITEMS.map((item, i) => (
-                <ItemRow key={item.label} label={item.label} score={eciScores[i]} max={item.max} color="#2B7BB9" />
+                <ItemRow key={item.label} label={item.label} score={eciScores[i]} max={item.max} color="#5A9E74" />
               ))}
             </div>
           </div>
@@ -332,7 +332,7 @@ function FriThresholdBar({
   const bands = [
     { from: 0, to: 40, color: '#FEE2E2', label: '0' },
     { from: 40, to: 60, color: '#FEF3C7', label: '40' },
-    { from: 60, to: 80, color: '#DBEAFE', label: '60' },
+    { from: 60, to: 80, color: '#E6F4EC', label: '60' },
     { from: 80, to: 100, color: '#D1FAE5', label: '80' },
   ]
 
@@ -569,7 +569,7 @@ export function Main({ farmerId }: { farmerId: string }) {
             <p className="text-xs font-medium mb-1" style={{ color: 'var(--brand-slate)' }}>
               Credit Score
             </p>
-            <p className="text-4xl font-bold leading-none" style={{ color: 'var(--brand-blue, #2B7BB9)' }}>
+            <p className="text-4xl font-bold leading-none" style={{ color: 'var(--brand-mid)' }}>
               {farmer.creditScore}
             </p>
             <div className="mt-2">

@@ -66,7 +66,7 @@ function ProgramReport({ programs }: { programs: Program[] }) {
   // status pie
   const statusCounts = [
     { name: 'Active',    value: programs.filter(p => p.status === 'Active').length,    color: '#15803d' },
-    { name: 'Completed', value: programs.filter(p => p.status === 'Completed').length, color: '#0369a1' },
+    { name: 'Completed', value: programs.filter(p => p.status === 'Completed').length, color: '#5A9E74' },
     { name: 'Inactive',  value: programs.filter(p => p.status === 'Inactive').length,  color: '#9ca3af' },
   ].filter(d => d.value > 0)
 

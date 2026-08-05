@@ -47,7 +47,7 @@ export const useToast = () => ({
     toast.info(label, {
       description: opts?.description,
       duration: opts?.duration ?? 4000,
-      icon: <Info className="w-4 h-4 text-[#2B7BB9]" />,
+      icon: <Info className="w-4 h-4 text-[#5A9E74]" />,
       action: opts?.action
         ? { label: opts.action.label, onClick: opts.action.onClick }
         : undefined,

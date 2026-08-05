@@ -32,7 +32,7 @@ const STATUS_VARIANT: Record<InterventionStatus, 'success' | 'warning' | 'neutra
 const TYPE_ICON_COLOR: Record<InterventionType, string> = {
   'Input Loan':    'var(--brand-forest)',
   'Cash Loan':     '#7c3aed',
-  'Insurance':     '#0369a1',
+  'Insurance':     '#5A9E74',
   'Advisory':      '#b45309',
   'Market Access': '#065f46',
 }

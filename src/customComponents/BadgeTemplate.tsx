@@ -18,7 +18,7 @@ const VARIANT_MAP: Record<NonNullable<BadgeTemplateProps['variant']>, { bg: stri
   success:   { bg: '#D1FAE5', text: '#065F46', dot: '#065F46' },
   warning:   { bg: '#FEF3C7', text: '#92400E', dot: '#92400E' },
   danger:    { bg: '#FEE2E2', text: '#991B1B', dot: '#991B1B' },
-  info:      { bg: '#DBEAFE', text: '#1E40AF', dot: '#1E40AF' },
+  info:      { bg: '#E6F4EC', text: '#1A3D2B', dot: '#1A3D2B' },
   neutral:   { bg: '#F3F4F6', text: '#374151', dot: '#374151' },
   improving: { bg: '#D1FAE5', text: '#065F46', dot: '#065F46' },
   stable:    { bg: '#F3F4F6', text: '#374151', dot: '#374151' },

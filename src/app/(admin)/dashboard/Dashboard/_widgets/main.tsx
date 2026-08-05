@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Users, ClipboardList, UserCheck, TrendingUp, Zap, ArrowUp, ArrowDown, Minus, Phone, MapPin, Search,
-  Landmark, Globe2, Building2, Layers, FileText, CloudRain, Grid3x3, RefreshCw, ArrowUpRight,
+  Landmark, Globe2, Building2, Layers, FileText, CloudRain, Grid3x3, RefreshCw, ArrowUpRight, ChevronRight,
 } from 'lucide-react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { CardTemplate }  from '@/customComponents/CardTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
@@ -323,6 +324,7 @@ function StatCard({ icon: Icon, label, value, color, sub, onClick }: {
           <p className="text-xs mt-0.5" style={{ color: 'var(--brand-slate)' }}>{label}</p>
           {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
         </div>
+        {onClick && <ChevronRight className="w-4 h-4 shrink-0 text-gray-300" />}
       </div>
     </CardTemplate>
   )
@@ -333,9 +335,17 @@ function SkeletonCard() {
 }
 
 // ── Modules row ──────────────────────────────────────────────────────────────
-function ModulePill({ icon: Icon, label, count }: { icon: React.ElementType; label: string; count: number }) {
+function ModulePill({ icon: Icon, label, count, href, onClick }: {
+  icon: React.ElementType; label: string; count: number; href?: string; onClick?: () => void
+}) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
+    <div
+      className={`flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 transition-colors ${href ? 'cursor-pointer hover:border-gray-300 hover:shadow-sm' : ''}`}
+      onClick={href ? onClick : undefined}
+      role={href ? 'button' : undefined}
+      tabIndex={href ? 0 : undefined}
+      onKeyDown={href ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.() } } : undefined}
+    >
       <Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-forest)' }} />
       <span className="text-sm text-gray-700">{label}</span>
       <span className="ml-auto text-sm font-bold" style={{ color: 'var(--brand-forest)' }}>{count}</span>
@@ -346,11 +356,11 @@ function ModulePill({ icon: Icon, label, count }: { icon: React.ElementType; lab
 const TOTAL_COHORTS = PROGRAMS.reduce((sum, p) => sum + p.cohorts.length, 0)
 
 const MODULES = [
-  { icon: Landmark,   label: 'Cooperatives',   count: COOPERATIVES.length },
-  { icon: Globe2,     label: 'Communities',    count: COMMUNITIES.length },
-  { icon: Building2,  label: 'Programs',       count: PROGRAMS.length },
-  { icon: Layers,     label: 'Cohorts',        count: TOTAL_COHORTS },
-  { icon: Zap,        label: 'Interventions',  count: INTERVENTIONS.length },
+  { icon: Landmark,   label: 'Cooperatives',   count: COOPERATIVES.length,  href: '/dashboard/Governance' },
+  { icon: Globe2,     label: 'Communities',    count: COMMUNITIES.length,   href: '/dashboard/CommunityProfile' },
+  { icon: Building2,  label: 'Programs',       count: PROGRAMS.length,      href: '/dashboard/ProgramsSetup' },
+  { icon: Layers,     label: 'Cohorts',        count: TOTAL_COHORTS,        href: '/dashboard/ProgramsSetup' },
+  { icon: Zap,        label: 'Interventions',  count: INTERVENTIONS.length, href: '/dashboard/OpportunityPathways' },
   { icon: FileText,   label: 'Applications',   count: 0 },
 ]
 
@@ -398,13 +408,14 @@ function buildRiskQuadrant(farmers: Farmer[]) {
   return [
     { label: 'High Capacity – Low Exposure',  count: hcle, color: '#16a34a' },
     { label: 'High Capacity – High Exposure', count: hche, color: '#ca8a04' },
-    { label: 'Low Capacity – Low Exposure',   count: lcle, color: '#2B7BB9' },
+    { label: 'Low Capacity – Low Exposure',   count: lcle, color: '#5A9E74' },
     { label: 'Low Capacity – High Exposure',  count: lche, color: '#dc2626' },
   ]
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function Main() {
+  const router = useRouter()
   const [stats,      setStats]      = useState<Stats | null>(null)
   const [cropData,   setCropData]   = useState<CropBreakdown[]>([])
   const [zoneData,   setZoneData]   = useState<ZoneBreakdown[]>([])
@@ -413,21 +424,6 @@ export function Main() {
   const [agentsOpen,   setAgentsOpen]   = useState(false)
   const [summary,      setSummary]      = useState<string | null>(null)
   const [generating,   setGenerating]   = useState(false)
-
-  // Computed from the same friTrend() the sheets use, so the pill numbers always
-  // match what clicking through actually shows.
-  const trajectoryCounts = useMemo(() => {
-    const all = FARMERS_LIST as Farmer[]
-    let up = 0, flat = 0, down = 0
-    for (const f of all) {
-      const trend = friTrend(f)
-      if (!trend) continue // unscored farmers (currentFri === null) aren't in any trajectory bucket
-      if (trend.delta > 0) up++
-      else if (trend.delta < 0) down++
-      else flat++
-    }
-    return { up, flat, down }
-  }, [])
 
   useEffect(() => {
     Promise.all([getStats(), getCropBreakdown(), getZoneBreakdown()]).then(
@@ -495,35 +491,10 @@ export function Main() {
           <div>
             <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-2">Modules</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {MODULES.map(m => <ModulePill key={m.label} {...m} />)}
+              {MODULES.map(m => <ModulePill key={m.label} {...m} onClick={m.href ? () => router.push(m.href) : undefined} />)}
             </div>
           </div>
 
-          {/* Secondary KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-            <StatCard icon={TrendingUp} label="Average FRI Score"    value={stats.avgFRI !== null ? `${stats.avgFRI}/100` : '—'} color="bg-emerald-600" sub="across all scored farmers"        onClick={() => open('avgFRI')} />
-            <StatCard icon={UserCheck}  label="Verification Rate"    value={`${stats.verificationRate}%`}                        color="bg-sky-600"     sub="of registered farmers"             onClick={() => open('verificationRate')} />
-            <StatCard icon={Zap}        label="Opportunity Enrolled" value={stats.opportunityCount}                               color="bg-orange-500"  sub="active intervention enrollments"   onClick={() => open('opportunityCount')} />
-
-            {/* FRI Trajectory */}
-            <CardTemplate className="flex flex-col justify-center">
-              <p className="text-xs font-medium mb-3" style={{ color: 'var(--brand-slate)' }}>FRI Trajectory</p>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { label: 'Improving', key: 'trajectoryUp',   count: trajectoryCounts.up,   icon: ArrowUp,   cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-                  { label: 'Stable',    key: 'trajectoryFlat', count: trajectoryCounts.flat, icon: Minus,     cls: 'border-gray-200 bg-gray-50 text-gray-600' },
-                  { label: 'Declining', key: 'trajectoryDown', count: trajectoryCounts.down, icon: ArrowDown, cls: 'border-red-200 bg-red-50 text-red-700' },
-                ].map(({ label, key, count, icon: Icon, cls }) => (
-                  <button key={label} type="button" onClick={() => open(key)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-opacity hover:opacity-70 ${cls}`}>
-                    <Icon className="w-3.5 h-3.5" />
-                    <span className="text-xs font-semibold">{count}</span>
-                    <span className="text-xs">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </CardTemplate>
-          </div>
         </>
       )}
 
@@ -544,23 +515,38 @@ export function Main() {
 
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>FRI Zone Distribution</p>
-            <div className="space-y-4">
-              {zoneData.map(({ zone, count }) => {
-                const total = zoneData.reduce((s, z) => s + z.count, 0)
-                const pct   = total > 0 ? Math.round((count / total) * 100) : 0
-                const color = ZONE_COLORS[zone] ?? '#6B7280'
-                return (
-                  <div key={zone} className="space-y-1.5">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-medium text-gray-700">{zone}</span>
-                      <span className="text-gray-500">{count} ({pct}%)</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-                    </div>
-                  </div>
-                )
-              })}
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={zoneData}
+                  dataKey="count"
+                  nameKey="zone"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={45}
+                  outerRadius={75}
+                  paddingAngle={2}
+                >
+                  {zoneData.map(({ zone }) => (
+                    <Cell key={zone} fill={ZONE_COLORS[zone] ?? '#6B7280'} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px' }}
+                  formatter={(value, name) => [`${value} farmers`, name]}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {zoneData.map(({ zone, count }) => (
+                <div key={zone} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5 font-medium text-gray-700">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ZONE_COLORS[zone] ?? '#6B7280' }} />
+                    {zone}
+                  </span>
+                  <span className="text-gray-500">{count}</span>
+                </div>
+              ))}
             </div>
           </CardTemplate>
 

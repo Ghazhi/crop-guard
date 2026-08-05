@@ -20,6 +20,7 @@ import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { PM_PARTNER_IDS, PM_PROGRAM_IDS, isPmProgram } from '@/dataCenter/pmScope'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
 
 interface Partner {
   id: string; name: string; type: string; region: string
@@ -506,7 +507,7 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
                     <PersonAvatar name={p.contact} size={36} />
                     <p className="font-semibold text-gray-900">{p.contact}</p>
                   </div>
-                  <a href={`mailto:${p.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors">
+                  <a href={`mailto:${p.email}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors">
                     <Mail className="w-3.5 h-3.5 shrink-0 text-gray-400" />{p.email}
                   </a>
                 </div>
@@ -799,7 +800,7 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function Main() {
-  const [partners,       setPartners]       = useState<Partner[]>(INITIAL_PARTNERS)
+  const [partners,       setPartners]       = usePersistedState<Partner[]>('pm-partners', INITIAL_PARTNERS)
   const [search,         setSearch]         = useState('')
   const [filtersOpen,    setFiltersOpen]    = useState(false)
   const [typeFilter,     setTypeFilter]     = useState('')
@@ -844,7 +845,7 @@ export function Main() {
     },
     {
       key: 'type', label: 'Type',
-      render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{String(v)}</span>,
+      render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700">{String(v)}</span>,
     },
     {
       key: 'contact', label: 'Primary Contact',
@@ -917,7 +918,7 @@ export function Main() {
       {/* Overview stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
         {[
-          { icon: Building2,    bg: 'bg-blue-50',   color: 'text-blue-600',   value: totalPartners, label: 'Total Partners' },
+          { icon: Building2,    bg: 'bg-green-50',   color: 'text-green-600',   value: totalPartners, label: 'Total Partners' },
           { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
           { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
           { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },

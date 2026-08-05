@@ -74,7 +74,7 @@ export const COMPLIANCE_ITEMS: ComplianceItem[] = [
 ]
 
 export function txTypeStyle(t: Transaction['type']): string {
-  if (t === 'Disbursement') return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (t === 'Disbursement') return 'bg-green-50 text-green-700 border-green-200'
   if (t === 'Repayment')    return 'bg-green-50 text-green-700 border-green-200'
   if (t === 'Provision')    return 'bg-amber-50 text-amber-700 border-amber-200'
   return 'bg-red-50 text-red-700 border-red-200'
@@ -89,12 +89,12 @@ export function txStatusStyle(s: Transaction['status']): string {
 export function riskBandStyle(b: RiskEntry['riskBand']): string {
   if (b === 'High')   return 'bg-red-50 text-red-700 border-red-200'
   if (b === 'Medium') return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-blue-50 text-blue-700 border-blue-200'
+  return 'bg-green-50 text-green-700 border-green-200'
 }
 
 export function complianceStatusCls(s: ComplianceItem['status']): string {
   if (s === 'Compliant')     return 'bg-green-50 text-green-700 border-green-200'
   if (s === 'Due Soon')      return 'bg-amber-50 text-amber-700 border-amber-200'
   if (s === 'Overdue')       return 'bg-red-50 text-red-700 border-red-200'
-  return 'bg-blue-50 text-blue-700 border-blue-200'
+  return 'bg-green-50 text-green-700 border-green-200'
 }

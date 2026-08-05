@@ -463,6 +463,7 @@ function CommunitySheet({
             label="Community Photo"
             accept="image/*"
             placeholder="Upload community photo"
+            initialPreviewUrl={community?.imageUrl ?? null}
           />
 
           <InputTemplate label="Community Name" labelVariant="compact" isRequired
@@ -765,8 +766,8 @@ function CoopSheet({
 
 export function Main() {
   const [tab,          setTab]          = usePersistedState<'communities' | 'cooperatives'>('cp-tab', 'communities')
-  const [communities,  setCommunities]  = useState<Community[]>([])
-  const [cooperatives, setCooperatives] = useState<Cooperative[]>([])
+  const [communities,  setCommunities]  = usePersistedState<Community[]>('cp-communities', [])
+  const [cooperatives, setCooperatives] = usePersistedState<Cooperative[]>('cp-cooperatives', [])
   const [regions,      setRegions]      = useState<RegionOption[]>([])
   const [loading,      setLoading]      = useState(true)
   const [search,    setSearch]    = usePersistedState('cp-search', '')
@@ -784,9 +785,15 @@ export function Main() {
   useEffect(() => {
     Promise.all([fetchCommunities(), fetchCooperatives(), fetchRegions()]).then(
       ([comms, coops, regs]) => {
-        setCommunities(comms); setCooperatives(coops); setRegions(regs); setLoading(false)
+        // only seed from the mock fetch if nothing is already persisted, so
+        // CRUD edits made in a previous visit this session aren't clobbered
+        setCommunities(prev => prev.length ? prev : comms)
+        setCooperatives(prev => prev.length ? prev : coops)
+        setRegions(regs)
+        setLoading(false)
       }
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filteredCommunities = communities.filter(c =>

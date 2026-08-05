@@ -18,6 +18,8 @@ export interface FileUploadTemplateProps {
   value?: File | null
   /** Called when the user picks or clears a file */
   onChange?: (file: File | null) => void
+  /** Existing image URL to preview before any new file is picked (e.g. when editing a record that already has a photo) */
+  initialPreviewUrl?: string | null
   /** Placeholder text shown inside the upload area when no file is selected */
   placeholder?: string
   /** Additional class names on the root wrapper */
@@ -37,13 +39,17 @@ export function FileUploadTemplate({
   accept,
   value,
   onChange,
+  initialPreviewUrl,
   placeholder,
   className,
   isDisabled = false,
 }: FileUploadTemplateProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(initialPreviewUrl ?? null)
   const [dragging, setDragging] = useState(false)
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  React.useEffect(() => { setPreview(initialPreviewUrl ?? null) }, [initialPreviewUrl])
 
   function handleFile(file: File | null) {
     if (!file) {

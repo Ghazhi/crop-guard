@@ -23,6 +23,7 @@ import { PaginationBar } from '@/customComponents/PaginationBar'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { useToast } from '@/customComponents/ToastTemplate'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -524,8 +525,8 @@ function AddCohortSheet({ open, onClose, onSave }: {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function Main() {
-  const [programs, setPrograms] = useState<Program[]>(INITIAL_PROGRAMS)
-  const [cohorts,  setCohorts]  = useState<Cohort[]>(INITIAL_COHORTS)
+  const [programs, setPrograms] = usePersistedState<Program[]>('pm-programs', INITIAL_PROGRAMS)
+  const [cohorts,  setCohorts]  = usePersistedState<Cohort[]>('pm-programs-cohorts', INITIAL_COHORTS)
   const [statsOpen, setStatsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)

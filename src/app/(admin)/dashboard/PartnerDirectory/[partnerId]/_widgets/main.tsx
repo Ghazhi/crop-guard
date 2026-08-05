@@ -24,6 +24,7 @@ import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
+import { usePersistedState } from '@/lib/usePersistedState'
 import type { Intervention, EnrolledCohort } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import type { Program } from '@/app/(admin)/dashboard/ProgramsSetup/_logics/interface'
@@ -76,7 +77,7 @@ interface FarmerRow {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const TYPE_COLOR: Record<string, string> = {
-  'Input Loan':    'bg-blue-50 text-blue-700 border-blue-100',
+  'Input Loan':    'bg-green-50 text-green-700 border-green-100',
   'Cash Loan':     'bg-purple-50 text-purple-700 border-purple-100',
   'Insurance':     'bg-amber-50 text-amber-700 border-amber-100',
   'Advisory':      'bg-teal-50 text-teal-700 border-teal-100',
@@ -84,7 +85,7 @@ const TYPE_COLOR: Record<string, string> = {
 }
 
 const TYPE_DOT: Record<string, string> = {
-  'Input Loan':    'bg-blue-500',
+  'Input Loan':    'bg-green-500',
   'Cash Loan':     'bg-purple-500',
   'Insurance':     'bg-amber-500',
   'Advisory':      'bg-teal-500',
@@ -989,7 +990,8 @@ export function Main({ partnerId }: { partnerId: string }) {
   const [assignOpen,   setAssignOpen]   = useState(false)
   const [detailTarget, setDetailTarget] = useState<{ intervention: Intervention; cohorts: EnrolledCohort[] } | null>(null)
 
-  const [assignments, setAssignments] = useState<Assignment[]>(() =>
+  const [assignments, setAssignments] = usePersistedState<Assignment[]>(
+    `partner-directory.assignments.${partnerId}`,
     INTERVENTIONS.flatMap(i => {
       const pa = i.partnerAssignments?.find((a: { partnerId: string; cohorts: EnrolledCohort[] }) => a.partnerId === partnerId)
       return pa ? [{ interventionId: i.id, cohorts: pa.cohorts }] : []

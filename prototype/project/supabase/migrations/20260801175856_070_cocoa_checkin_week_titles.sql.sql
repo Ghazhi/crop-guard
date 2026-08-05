@@ -1,0 +1,20 @@
+UPDATE checkin_template_items SET week_title = CASE week_number
+  WHEN 1  THEN 'Land Preparation & Sanitation'
+  WHEN 2  THEN 'Sanitation & Shade Assessment'
+  WHEN 3  THEN 'Planting & Gap Filling'
+  WHEN 4  THEN 'Seedling Establishment & Shade'
+  WHEN 5  THEN 'Shade Management & Canopy Thinning'
+  WHEN 6  THEN 'Shade Regulation & Soil Cover'
+  WHEN 7  THEN 'Weed Management'
+  WHEN 8  THEN 'Weed Suppression & Mulching'
+  WHEN 9  THEN 'Fertiliser Application'
+  WHEN 10 THEN 'Nutrient Management & Soil Testing'
+  WHEN 11 THEN 'Pruning & Canopy Shaping'
+  WHEN 12 THEN 'Structural Pruning & Sanitation'
+  WHEN 13 THEN 'Pest & Disease Scouting (CSSVD, Capsids, Black Pod)'
+  WHEN 14 THEN 'Disease Management & CSSVD Monitoring'
+  WHEN 15 THEN 'Harvesting & Pod Breaking'
+  WHEN 16 THEN 'Fermentation, Drying & Storage'
+END
+WHERE checkin_template_id = 'bc56e304-8187-4477-a99c-024c843bc6cb'
+  AND week_title IS NULL;

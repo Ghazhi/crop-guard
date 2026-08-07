@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Video, Plus, Pencil, Trash2, CheckCircle2, Calendar, Clock,
   MapPin, Link as LinkIcon,
@@ -13,16 +13,11 @@ import { TextareaTemplate } from '@/customComponents/TextareaTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 import {
   type TrainingSession, type TrainingSessionType,
   SEED_TRAINING_SESSIONS, PROGRAM_LIST,
 } from '../../_logics/trainingConfig'
-
-const CROP_OPTIONS: { value: string; label: string }[] = [
-  { value: 'maize',   label: 'Maize'   },
-  { value: 'soybean', label: 'Soybean' },
-  { value: 'cocoa',   label: 'Cocoa'   },
-]
 
 const TYPE_OPTIONS: { value: TrainingSessionType; label: string }[] = [
   { value: 'in_person', label: 'In-Person' },
@@ -46,12 +41,13 @@ function emptySession(): TrainingSession {
 }
 
 function SessionFormSheet({
-  open, session, onClose, onSave,
+  open, session, onClose, onSave, cropOptions: cropOpts,
 }: {
   open: boolean
   session: TrainingSession | null
   onClose: () => void
   onSave: (s: TrainingSession) => void
+  cropOptions: { value: string; label: string }[]
 }) {
   const [draft, setDraft] = useState<TrainingSession>(session ?? emptySession())
 
@@ -117,7 +113,7 @@ function SessionFormSheet({
 
         <SelectTemplate
           label="Crop"
-          options={[{ value: '', label: 'All Crops' }, ...CROP_OPTIONS]}
+          options={[{ value: '', label: 'All Crops' }, ...cropOpts]}
           value={draft.cropType ?? ''}
           onChange={e => setDraft({ ...draft, cropType: e.target.value || null })}
         />
@@ -199,14 +195,15 @@ function SessionTypeBadge({ type }: { type: TrainingSessionType }) {
 }
 
 function SessionCard({
-  session, onEdit, onDelete, onMarkComplete,
+  session, onEdit, onDelete, onMarkComplete, cropOptions: cropOpts,
 }: {
   session: TrainingSession
   onEdit: () => void
   onDelete: () => void
   onMarkComplete: () => void
+  cropOptions: { value: string; label: string }[]
 }) {
-  const cropLabel = CROP_OPTIONS.find(c => c.value === session.cropType)?.label
+  const cropLabel = cropOpts.find(c => c.value === session.cropType)?.label
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2.5">
@@ -256,6 +253,8 @@ function SessionCard({
 
 export function TrainingSessionsSection() {
   const [sessions, setSessions] = usePersistedState<TrainingSession[]>('training-sessions', SEED_TRAINING_SESSIONS)
+  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
+  const cropOpts = useMemo(() => cropOptions(crops), [crops])
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<TrainingSession | null>(null)
   const [formKey, setFormKey] = useState(0)
@@ -325,6 +324,7 @@ export function TrainingSessionsSection() {
                     onEdit={() => openEdit(s)}
                     onDelete={() => setDeleting(s)}
                     onMarkComplete={() => markComplete(s.id)}
+                    cropOptions={cropOpts}
                   />
                 ))}
               </div>
@@ -344,6 +344,7 @@ export function TrainingSessionsSection() {
                     onEdit={() => openEdit(s)}
                     onDelete={() => setDeleting(s)}
                     onMarkComplete={() => markComplete(s.id)}
+                    cropOptions={cropOpts}
                   />
                 ))}
               </div>
@@ -358,6 +359,7 @@ export function TrainingSessionsSection() {
         session={editing}
         onClose={() => setSheetOpen(false)}
         onSave={handleSave}
+        cropOptions={cropOpts}
       />
 
       <ConfirmModal

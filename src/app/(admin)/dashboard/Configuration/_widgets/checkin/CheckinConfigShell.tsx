@@ -1,16 +1,18 @@
 'use client'
 
-import { CheckSquare, Layers, ClipboardCheck, Calendar, Users } from 'lucide-react'
+import { CheckSquare, Sprout, Layers, ClipboardCheck, Calendar, Users } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
+import { CropsSection } from './CropsSection'
 import { BaselineTemplatesSection } from './BaselineTemplatesSection'
 import { CheckinTemplatesSection } from './CheckinTemplatesSection'
 import { CohortSchedulesSection } from './CohortSchedulesSection'
 import { FarmerOverridesSection } from './FarmerOverridesSection'
 
-type SectionKey = 'baselines' | 'checkins' | 'schedules' | 'overrides'
+type SectionKey = 'crops' | 'baselines' | 'checkins' | 'schedules' | 'overrides'
 
 const SECTIONS: { key: SectionKey; icon: React.ElementType; label: string; desc: string }[] = [
+  { key: 'crops',     icon: Sprout,         label: 'Crops',                     desc: 'Add and manage crop types'                                 },
   { key: 'baselines', icon: Layers,         label: 'Baseline Templates',        desc: 'Create reusable baseline assessments with 4 pillars + ECI' },
   { key: 'checkins',  icon: ClipboardCheck, label: 'Weekly Check-in Templates', desc: 'Create multi-week check-in templates by crop & season'    },
   { key: 'schedules', icon: Calendar,       label: 'Cohort Schedules',          desc: 'Set start mode, link templates, pause schedules'           },
@@ -82,6 +84,7 @@ export function CheckinConfigShell() {
 
         {/* main content */}
         <div className="w-full flex-1 min-w-0">
+          {section === 'crops' && <CropsSection />}
           {section === 'baselines' && <BaselineTemplatesSection />}
           {section === 'checkins' && <CheckinTemplatesSection />}
           {section === 'schedules' && <CohortSchedulesSection />}

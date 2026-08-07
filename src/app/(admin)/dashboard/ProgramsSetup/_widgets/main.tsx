@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 import {
   ChevronDown, Plus, Pencil, PowerOff,
   ToggleRight, Trash2, Users, GitBranch, Check, X, Eye, Calendar, Wheat,
@@ -46,20 +47,10 @@ const REGION_OPTIONS = [
   { value: 'WR', label: 'Western' },
 ]
 
-const CROP_OPTIONS = [
-  { value: 'maize',     label: 'Maize' },
-  { value: 'rice',      label: 'Rice' },
-  { value: 'cassava',   label: 'Cassava' },
-  { value: 'yam',       label: 'Yam' },
-  { value: 'groundnut', label: 'Groundnut' },
-  { value: 'soybean',   label: 'Soybean' },
-  { value: 'sorghum',   label: 'Sorghum' },
-  { value: 'millet',    label: 'Millet' },
-  { value: 'cocoa',     label: 'Cocoa' },
-  { value: 'coffee',    label: 'Coffee' },
-  { value: 'tomato',    label: 'Tomato' },
-  { value: 'plantain',  label: 'Plantain' },
-]
+function useCropOptions() {
+  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
+  return useMemo(() => cropOptions(crops), [crops])
+}
 
 const AGENT_OPTIONS = [
   { value: '',        label: 'No agent'      },
@@ -140,6 +131,7 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
   onBack?: () => void
 }) {
   const toast = useToast()
+  const CROP_OPTIONS = useCropOptions()
 
   const blank = {
     name:             '',
@@ -167,7 +159,7 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
       crops:            (initial?.crops ?? []).map(c => CROP_OPTIONS.find(o => o.label === c)?.value ?? c),
       regions:          [],
     })
-  }, [open, initial])
+  }, [open, initial, CROP_OPTIONS])
 
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }))
@@ -722,6 +714,7 @@ function ProgramSheet({
   onSave: (data: ProgramFormData) => void
 }) {
   const toast = useToast()
+  const CROP_OPTIONS = useCropOptions()
   const open = mode !== null && program !== null
   const isEdit = mode === 'edit'
 
@@ -747,7 +740,7 @@ function ProgramSheet({
       crops:            (program.crops ?? []).map(c => CROP_OPTIONS.find(o => o.label === c)?.value ?? c),
       regions:          [],
     })
-  }, [mode, program])
+  }, [mode, program, CROP_OPTIONS])
 
   function set(key: string, val: string) { setForm(f => ({ ...f, [key]: val })) }
 

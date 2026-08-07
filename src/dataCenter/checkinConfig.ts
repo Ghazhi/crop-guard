@@ -1,5 +1,7 @@
 import type { Pillar, CropDef, Org, Question, Week, BaselineActivity, OrgConfig } from '@/app/(admin)/dashboard/CheckinConfig/_logics/interface'
 
+export type { CropDef }
+
 // ─── helper ──────────────────────────────────────────────────────────────────
 
 export function makeQuestion(id: string, pillar: Pillar, label: string, hint?: string): Question {
@@ -285,7 +287,7 @@ export const COCOA_SEED: Week[] = [
 
 export const BUILT_IN_CROPS: CropDef[] = [
   { id: 'maize',     name: 'Maize',     season: '2025', builtIn: true },
-  { id: 'soybean',   name: 'Soybeans',  season: '2025', builtIn: true },
+  { id: 'soybean',   name: 'Soybean',   season: '2025', builtIn: true },
   { id: 'rice',      name: 'Rice',      season: '2025', builtIn: true },
   { id: 'cassava',   name: 'Cassava',   season: '2025', builtIn: true },
   { id: 'yam',       name: 'Yam',       season: '2025', builtIn: true },
@@ -293,7 +295,19 @@ export const BUILT_IN_CROPS: CropDef[] = [
   { id: 'cowpea',    name: 'Cowpea',    season: '2025', builtIn: true },
   { id: 'tomato',    name: 'Tomato',    season: '2025', builtIn: true },
   { id: 'cocoa',     name: 'Cocoa',     season: '2025', builtIn: true },
+  { id: 'sorghum',   name: 'Sorghum',   season: '2025', builtIn: true },
+  { id: 'millet',    name: 'Millet',    season: '2025', builtIn: true },
+  { id: 'coffee',    name: 'Coffee',    season: '2025', builtIn: true },
+  { id: 'pepper',    name: 'Pepper',    season: '2025', builtIn: true },
+  { id: 'plantain',  name: 'Plantain',  season: '2025', builtIn: true },
+  { id: 'banana',    name: 'Banana',    season: '2025', builtIn: true },
+  { id: 'pineapple', name: 'Pineapple', season: '2025', builtIn: true },
 ]
+
+/** Derives {value,label} select/multiselect options from a crop list. */
+export function cropOptions(crops: CropDef[]): { value: string; label: string }[] {
+  return crops.map(c => ({ value: c.id, label: c.name }))
+}
 
 export const BUILT_IN_SEED_MAP: Record<string, Week[]> = {
   maize:     MAIZE_SEED,

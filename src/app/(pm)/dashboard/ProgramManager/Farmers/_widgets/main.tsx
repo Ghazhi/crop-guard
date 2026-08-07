@@ -27,6 +27,7 @@ import { PaginationBar } from '@/customComponents/PaginationBar'
 import { getFarmers, getProgramOptions } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/functions'
 import type { Farmer, FriZone, ProgramOption } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import { PM_PROGRAM_IDS, PM_PROGRAMS, isPmProgram } from '@/dataCenter/pmScope'
+import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 
 // ── PM scoping ─────────────────────────────────────────────────────────────────
 // Keep unassigned farmers (needed for enroll flows) plus farmers enrolled in one
@@ -91,16 +92,10 @@ const REGION_OPTIONS = [
   { value: 'western_north',label: 'Western North'},
 ]
 
-const CROP_OPTIONS = [
-  { value: 'maize',     label: 'Maize'     },
-  { value: 'soybean',   label: 'Soybean'   },
-  { value: 'cassava',   label: 'Cassava'   },
-  { value: 'rice',      label: 'Rice'      },
-  { value: 'groundnut', label: 'Groundnut' },
-  { value: 'yam',       label: 'Yam'       },
-  { value: 'sorghum',   label: 'Sorghum'   },
-  { value: 'millet',    label: 'Millet'    },
-]
+function useCropOptions() {
+  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
+  return useMemo(() => cropOptions(crops), [crops])
+}
 
 const GENDER_OPTIONS = [
   { value: 'male',             label: 'Male'             },
@@ -371,6 +366,7 @@ function Step2({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: Step
 }
 
 function Step3({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
+  const CROP_OPTIONS = useCropOptions()
   return (
     <div className="space-y-3">
       <SectionHeader label="Farm Experience" />
@@ -996,6 +992,7 @@ function FarmerSheet({
   onSave: (f: EditFarmerForm) => void
   onUnenroll: () => void
 }) {
+  const CROP_OPTIONS = useCropOptions()
   const [form, setForm] = useState<EditFarmerForm>(EMPTY_EDIT)
   const [saving, setSaving] = useState(false)
 

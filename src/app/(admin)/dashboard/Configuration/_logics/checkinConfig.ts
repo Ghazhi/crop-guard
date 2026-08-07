@@ -6,6 +6,7 @@
 // keeps working independently at its own route.
 
 import { PROGRAM_OPTIONS_WITH_COHORTS } from '@/dataCenter/programOptions'
+import { BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 
 // ─── Baseline Templates ─────────────────────────────────────────────────────
 
@@ -39,11 +40,12 @@ export const BASELINE_PILLAR_META = {
 
 export const ECI_META = { label: 'ECI Section (Optional)', badge: 'purple' as const }
 
-export const CROP_TYPE_OPTIONS: { value: BaselineTemplate['cropType']; label: string }[] = [
-  { value: 'maize',   label: 'Maize'   },
-  { value: 'soybean', label: 'Soybean' },
-  { value: 'cocoa',   label: 'Cocoa'   },
-]
+const BASELINE_CROP_TYPES: BaselineTemplate['cropType'][] = ['maize', 'soybean', 'cocoa']
+export const CROP_TYPE_OPTIONS: { value: BaselineTemplate['cropType']; label: string }[] =
+  cropOptions(BUILT_IN_CROPS).filter(
+    (o): o is { value: BaselineTemplate['cropType']; label: string } =>
+      (BASELINE_CROP_TYPES as string[]).includes(o.value)
+  )
 
 export const SEED_BASELINE_TEMPLATES: BaselineTemplate[] = [
   {
@@ -164,10 +166,12 @@ export const CHECKIN_COMPONENT_META: Record<CheckinComponent, { label: string; c
   farm_enterprise:      { label: 'Farm Enterprise',      color: 'teal'    },
 }
 
-export const CHECKIN_CROP_OPTIONS: { value: CheckinTemplate['cropType']; label: string }[] = [
-  { value: 'maize',   label: 'Maize'   },
-  { value: 'soybean', label: 'Soybean' },
-]
+const CHECKIN_CROP_TYPES: CheckinTemplate['cropType'][] = ['maize', 'soybean']
+export const CHECKIN_CROP_OPTIONS: { value: CheckinTemplate['cropType']; label: string }[] =
+  cropOptions(BUILT_IN_CROPS).filter(
+    (o): o is { value: CheckinTemplate['cropType']; label: string } =>
+      (CHECKIN_CROP_TYPES as string[]).includes(o.value)
+  )
 
 export const SEED_CHECKIN_TEMPLATES: CheckinTemplate[] = [
   {

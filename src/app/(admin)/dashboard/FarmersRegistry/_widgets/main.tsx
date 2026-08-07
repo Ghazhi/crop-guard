@@ -3,6 +3,7 @@
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { useState, useEffect, useMemo } from 'react'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 import {
   Search, X, Download, Upload, RefreshCw, Plus, Pencil,
   UserMinus, UserCog, Users, Check, GitBranch, UserPlus,
@@ -107,16 +108,10 @@ const REGION_OPTIONS = [
   { value: 'western_north',label: 'Western North'},
 ]
 
-const CROP_OPTIONS = [
-  { value: 'maize',     label: 'Maize'     },
-  { value: 'soybean',   label: 'Soybean'   },
-  { value: 'cassava',   label: 'Cassava'   },
-  { value: 'rice',      label: 'Rice'      },
-  { value: 'groundnut', label: 'Groundnut' },
-  { value: 'yam',       label: 'Yam'       },
-  { value: 'sorghum',   label: 'Sorghum'   },
-  { value: 'millet',    label: 'Millet'    },
-]
+function useCropOptions() {
+  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
+  return useMemo(() => cropOptions(crops), [crops])
+}
 
 const GENDER_OPTIONS = [
   { value: 'male',             label: 'Male'             },
@@ -409,6 +404,7 @@ function Step2({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: Step
 }
 
 function Step3({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
+  const CROP_OPTIONS = useCropOptions()
   return (
     <div className="space-y-3">
       <SectionHeader label="Farm Experience" />
@@ -1034,6 +1030,7 @@ function FarmerSheet({
   onSave: (f: EditFarmerForm) => void
   onUnenroll: () => void
 }) {
+  const CROP_OPTIONS = useCropOptions()
   const [form, setForm] = useState<EditFarmerForm>(EMPTY_EDIT)
   const [saving, setSaving] = useState(false)
 

@@ -15,13 +15,14 @@ import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { FileUploadTemplate } from '@/customComponents/FileUploadTemplate'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { TRAINING_BUNDLES, TRAINING_TEMPLATES, TRAINING_MATERIALS } from '@/dataCenter/trainingMaterials'
+import { BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
 import type { TrainingBundle, TrainingTemplate, TrainingMaterial, CropType, MaterialType } from '../_logics/interface'
 
-const CROP_OPTIONS: { value: CropType; label: string }[] = [
-  { value: 'maize',   label: 'Maize' },
-  { value: 'soybean', label: 'Soybean' },
-  { value: 'cocoa',   label: 'Cocoa' },
-]
+const TRAINING_CROP_TYPES: CropType[] = ['maize', 'soybean', 'cocoa']
+const CROP_OPTIONS: { value: CropType; label: string }[] =
+  cropOptions(BUILT_IN_CROPS).filter(
+    (o): o is { value: CropType; label: string } => (TRAINING_CROP_TYPES as string[]).includes(o.value)
+  )
 
 const CROP_ICON_COLOR: Record<CropType, string> = {
   maize:   '#E8963A',

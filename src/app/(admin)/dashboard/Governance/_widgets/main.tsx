@@ -7,6 +7,7 @@ import {
   Plus, Pencil, Trash2, Search, MapPin, ChevronLeft, ChevronRight, Sprout,
   Globe2, Truck, Sparkles, AlertCircle, CheckCircle2, XCircle, TrendingUp,
   Download, RefreshCw, GraduationCap, Award, ClipboardList,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { Main as CommunityProfileMain } from '@/app/(admin)/dashboard/CommunityProfile/_widgets/main'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -181,6 +182,8 @@ function CooperativeGovernance() {
   const [sectionTab, setSectionTab] = usePersistedState<GovSectionTab>('gov-section-tab', 'cooperative')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [govTab, setGovTab] = useState<Exclude<GovTab, 'cooperatives'>>('leadership')
+  const [govSectionOpen, setGovSectionOpen] = usePersistedState('gov-section-open', true)
+  const [coopListCollapsed, setCoopListCollapsed] = usePersistedState('gov-coop-list-collapsed', false)
 
   const selectedCoop = cooperatives.find(c => c.id === selectedId) ?? null
 
@@ -233,14 +236,16 @@ function CooperativeGovernance() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className={cn('grid grid-cols-1 gap-6 items-start', coopListCollapsed ? 'lg:grid-cols-[auto_1fr]' : 'lg:grid-cols-3')}>
         <CooperativeSidebar
           cooperatives={cooperatives}
           selectedId={selectedId}
           onSelect={id => setSelectedId(id)}
+          collapsed={coopListCollapsed}
+          onToggleCollapsed={setCoopListCollapsed}
         />
 
-        <div className="lg:col-span-2 min-w-0 flex flex-col gap-4">
+        <div className={cn('min-w-0 flex flex-col gap-4', !coopListCollapsed && 'lg:col-span-2')}>
           {sectionTab === 'cooperative' && (
             !selectedCoop ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
@@ -264,66 +269,75 @@ function CooperativeGovernance() {
               </div>
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="rounded-2xl p-5 text-white flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
+                <button
+                  onClick={() => setGovSectionOpen(v => !v)}
+                  className="rounded-2xl p-5 text-white flex items-center gap-3 w-full text-left transition-opacity hover:opacity-95"
+                  style={{ background: 'var(--brand-forest)' }}
+                >
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
                     <Gavel className="w-5 h-5 text-white" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h2 className="text-base font-semibold truncate">Governance — {selectedCoop.name}</h2>
                     <p className="text-xs text-white/70 truncate">{selectedCoop.region} · {selectedCoop.communityName} · {selectedCoop.memberCount} members · Created {selectedCoop.since}</p>
                   </div>
-                </div>
+                  <ChevronRight className={cn('w-4.5 h-4.5 shrink-0 transition-transform text-white/80', govSectionOpen && 'rotate-90')} />
+                </button>
 
-                {/* horizontal pill sub-tabs */}
-                <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-fit max-w-full">
-                  {GOV_TABS.map(({ id, Icon, label }) => {
-                    const active = govTab === id
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setGovTab(id)}
-                        className={cn(
-                          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
-                          active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
-                        )}
-                        style={active ? { color: 'var(--brand-forest)' } : {}}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
+                {govSectionOpen && (
+                  <>
+                    {/* horizontal pill sub-tabs */}
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto w-fit max-w-full">
+                      {GOV_TABS.map(({ id, Icon, label }) => {
+                        const active = govTab === id
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => setGovTab(id)}
+                            className={cn(
+                              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors shrink-0',
+                              active ? 'bg-white shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                            )}
+                            style={active ? { color: 'var(--brand-forest)' } : {}}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
 
-                {/* sub-tab content */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                  {govTab === 'leadership' && (
-                    <LeadershipTab officers={officers} setOfficers={setOfficers} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                  )}
-                  {govTab === 'meetings' && (
-                    <MeetingsTab meetings={meetings} setMeetings={setMeetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                  )}
-                  {govTab === 'training' && (
-                    <TrainingPlaceholderTab />
-                  )}
-                  {govTab === 'resolutions' && (
-                    <ResolutionsTab resolutions={resolutions} setResolutions={setResolutions} meetings={meetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                  )}
-                  {govTab === 'compliance' && (
-                    <ComplianceTab
-                      compliance={compliance} setCompliance={setCompliance}
-                      fboRegistrations={fboRegistrations} setFboRegistrations={setFboRegistrations}
-                      cocobodLicenses={cocobodLicenses} setCocobodLicenses={setCocobodLicenses}
-                      scopeId={selectedCoop.id}
-                    />
-                  )}
-                  {govTab === 'funds' && (
-                    <FundsTab funds={funds} setFunds={setFunds} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                  )}
-                  {govTab === 'documents' && (
-                    <DocumentsTab documents={documents} setDocuments={setDocuments} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
-                  )}
-                </div>
+                    {/* sub-tab content */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                      {govTab === 'leadership' && (
+                        <LeadershipTab officers={officers} setOfficers={setOfficers} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                      )}
+                      {govTab === 'meetings' && (
+                        <MeetingsTab meetings={meetings} setMeetings={setMeetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                      )}
+                      {govTab === 'training' && (
+                        <TrainingPlaceholderTab />
+                      )}
+                      {govTab === 'resolutions' && (
+                        <ResolutionsTab resolutions={resolutions} setResolutions={setResolutions} meetings={meetings} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                      )}
+                      {govTab === 'compliance' && (
+                        <ComplianceTab
+                          compliance={compliance} setCompliance={setCompliance}
+                          fboRegistrations={fboRegistrations} setFboRegistrations={setFboRegistrations}
+                          cocobodLicenses={cocobodLicenses} setCocobodLicenses={setCocobodLicenses}
+                          scopeId={selectedCoop.id}
+                        />
+                      )}
+                      {govTab === 'funds' && (
+                        <FundsTab funds={funds} setFunds={setFunds} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                      )}
+                      {govTab === 'documents' && (
+                        <DocumentsTab documents={documents} setDocuments={setDocuments} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             )
           )}
@@ -546,11 +560,13 @@ function CooperativeDetailPanel({
 // ─── Cooperative sidebar (master list) ─────────────────────────────────────────
 
 function CooperativeSidebar({
-  cooperatives, selectedId, onSelect,
+  cooperatives, selectedId, onSelect, collapsed, onToggleCollapsed,
 }: {
   cooperatives: Cooperative[]
   selectedId: string | null
   onSelect: (id: string) => void
+  collapsed: boolean
+  onToggleCollapsed: (v: boolean | ((prev: boolean) => boolean)) => void
 }) {
   const [search, setSearch] = useState('')
   const [regionFilter, setRegionFilter] = useState('all')
@@ -584,10 +600,48 @@ function CooperativeSidebar({
     setPage(1)
   }
 
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2 w-fit">
+        <button
+          onClick={() => onToggleCollapsed(false)}
+          title="Expand Cooperatives"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+        >
+          <PanelLeftOpen className="w-4 h-4" />
+        </button>
+        {paged.map(coop => {
+          const active = selectedId === coop.id
+          return (
+            <button
+              key={coop.id}
+              onClick={() => onSelect(coop.id)}
+              title={coop.name}
+              className={cn(
+                'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all',
+                active ? 'ring-2' : 'hover:opacity-80',
+              )}
+              style={{ backgroundColor: 'var(--brand-mint)', ...(active ? { boxShadow: '0 0 0 2px var(--brand-mid)' } : {}) }}
+            >
+              <Landmark className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-gray-900">Cooperatives</h2>
+        <p className="text-sm font-bold text-gray-900">Cooperatives</p>
+        <button
+          onClick={() => onToggleCollapsed(true)}
+          title="Collapse"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+        >
+          <PanelLeftClose className="w-4 h-4" />
+        </button>
       </div>
 
       <InputTemplate placeholder="Search cooperatives..." leftIcon={<Search className="w-3.5 h-3.5" />} value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} size="sm" />
@@ -676,7 +730,6 @@ function CooperativeSidebar({
           </button>
         </div>
       )}
-
     </div>
   )
 }

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { usePersistedState } from '@/lib/usePersistedState'
-import { type CropDef, BUILT_IN_CROPS } from '@/dataCenter/checkinConfig'
+import { useCropNames } from '@/dataCenter/useCropOptions'
 import { cn } from '@/lib/utils'
 import {
   MapPin, Users, ChevronRight, Plus, Search,
@@ -42,10 +42,6 @@ const AMENITY_KEYS: { key: keyof SocialAmenities; label: string }[] = [
   { key: 'road',      label: 'Good Road Network' },
   { key: 'network',   label: 'Network Services (MTN, Telecel)' },
 ]
-function useCropOptions(): string[] {
-  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
-  return useMemo(() => crops.map(c => c.name), [crops])
-}
 const ANIMAL_OPTIONS = [
   'Cattle','Goats','Sheep','Pigs','Poultry (Chickens)',
   'Poultry (Turkeys)','Poultry (Ducks)','Rabbits','Donkeys','Other',
@@ -591,7 +587,7 @@ function CoopSheet({
   const open = data !== null
   const isNew = !coop?.id || coop.id.startsWith('new-')
   const isEdit = mode === 'edit'
-  const CROP_OPTIONS = useCropOptions()
+  const CROP_OPTIONS = useCropNames()
 
   const [coopName,    setCoopName]    = useState('')
   const [communityId, setCommunityId] = useState('')

@@ -9,8 +9,12 @@ import { Main as FRIDashboardMain } from '@/app/(admin)/dashboard/FRIDashboard/_
 import { Main as RiskIntelligenceMain } from '@/app/(admin)/dashboard/RiskIntelligence/_widgets/main'
 import { Main as ReportsMain } from '@/app/(admin)/dashboard/Reports/_widgets/main'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
+import { COOPERATIVES } from '@/dataCenter/cooperatives'
+import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
+import { PROGRAMS } from '@/dataCenter/programs'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
+import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { cn } from '@/lib/utils'
 import {
   computeExposureScore, computeQuadrant, QUADRANT_INFO,
@@ -63,9 +67,7 @@ function StatCard({ icon: Icon, iconColor, iconBg, label, value, sub }: {
   )
 }
 
-function AIOverviewTab() {
-  const farmers = FARMERS_LIST as Farmer[]
-
+function AIOverviewTab({ farmers }: { farmers: Farmer[] }) {
   const stats = useMemo(() => {
     const scored = farmers.filter(f => f.currentFri !== null)
     const avgFri = scored.length
@@ -268,8 +270,10 @@ function ExposureCard({ record, exposure, selected, onClick }: {
   )
 }
 
-function ClimateExposureTab() {
-  const cohortsWithExposure = useMemo(() => COHORT_EXPOSURE.map(c => ({ record: c, exposure: computeExposureScore(c.inputs) })), [])
+function ClimateExposureTab({ cohortIds }: { cohortIds: Set<string> | null }) {
+  const cohortsWithExposure = useMemo(() => COHORT_EXPOSURE
+    .filter(c => !cohortIds || cohortIds.has(c.cohortId))
+    .map(c => ({ record: c, exposure: computeExposureScore(c.inputs) })), [cohortIds])
   const [selectedId, setSelectedId] = useState<string>(cohortsWithExposure[0]?.record.cohortId ?? '')
   const selected = cohortsWithExposure.find(c => c.record.cohortId === selectedId) ?? cohortsWithExposure[0] ?? null
 
@@ -391,10 +395,10 @@ function friZoneLabel(fri: number): string {
   return 'Resilience Starter'
 }
 
-function buildFarmersWithQuadrant(): FarmerWithQuadrant[] {
+function buildFarmersWithQuadrant(farmers: Farmer[]): FarmerWithQuadrant[] {
   const cohortMap = new Map(COHORT_EXPOSURE.map(c => [c.cohortId, c]))
   const result: FarmerWithQuadrant[] = []
-  for (const farmer of FARMERS_LIST as Farmer[]) {
+  for (const farmer of farmers) {
     if (farmer.currentFri === null) continue
     const cohortId = farmer.enrollment?.cohortId
     if (!cohortId) continue
@@ -410,8 +414,8 @@ function buildFarmersWithQuadrant(): FarmerWithQuadrant[] {
 type SortKey = 'fri' | 'exposure' | null
 type SortDir = 'asc' | 'desc'
 
-function RiskQuadrantTab() {
-  const allRows = useMemo(() => buildFarmersWithQuadrant(), [])
+function RiskQuadrantTab({ farmers }: { farmers: Farmer[] }) {
+  const allRows = useMemo(() => buildFarmersWithQuadrant(farmers), [farmers])
   const [filterQuadrant, setFilterQuadrant] = useState<QuadrantKey | 'all'>('all')
   const [sortKey, setSortKey] = useState<SortKey>(null)
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -593,8 +597,55 @@ function RiskQuadrantTab() {
 // Main
 // ══════════════════════════════════════════════════════════════════════════════
 
+const INSIGHTS_FILTER_TABS: InsightsTab[] = ['ai-overview', 'climate-exposure', 'risk-quadrant']
+
 export function Main() {
   const [tab, setTab] = useState<InsightsTab>('ai-overview')
+  const [communityFilter,   setCommunityFilter]   = useState('all')
+  const [programFilter,     setProgramFilter]     = useState('all')
+  const [cohortFilter,      setCohortFilter]      = useState('all')
+  const [cooperativeFilter, setCooperativeFilter] = useState('all')
+
+  const communityOptions = useMemo(() => [
+    { value: 'all', label: 'All Communities' },
+    ...Array.from(new Set((FARMERS_LIST as Farmer[]).map(f => f.community))).sort().map(c => ({ value: c, label: c })),
+  ], [])
+  const programOptions = useMemo(() => [
+    { value: 'all', label: 'All Programs' },
+    ...PROGRAMS.map(p => ({ value: p.id, label: p.name })),
+  ], [])
+  const cohortOptions = useMemo(() => {
+    const cohorts = programFilter === 'all'
+      ? PROGRAMS.flatMap(p => p.cohorts)
+      : PROGRAMS.find(p => p.id === programFilter)?.cohorts ?? []
+    return [{ value: 'all', label: 'All Cohorts' }, ...cohorts.map(c => ({ value: c.id, label: c.name }))]
+  }, [programFilter])
+  const cooperativeOptions = useMemo(() => [
+    { value: 'all', label: 'All Cooperatives' },
+    ...COOPERATIVES.map(c => ({ value: c.id, label: c.name })),
+  ], [])
+
+  const hasActiveFilter = communityFilter !== 'all' || programFilter !== 'all' || cohortFilter !== 'all' || cooperativeFilter !== 'all'
+
+  function clearFilters() {
+    setCommunityFilter('all')
+    setProgramFilter('all')
+    setCohortFilter('all')
+    setCooperativeFilter('all')
+  }
+
+  const filteredFarmers = useMemo(() => (FARMERS_LIST as Farmer[]).filter(f => {
+    if (communityFilter !== 'all' && f.community !== communityFilter) return false
+    if (programFilter !== 'all' && f.enrollment?.programId !== programFilter) return false
+    if (cohortFilter !== 'all' && f.enrollment?.cohortId !== cohortFilter) return false
+    if (cooperativeFilter !== 'all' && FARMER_COOPERATIVE_MAP[f.id] !== cooperativeFilter) return false
+    return true
+  }), [communityFilter, programFilter, cohortFilter, cooperativeFilter])
+
+  const filteredCohortIds = useMemo(() => {
+    if (!hasActiveFilter) return null
+    return new Set(filteredFarmers.map(f => f.enrollment?.cohortId).filter((id): id is string => !!id))
+  }, [hasActiveFilter, filteredFarmers])
 
   return (
     <div className="p-6 space-y-5">
@@ -630,8 +681,28 @@ export function Main() {
         })}
       </div>
 
+      {/* Filters — apply to AI Overview, Climate Exposure, Risk Quadrant */}
+      {INSIGHTS_FILTER_TABS.includes(tab) && (
+        <div className="flex flex-col gap-2 bg-white rounded-xl border border-gray-200 p-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <SelectTemplate size="sm" options={communityOptions} value={communityFilter} onChange={e => setCommunityFilter(e.target.value)} />
+            <SelectTemplate size="sm" options={programOptions} value={programFilter} onChange={e => { setProgramFilter(e.target.value); setCohortFilter('all') }} />
+            <SelectTemplate size="sm" options={cohortOptions} value={cohortFilter} onChange={e => setCohortFilter(e.target.value)} />
+            <SelectTemplate size="sm" options={cooperativeOptions} value={cooperativeFilter} onChange={e => setCooperativeFilter(e.target.value)} />
+          </div>
+          {hasActiveFilter && (
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-gray-400">{filteredFarmers.length} farmer{filteredFarmers.length !== 1 ? 's' : ''} match</p>
+              <button onClick={clearFilters} className="text-[11px] font-medium hover:underline" style={{ color: 'var(--brand-forest)' }}>
+                Clear filters
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab content */}
-      {tab === 'ai-overview' && <AIOverviewTab />}
+      {tab === 'ai-overview' && <AIOverviewTab farmers={filteredFarmers} />}
       {tab === 'fri-dashboard' && (
         <div className="-mt-4 -mx-6">
           <FRIDashboardMain />
@@ -642,8 +713,8 @@ export function Main() {
           <RiskIntelligenceMain />
         </div>
       )}
-      {tab === 'climate-exposure' && <ClimateExposureTab />}
-      {tab === 'risk-quadrant' && <RiskQuadrantTab />}
+      {tab === 'climate-exposure' && <ClimateExposureTab cohortIds={filteredCohortIds} />}
+      {tab === 'risk-quadrant' && <RiskQuadrantTab farmers={filteredFarmers} />}
       {tab === 'reports' && (
         <div className="-mt-4 -mx-6">
           <ReportsMain />

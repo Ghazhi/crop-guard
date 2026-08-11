@@ -7,6 +7,8 @@ export interface Cohort {
   enrolledCount: number
   targetCount:  number
   status:       'Active' | 'Inactive'
+  partnerId?:   string | null
+  partnerName?: string | null
 }
 
 export interface Program {

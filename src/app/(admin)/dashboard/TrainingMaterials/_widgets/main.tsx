@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   GraduationCap, Plus, Pencil, Trash2, ChevronDown, ChevronRight,
-  FileText, Video, Image as ImageIcon, File, Upload, Sprout,
+  FileText, Video, Image as ImageIcon, File, Upload, Sprout, Send, Undo2,
 } from 'lucide-react'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
@@ -67,6 +67,7 @@ export function Main() {
   const [addingBundle, setAddingBundle] = useState(false)
   const [editingBundle, setEditingBundle] = useState<TrainingBundle | null>(null)
   const [deletingBundle, setDeletingBundle] = useState<TrainingBundle | null>(null)
+  const [unpublishTarget, setUnpublishTarget] = useState<{ bundle: TrainingBundle; weekNumber: number } | null>(null)
   const [bundleForm, setBundleForm] = useState<Partial<TrainingBundle>>({})
   const [bundleTitleError, setBundleTitleError] = useState<string | undefined>()
 
@@ -106,6 +107,7 @@ export function Main() {
       description: bundleForm.description ?? '',
       isActive: bundleForm.isActive ?? true,
       totalWeeks: Number(bundleForm.totalWeeks ?? 8),
+      currentWeek: 0,
     }
     setBundles(prev => [...prev, b])
     setAddingBundle(false)
@@ -123,6 +125,25 @@ export function Main() {
     setBundles(prev => prev.filter(b => b.id !== deletingBundle.id))
     setTemplates(prev => prev.filter(t => t.bundleId !== deletingBundle.id))
     setDeletingBundle(null)
+  }
+
+  function pushWeek(bundleId: string, weekNumber: number) {
+    setBundles(prev => prev.map(b => b.id === bundleId ? { ...b, currentWeek: Math.max(b.currentWeek, weekNumber) } : b))
+  }
+  function requestUnpublishWeek(bundle: TrainingBundle, weekNumber: number) {
+    // unpublishing anything before the most-recently-published week would also
+    // hide already-live later weeks, so confirm before doing that
+    if (weekNumber < bundle.currentWeek) {
+      setUnpublishTarget({ bundle, weekNumber })
+      return
+    }
+    setBundles(prev => prev.map(b => b.id === bundle.id ? { ...b, currentWeek: weekNumber - 1 } : b))
+  }
+  function confirmUnpublishWeek() {
+    if (!unpublishTarget) return
+    const { bundle, weekNumber } = unpublishTarget
+    setBundles(prev => prev.map(b => b.id === bundle.id ? { ...b, currentWeek: weekNumber - 1 } : b))
+    setUnpublishTarget(null)
   }
 
   function openEditWeek(week: TrainingTemplate) {
@@ -208,6 +229,7 @@ export function Main() {
                     </div>
                     <p className="text-xs text-gray-400 truncate">
                       {CROP_OPTIONS.find(c => c.value === bundle.cropType)?.label} · {bundle.season} · {bundle.totalWeeks} weeks
+                      {bundle.currentWeek > 0 && ` · Week ${bundle.currentWeek} live`}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0" onClick={e => e.stopPropagation()}>
@@ -231,10 +253,22 @@ export function Main() {
                           >
                             {weekOpen ? <ChevronDown className="w-3.5 h-3.5 text-gray-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
                             <span className="text-xs font-semibold text-gray-400 shrink-0 w-10 sm:w-14">Wk {week.weekNumber}</span>
+                            {week.weekNumber <= bundle.currentWeek ? (
+                              <BadgeTemplate label="Live" variant="success" size="sm" />
+                            ) : (
+                              <BadgeTemplate label="Upcoming" variant="neutral" size="sm" />
+                            )}
                             <p className={`text-sm flex-1 min-w-0 truncate ${isUnsetWeekTitle(week.weekTitle) ? 'text-gray-300 italic' : 'text-gray-800 font-medium'}`}>
                               {week.weekTitle}
                             </p>
                             <span className="hidden sm:inline text-[11px] text-gray-400 shrink-0">{weekMaterials.length} material{weekMaterials.length !== 1 ? 's' : ''}</span>
+                            {week.weekNumber <= bundle.currentWeek ? (
+                              <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Unpublish week" leftIcon={<Undo2 className="w-3 h-3" />}
+                                onClick={e => { e.stopPropagation(); requestUnpublishWeek(bundle, week.weekNumber) }} />
+                            ) : (
+                              <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Push this week live" leftIcon={<Send className="w-3 h-3" />}
+                                onClick={e => { e.stopPropagation(); pushWeek(bundle.id, week.weekNumber) }} />
+                            )}
                             <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit week" leftIcon={<Pencil className="w-3 h-3" />}
                               onClick={e => { e.stopPropagation(); openEditWeek(week) }} />
                           </div>
@@ -369,6 +403,16 @@ export function Main() {
         variant="danger"
         onConfirm={confirmDeleteMaterial}
         onCancel={() => setDeletingMaterial(null)}
+      />
+
+      <ConfirmModal
+        open={!!unpublishTarget}
+        title="Unpublish Week"
+        message={unpublishTarget ? `Week ${unpublishTarget.weekNumber} is not the most recently published week — unpublishing it will also hide week ${unpublishTarget.weekNumber + 1} through ${unpublishTarget.bundle.currentWeek}, which are currently live. Continue?` : ''}
+        confirmLabel="Unpublish"
+        variant="danger"
+        onConfirm={confirmUnpublishWeek}
+        onCancel={() => setUnpublishTarget(null)}
       />
     </div>
   )

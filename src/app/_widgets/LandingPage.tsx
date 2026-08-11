@@ -4,28 +4,32 @@ import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { usePersistedState } from '@/lib/usePersistedState'
+import { type LandingContent, DEFAULT_LANDING_CONTENT } from '@/app/(admin)/dashboard/Configuration/_logics/branding'
 
-function Navbar() {
+function Navbar({ content }: { content: LandingContent }) {
   const router = useRouter()
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <button onClick={() => router.push('/')} className="flex items-center shrink-0">
-          <Image src="/cropguard_png_2.png" alt="CropGuard+" width={120} height={80} className="h-8 w-auto object-contain" priority />
+        <button onClick={() => router.push('/')} className="flex items-center gap-2 shrink-0">
+          {content.navLogo && (
+            <Image src={content.navLogo} alt={content.brandName} width={120} height={80} className="h-8 w-auto object-contain" priority />
+          )}
         </button>
         <nav className="flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => router.push('/login')}
             className="text-sm text-gray-600 hover:text-gray-900 transition-colors px-2.5 sm:px-4 py-2 rounded-lg hover:bg-gray-50"
           >
-            Sign In
+            {content.signInLabel}
           </button>
           <button
             onClick={() => router.push('/login')}
             className="text-sm font-semibold text-white px-2.5 sm:px-4 py-2 rounded-lg transition-opacity hover:opacity-90 whitespace-nowrap"
             style={{ backgroundColor: 'var(--brand-forest)' }}
           >
-            Request a Demo
+            {content.ctaLabel}
           </button>
         </nav>
       </div>
@@ -33,62 +37,48 @@ function Navbar() {
   )
 }
 
-const HERO_SLIDES = [
-  {
-    image: '/assets/images/hero-resilient-farms.jpeg',
-    eyebrow: 'Resilient Farms. Dignified Lives.',
-    title: 'The Digital Infrastructure for Resilient Agriculture.',
-    body: 'Digitize farmer engagement, verify field activities, generate trusted resilience intelligence, and get actionable insights to reduce risk and create sustainable opportunities for farmers.',
-  },
-  {
-    image: '/assets/images/hero-data-insights.jpeg',
-    eyebrow: 'Data-Driven Insights',
-    title: 'Turn Field Data Into Trusted Resilience Intelligence.',
-    body: 'Transform verified farmer behaviour and field data into resilience intelligence for risk assessment, impact measurement, and smarter decisions.',
-  },
-  {
-    image: '/assets/images/hero-climate-smart.jpeg',
-    eyebrow: 'Climate-Smart Farming',
-    title: 'Building Climate Resilience From the Ground Up.',
-    body: 'Localized weather forecasts, early warning systems, and climate data that help anticipate risks and make proactive decisions for every farmer.',
-  },
-]
-
-function Hero() {
+function Hero({ content }: { content: LandingContent }) {
   const router = useRouter()
+  const slides = content.heroSlides
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
 
-  const next = useCallback(() => setActive(i => (i + 1) % HERO_SLIDES.length), [])
-  const prev = useCallback(() => setActive(i => (i - 1 + HERO_SLIDES.length) % HERO_SLIDES.length), [])
+  const next = useCallback(() => setActive(i => (i + 1) % slides.length), [slides.length])
+  const prev = useCallback(() => setActive(i => (i - 1 + slides.length) % slides.length), [slides.length])
 
   useEffect(() => {
-    if (paused) return
+    if (paused || slides.length <= 1) return
     const t = setInterval(next, 6000)
     return () => clearInterval(t)
-  }, [paused, next])
+  }, [paused, next, slides.length])
+
+  if (slides.length === 0) return null
+  const activeIndex = active % slides.length
+  const current = slides[activeIndex]
 
   return (
     <section
-      className="relative h-[100svh] min-h-[600px] w-full overflow-hidden"
+      className="relative h-svh min-h-150 w-full overflow-hidden"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       {/* Slides */}
-      {HERO_SLIDES.map((s, i) => (
+      {slides.map((s, i) => (
         <div
-          key={s.image}
+          key={s.id}
           className="absolute inset-0 transition-opacity duration-1000 ease-out"
-          style={{ opacity: i === active ? 1 : 0, zIndex: i === active ? 10 : 0 }}
+          style={{ opacity: i === activeIndex ? 1 : 0, zIndex: i === activeIndex ? 10 : 0 }}
         >
-          <Image
-            src={s.image}
-            alt={s.title}
-            fill
-            priority={i === 0}
-            className="object-cover"
-            style={{ transform: i === active ? 'scale(1.05)' : 'scale(1)', transition: 'transform 6s ease-out' }}
-          />
+          {s.image && (
+            <Image
+              src={s.image}
+              alt={s.title}
+              fill
+              priority={i === 0}
+              className="object-cover"
+              style={{ transform: i === activeIndex ? 'scale(1.05)' : 'scale(1)', transition: 'transform 6s ease-out' }}
+            />
+          )}
           <div className="absolute inset-0" style={{ background: 'linear-gradient(105deg, rgba(8,28,8,0.82) 0%, rgba(8,28,8,0.55) 45%, rgba(8,28,8,0.25) 100%)' }} />
         </div>
       ))}
@@ -97,13 +87,13 @@ function Hero() {
       <div className="relative z-20 h-full max-w-6xl mx-auto px-4 sm:px-6 flex flex-col justify-center">
         <div className="max-w-2xl">
           <span className="inline-block text-xs font-semibold tracking-widest uppercase mb-5" style={{ color: 'var(--brand-pale)' }}>
-            {HERO_SLIDES[active].eyebrow}
+            {current.eyebrow}
           </span>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.08] mb-5 drop-shadow-lg">
-            {HERO_SLIDES[active].title}
+            {current.title}
           </h1>
           <p className="text-base sm:text-lg text-white/85 leading-relaxed mb-8 max-w-xl">
-            {HERO_SLIDES[active].body}
+            {current.body}
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -111,48 +101,52 @@ function Hero() {
               className="inline-flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-lg transition-opacity hover:opacity-90 shadow-lg"
               style={{ backgroundColor: 'var(--brand-forest)' }}
             >
-              Get Started
+              {content.heroPrimaryCta}
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => router.push('/login')}
               className="inline-flex items-center gap-2 border border-white/40 hover:border-white text-white text-sm font-semibold px-6 py-3 rounded-lg transition-colors hover:bg-white/10"
             >
-              Request a Demo
+              {content.heroSecondaryCta}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Arrow controls */}
-      <button
-        onClick={prev}
-        aria-label="Previous slide"
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors"
-      >
-        <ChevronLeft className="w-5 h-5 text-white" />
-      </button>
-      <button
-        onClick={next}
-        aria-label="Next slide"
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors"
-      >
-        <ChevronRight className="w-5 h-5 text-white" />
-      </button>
-
-      {/* Slide indicators */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-2.5">
-        {HERO_SLIDES.map((s, i) => (
+      {slides.length > 1 && (
+        <>
+          {/* Arrow controls */}
           <button
-            key={s.image}
-            onClick={() => setActive(i)}
-            aria-label={`Go to slide ${i + 1}`}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              i === active ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/75'
-            }`}
-          />
-        ))}
-      </div>
+            onClick={prev}
+            aria-label="Previous slide"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 text-white" />
+          </button>
+          <button
+            onClick={next}
+            aria-label="Next slide"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-sm border border-white/30 flex items-center justify-center transition-colors"
+          >
+            <ChevronRight className="w-5 h-5 text-white" />
+          </button>
+
+          {/* Slide indicators */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-2.5">
+            {slides.map((s, i) => (
+              <button
+                key={s.id}
+                onClick={() => setActive(i)}
+                aria-label={`Go to slide ${i + 1}`}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === activeIndex ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/75'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Scroll hint */}
       <div className="absolute bottom-8 right-8 z-30 hidden sm:flex items-center gap-2 text-white/70 text-xs">
@@ -165,7 +159,7 @@ function Hero() {
   )
 }
 
-function Footer() {
+function Footer({ content }: { content: LandingContent }) {
   const year = new Date().getFullYear()
   return (
     <footer className="bg-gray-50 border-t border-gray-200">
@@ -173,10 +167,12 @@ function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           {/* Logo + tagline */}
           <div className="flex items-center gap-4">
-            <Image src="/assets/images/asinyo-wordmark.png" alt="Asinyo" width={140} height={80} className="h-10 w-auto object-contain" />
+            {content.footerLogo && (
+              <Image src={content.footerLogo} alt={content.brandName} width={140} height={80} className="h-10 w-auto object-contain" />
+            )}
             <div className="hidden sm:block w-px h-10 bg-gray-300" />
             <p className="text-xs text-gray-500 leading-snug max-w-50">
-              Building technology and systems for a resilient and prosperous Africa.
+              {content.footerTagline}
             </p>
           </div>
 
@@ -232,11 +228,15 @@ function Footer() {
         </div>
 
         <div className="mt-5 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-[11px] text-gray-400">&copy; {year} CropGuard+. All rights reserved.</p>
+          <p className="text-[11px] text-gray-400">&copy; {year} {content.footerCopyright}</p>
           <div className="flex items-center gap-2">
-            <Image src="/assets/images/cropguard-full-logo.png" alt="CropGuard+" width={100} height={60} className="h-6 w-auto object-contain" />
-            <span className="text-[11px] text-gray-400">Powered by</span>
-            <Image src="/assets/images/asinyo-wordmark.png" alt="Asinyo" width={64} height={32} className="h-4 w-auto object-contain opacity-70" />
+            {content.navLogo && (
+              <Image src={content.navLogo} alt={content.brandName} width={100} height={60} className="h-6 w-auto object-contain" />
+            )}
+            <span className="text-[11px] text-gray-400">{content.poweredByLabel}</span>
+            {content.poweredByLogo && (
+              <Image src={content.poweredByLogo} alt="" width={64} height={32} className="h-4 w-auto object-contain opacity-70" />
+            )}
           </div>
         </div>
       </div>
@@ -245,6 +245,8 @@ function Footer() {
 }
 
 export function LandingPage() {
+  const [content] = usePersistedState<LandingContent>('branding.landingContent', DEFAULT_LANDING_CONTENT)
+
   // dashboard routes own their internal scroll containers, so html/body default
   // to overflow:hidden globally — this is the one route that needs the page itself to scroll
   useEffect(() => {
@@ -262,9 +264,9 @@ export function LandingPage() {
 
   return (
     <div className="font-sans">
-      <Navbar />
-      <Hero />
-      <Footer />
+      <Navbar content={content} />
+      <Hero content={content} />
+      <Footer content={content} />
     </div>
   )
 }

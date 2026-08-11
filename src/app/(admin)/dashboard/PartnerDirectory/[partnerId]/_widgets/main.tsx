@@ -21,7 +21,7 @@ import { PARTNERS } from '@/dataCenter/partners'
 import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { PROGRAMS } from '@/dataCenter/programs'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
-import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import { usePartnerBaselines, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 import { usePersistedState } from '@/lib/usePersistedState'
@@ -984,7 +984,8 @@ function ReportsTab() {
 
 export function Main({ partnerId }: { partnerId: string }) {
   const router  = useRouter()
-  const partner = PARTNERS.find(p => p.id === partnerId)
+  const [partners] = usePersistedState('partner-directory.partners', PARTNERS)
+  const partner = partners.find(p => p.id === partnerId)
 
   const [activeTab,    setActiveTab]    = useState<Tab>('programs')
   const [assignOpen,   setAssignOpen]   = useState(false)
@@ -999,51 +1000,29 @@ export function Main({ partnerId }: { partnerId: string }) {
   )
 
   // ── ECI — per-partner questions ─────────────────────────────────────────────
-  const [p4Assigned,  setP4Assigned]  = useState(() => !!PARTNER_BASELINES[partnerId])
-  const [p4Questions, setP4Questions] = useState<PartnerP4Question[]>(() =>
-    PARTNER_BASELINES[partnerId]?.questions ?? createDefaultP4Questions()
-  )
-
-  function persistP4(questions: PartnerP4Question[]) {
-    PARTNER_BASELINES[partnerId] = { partnerId, questions }
-  }
+  const { baselines, saveBaseline, removeBaseline } = usePartnerBaselines()
+  const p4Assigned  = !!baselines[partnerId]
+  const p4Questions = baselines[partnerId]?.questions ?? createDefaultP4Questions()
 
   function handleToggleP4Assign(v: boolean) {
-    setP4Assigned(v)
-    if (v) { persistP4(p4Questions) }
-    else { delete PARTNER_BASELINES[partnerId] }
+    if (v) { saveBaseline(partnerId, p4Questions) }
+    else { removeBaseline(partnerId) }
   }
 
   function addP4Question(label: string, desc: string) {
-    setP4Questions(prev => {
-      const next = [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }]
-      persistP4(next)
-      return next
-    })
+    saveBaseline(partnerId, [...p4Questions, { id: `p4_${Date.now()}`, label, desc, active: true }])
   }
 
   function editP4Question(id: string, label: string, desc: string) {
-    setP4Questions(prev => {
-      const next = prev.map(q => q.id !== id ? q : { ...q, label, desc })
-      persistP4(next)
-      return next
-    })
+    saveBaseline(partnerId, p4Questions.map(q => q.id !== id ? q : { ...q, label, desc }))
   }
 
   function deleteP4Question(id: string) {
-    setP4Questions(prev => {
-      const next = prev.filter(q => q.id !== id)
-      persistP4(next)
-      return next
-    })
+    saveBaseline(partnerId, p4Questions.filter(q => q.id !== id))
   }
 
   function toggleP4QuestionActive(id: string) {
-    setP4Questions(prev => {
-      const next = prev.map(q => q.id !== id ? q : { ...q, active: !q.active })
-      persistP4(next)
-      return next
-    })
+    saveBaseline(partnerId, p4Questions.map(q => q.id !== id ? q : { ...q, active: !q.active }))
   }
 
   const assignedIds = useMemo(() => new Set(assignments.map(a => a.interventionId)), [assignments])

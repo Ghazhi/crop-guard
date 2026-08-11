@@ -1,6 +1,6 @@
 'use client'
 
-import { GraduationCap, Calendar, Video } from 'lucide-react'
+import { GraduationCap, Calendar, Video, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { WeeklyContentSection } from './WeeklyContentSection'
@@ -17,6 +17,7 @@ const SECTIONS: { key: SectionKey; icon: React.ElementType; label: string; desc:
 
 export function TrainingConfigShell() {
   const [section, setSection] = usePersistedState<SectionKey>('trainingConfigV2.section', 'content')
+  const [collapsed, setCollapsed] = usePersistedState('trainingConfigV2.navCollapsed', false)
 
   return (
     <div className="flex flex-col gap-4">
@@ -26,17 +27,43 @@ export function TrainingConfigShell() {
           <GraduationCap className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
         </div>
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-gray-900">Training Materials</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900">Training Materials</h2>
+            <button
+              onClick={() => setCollapsed(v => !v)}
+              title={collapsed ? 'Expand' : 'Collapse'}
+              aria-label={collapsed ? 'Expand section navigation' : 'Collapse section navigation'}
+              className="flex w-7 h-7 rounded-lg items-center justify-center border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-colors shrink-0"
+            >
+              {collapsed ? <PanelLeftOpen className="w-3.5 h-3.5" /> : <PanelLeftClose className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           <p className="text-xs text-gray-500">Configure weekly training content, schedules, and sessions</p>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-5 items-start">
         {/* left section nav — same visual pattern as the Check-in Config shell's section rail */}
-        <div className="w-full md:w-56 md:shrink-0 min-w-0">
+        <div className={collapsed ? 'w-full md:w-auto md:shrink-0 min-w-0' : 'w-full md:w-56 md:shrink-0 min-w-0'}>
           <div className="hidden md:flex md:flex-col gap-1">
             {SECTIONS.map(({ key, icon: Icon, label, desc }) => {
               const active = section === key
+              if (collapsed) {
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSection(key)}
+                    title={label}
+                    aria-label={label}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      active ? 'text-white' : 'hover:bg-gray-100 text-gray-400'
+                    }`}
+                    style={active ? { background: 'var(--brand-forest)' } : {}}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                )
+              }
               return (
                 <button
                   key={key}

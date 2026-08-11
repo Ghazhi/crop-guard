@@ -34,8 +34,8 @@ const STAFF_NAV: NavItem[] = [
   // { href: '/dashboard/CheckinConfig',       label: 'Check-in Config',      icon: SlidersHorizontal, locked: false },
   // { href: '/dashboard/TrainingMaterials',   label: 'Training Materials',   icon: GraduationCap,     locked: false },
   { href: '/dashboard/Configuration',       label: 'Configuration',        icon: Settings2,         locked: false },
-  { section: true, label: 'Partners' },
-  { href: '/dashboard/PartnerDirectory',    label: 'Partners',             icon: Handshake,         locked: false },
+  // { section: true, label: 'Partners' },
+  // { href: '/dashboard/PartnerDirectory',    label: 'Partners',             icon: Handshake,         locked: false },
 ]
 
 const PARTNER_NAV: NavItem[] = [

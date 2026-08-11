@@ -1,9 +1,9 @@
 import type { TrainingBundle, TrainingTemplate, TrainingMaterial } from '@/app/(admin)/dashboard/TrainingMaterials/_logics/interface'
 
 export const TRAINING_BUNDLES: TrainingBundle[] = [
-  { id: 'bun-001', title: 'Maize Season 2026A Training',   cropType: 'maize',   season: '2026A', description: 'Weekly agronomy training content for maize farmers.',   isActive: true, totalWeeks: 12 },
-  { id: 'bun-002', title: 'Soybean WAVE Training',          cropType: 'soybean', season: '2026A', description: 'Weekly agronomy training content for the WAVE soybean cohort.', isActive: true, totalWeeks: 10 },
-  { id: 'bun-003', title: 'Cocoa Sustainability Training',  cropType: 'cocoa',   season: '2025/2026', description: 'Weekly training on cocoa sustainability and traceability practices.', isActive: true, totalWeeks: 8 },
+  { id: 'bun-001', title: 'Maize Season 2026A Training',   cropType: 'maize',   season: '2026A', description: 'Weekly agronomy training content for maize farmers.',   isActive: true, totalWeeks: 12, currentWeek: 3 },
+  { id: 'bun-002', title: 'Soybean WAVE Training',          cropType: 'soybean', season: '2026A', description: 'Weekly agronomy training content for the WAVE soybean cohort.', isActive: true, totalWeeks: 10, currentWeek: 1 },
+  { id: 'bun-003', title: 'Cocoa Sustainability Training',  cropType: 'cocoa',   season: '2025/2026', description: 'Weekly training on cocoa sustainability and traceability practices.', isActive: true, totalWeeks: 8, currentWeek: 0 },
 ]
 
 export const TRAINING_TEMPLATES: TrainingTemplate[] = [

@@ -1,20 +1,24 @@
 'use client'
 
 import { usePersistedState } from '@/lib/usePersistedState'
-import { Settings2, User, ClipboardCheck, GraduationCap, Users } from 'lucide-react'
+import { Settings2, User, Users, Palette, GitBranch, Building2, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MyProfileTab } from './MyProfileTab'
-import { CheckinConfigShell } from './checkin/CheckinConfigShell'
-import { TrainingConfigShell } from './training/TrainingConfigShell'
 import { UserManagementTab } from './UserManagementTab'
+import { OrganizationsSection } from './organizations/OrganizationsSection'
+import { ActivitiesShell } from './activities/ActivitiesShell'
+import { BrandingConfigShell } from './branding/BrandingConfigShell'
+import { WorkflowStagesSection } from './workflow/WorkflowStagesSection'
 
-type ConfigTab = 'profile' | 'checkin' | 'training' | 'users'
+type ConfigTab = 'profile' | 'users' | 'organizations' | 'activities' | 'branding' | 'workflow'
 
 const CONFIG_TABS: { id: ConfigTab; Icon: React.ElementType; label: string }[] = [
-  { id: 'profile',  Icon: User,           label: 'My Profile' },
-  { id: 'checkin',  Icon: ClipboardCheck, label: 'Check-in Config' },
-  { id: 'training', Icon: GraduationCap,  label: 'Training Materials' },
-  { id: 'users',    Icon: Users,          label: 'User Management' },
+  { id: 'profile',       Icon: User,       label: 'My Profile' },
+  { id: 'users',         Icon: Users,      label: 'User Management' },
+  { id: 'organizations', Icon: Building2,  label: 'Organizations' },
+  { id: 'activities',    Icon: Zap,        label: 'Activities' },
+  { id: 'branding',      Icon: Palette,    label: 'Branding' },
+  { id: 'workflow',      Icon: GitBranch,  label: 'Workflow Stages' },
 ]
 
 export function Main() {
@@ -53,9 +57,11 @@ export function Main() {
       </div>
 
       {tab === 'profile' && <MyProfileTab />}
-      {tab === 'checkin' && <CheckinConfigShell />}
-      {tab === 'training' && <TrainingConfigShell />}
       {tab === 'users' && <UserManagementTab />}
+      {tab === 'organizations' && <OrganizationsSection />}
+      {tab === 'activities' && <ActivitiesShell />}
+      {tab === 'branding' && <BrandingConfigShell />}
+      {tab === 'workflow' && <WorkflowStagesSection />}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckSquare, Sprout, Layers, ClipboardCheck, Calendar, Users } from 'lucide-react'
+import { CheckSquare, Sprout, Layers, ClipboardCheck, Calendar, Users, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { CropsSection } from './CropsSection'
@@ -15,12 +15,13 @@ const SECTIONS: { key: SectionKey; icon: React.ElementType; label: string; desc:
   { key: 'crops',     icon: Sprout,         label: 'Crops',                     desc: 'Add and manage crop types'                                 },
   { key: 'baselines', icon: Layers,         label: 'Baseline Templates',        desc: 'Create reusable baseline assessments with 4 pillars + ECI' },
   { key: 'checkins',  icon: ClipboardCheck, label: 'Weekly Check-in Templates', desc: 'Create multi-week check-in templates by crop & season'    },
-  { key: 'schedules', icon: Calendar,       label: 'Cohort Schedules',          desc: 'Set start mode, link templates, pause schedules'           },
-  { key: 'overrides', icon: Users,          label: 'Farmer Overrides',          desc: 'Pause check-ins for specific farmers within a cohort'      },
+  { key: 'schedules', icon: Calendar,       label: 'Check-in Schedule',         desc: 'Set start mode, link templates, pause schedules'           },
+  { key: 'overrides', icon: Users,          label: 'Check-in Override',         desc: 'Pause check-ins for specific farmers within a cohort'      },
 ]
 
 export function CheckinConfigShell() {
   const [section, setSection] = usePersistedState<SectionKey>('checkinConfigV2.section', 'baselines')
+  const [collapsed, setCollapsed] = usePersistedState('checkinConfigV2.navCollapsed', false)
 
   return (
     <div className="flex flex-col gap-4">
@@ -30,17 +31,43 @@ export function CheckinConfigShell() {
           <CheckSquare className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
         </div>
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-gray-900">Check-in Configuration</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900">Check-in Configuration</h2>
+            <button
+              onClick={() => setCollapsed(v => !v)}
+              title={collapsed ? 'Expand' : 'Collapse'}
+              aria-label={collapsed ? 'Expand section navigation' : 'Collapse section navigation'}
+              className="flex w-7 h-7 rounded-lg items-center justify-center border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-colors shrink-0"
+            >
+              {collapsed ? <PanelLeftOpen className="w-3.5 h-3.5" /> : <PanelLeftClose className="w-3.5 h-3.5" />}
+            </button>
+          </div>
           <p className="text-xs text-gray-500">Configure baseline templates, weekly check-in templates, cohort schedules, and farmer overrides</p>
         </div>
       </div>
 
       <div className="flex flex-col md:flex-row gap-5 items-start">
         {/* left section nav — same visual pattern as the standalone CheckinConfig page's section rail */}
-        <div className="w-full md:w-56 md:shrink-0 min-w-0">
+        <div className={collapsed ? 'w-full md:w-auto md:shrink-0 min-w-0' : 'w-full md:w-56 md:shrink-0 min-w-0'}>
           <div className="hidden md:flex md:flex-col gap-1">
             {SECTIONS.map(({ key, icon: Icon, label, desc }) => {
               const active = section === key
+              if (collapsed) {
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSection(key)}
+                    title={label}
+                    aria-label={label}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                      active ? 'text-white' : 'hover:bg-gray-100 text-gray-400'
+                    }`}
+                    style={active ? { background: 'var(--brand-forest)' } : {}}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </button>
+                )
+              }
               return (
                 <button
                   key={key}

@@ -65,9 +65,12 @@ export function FarmerOverridesSection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h3 className="text-sm font-bold text-gray-900">Farmer Overrides</h3>
-        <p className="text-xs text-gray-400">Pause check-ins for specific farmers within a cohort</p>
+      <div className="flex items-center gap-2">
+        <Users className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">Check-in Override</h3>
+          <p className="text-xs text-gray-400">Pause check-ins for specific farmers within a cohort</p>
+        </div>
       </div>
 
       {/* Step 1 */}

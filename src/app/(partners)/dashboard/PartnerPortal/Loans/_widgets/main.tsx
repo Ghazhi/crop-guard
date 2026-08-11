@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   ChevronDown, ChevronUp, Package, AlertCircle, UserPlus,
   Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle,
@@ -59,10 +59,20 @@ function EnrolSheet({ open, onClose, intervention, partnerCohorts }: {
   const [tab,         setTab]        = useState<EnrolTab>('eligible')
   const [search,      setSearch]     = useState('')
   const [selected,    setSelected]   = useState<Set<string>>(new Set())
-  const [entries,     setEntries]    = useState<EnrolledEntry[]>([])
-  const [appliedIds,  setAppliedIds] = useState<Set<string>>(new Set())
-  const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set())
-  const [suspended,   setSuspended]  = useState<Set<string>>(new Set())
+  const enrollKey = intervention ? `op-enroll.${intervention.id}` : 'op-enroll._none'
+  const [entries,        setEntries]        = usePersistedState<EnrolledEntry[]>(`${enrollKey}.entries`, [])
+  const [appliedIdList,  setAppliedIdList]  = usePersistedState<string[]>(`${enrollKey}.applied`, [])
+  const [rejectedIdList, setRejectedIdList] = usePersistedState<string[]>(`${enrollKey}.rejected`, [])
+  const [suspendedList,  setSuspendedList]  = usePersistedState<string[]>(`${enrollKey}.suspended`, [])
+  const appliedIds  = useMemo(() => new Set(appliedIdList), [appliedIdList])
+  const rejectedIds = useMemo(() => new Set(rejectedIdList), [rejectedIdList])
+  const suspended   = useMemo(() => new Set(suspendedList), [suspendedList])
+  const setAppliedIds  = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setAppliedIdList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
+  const setRejectedIds = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setRejectedIdList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
+  const setSuspended   = (v: Set<string> | ((prev: Set<string>) => Set<string>)) =>
+    setSuspendedList(prev => [...(typeof v === 'function' ? v(new Set(prev)) : v)])
   const [saving,      setSaving]     = useState(false)
   const [filterProg,  setFilterProg] = useState('')
   const [filterCohort, setFilterCohort] = useState('')

@@ -1,8 +1,8 @@
 import type { AgentSummary, CohortRow, FarmerPreview } from '@/app/(admin)/dashboard/AgentAssignment/_logics/interface'
 
 export const AGENTS: AgentSummary[] = [
-  { id: 'ag-001', name: 'Kwame Asante', phone: '0241234567', regions: ['AH'],        cohortCount: 2, farmerCount: 3, checkinCount: 2, capacity: 50 },
-  { id: 'ag-002', name: 'Abdul Razak',  phone: '0200000010', regions: ['AH', 'SA'], cohortCount: 3, farmerCount: 3, checkinCount: 0, capacity: 50 },
+  { id: 'ag-001', name: 'Kwame Asante', phone: '0241234567', regions: ['AH'],        cohortCount: 2, farmerCount: 3, checkinCount: 2, capacity: 50, partnerId: 'p-001', partnerName: 'Fidelity Bank Ghana' },
+  { id: 'ag-002', name: 'Abdul Razak',  phone: '0200000010', regions: ['AH', 'SA'], cohortCount: 3, farmerCount: 3, checkinCount: 0, capacity: 50, partnerId: 'p-003', partnerName: 'Ghana Rural Bank' },
 ]
 
 export const COHORTS: CohortRow[] = [

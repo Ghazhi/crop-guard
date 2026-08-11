@@ -15,6 +15,7 @@ export interface MultiSelectTemplateProps {
   value: string[]
   onChange: (vals: string[]) => void
   isRequired?: boolean
+  isDisabled?: boolean
   placeholder?: string
   className?: string
   /** Hides the row of removable chips below the field — the closed control already shows "N selected" */
@@ -27,6 +28,7 @@ export function MultiSelectTemplate({
   value,
   onChange,
   isRequired,
+  isDisabled,
   placeholder = 'Select…',
   className,
   hideChips,
@@ -60,10 +62,12 @@ export function MultiSelectTemplate({
       <div ref={ref} className="relative">
         <button
           type="button"
+          disabled={isDisabled}
           onClick={() => setOpen(v => !v)}
           className={cn(
             'w-full h-10 text-sm px-3 rounded-lg border bg-white flex items-center justify-between transition-all',
             'hover:border-gray-300 focus:outline-none',
+            'disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed disabled:hover:border-gray-200',
             open
               ? 'border-(--brand-green) ring-2 ring-(--brand-green)/20'
               : 'border-gray-200',
@@ -75,7 +79,7 @@ export function MultiSelectTemplate({
           <ChevronDown className={cn('w-4 h-4 text-gray-400 transition-transform', open && 'rotate-180')} />
         </button>
 
-        {open && (
+        {open && !isDisabled && (
           <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {options.length === 0 && (
               <p className="px-3 py-2.5 text-sm text-gray-400 text-center">No options available</p>

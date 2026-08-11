@@ -14,19 +14,24 @@ import { usePersistedState } from '@/lib/usePersistedState'
 import { cn } from '@/lib/utils'
 import { getFarmers, getProgramOptions } from '../../FarmersRegistry/_logics/functions'
 import type { Farmer, ProgramOption } from '../../FarmersRegistry/_logics/interface'
+import { DEFAULT_WORKFLOW_STAGES, WORKFLOW_STAGES_KEY } from '../../Configuration/_logics/workflowConfig'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const WORKFLOW_STAGES = [
-  { stage: 1, name: 'Submitted',      icon: FileText },
-  { stage: 2, name: 'Consent',        icon: UserCheck },
-  { stage: 3, name: 'Under Review',   icon: Clock },
-  { stage: 4, name: 'Credit Review',  icon: CreditCard },
-  { stage: 5, name: 'Final Approval', icon: Check },
-  { stage: 6, name: 'Active',         icon: Check },
-  { stage: 7, name: 'Delivered',      icon: Truck },
-  { stage: 8, name: 'Repayment',      icon: PackageCheck },
-]
+// icons aren't part of the admin-editable config — keep this hardcoded map by stage number
+const WORKFLOW_STAGE_ICONS: Record<number, React.ElementType> = {
+  1: FileText, 2: UserCheck, 3: Clock, 4: CreditCard, 5: Check, 6: Check, 7: Truck, 8: PackageCheck,
+}
+
+function useWorkflowStages() {
+  const [stages] = usePersistedState(WORKFLOW_STAGES_KEY, DEFAULT_WORKFLOW_STAGES)
+  return useMemo(
+    () => [...stages]
+      .sort((a, b) => a.stage - b.stage)
+      .map(s => ({ stage: s.stage, name: s.name, icon: WORKFLOW_STAGE_ICONS[s.stage] ?? Clock })),
+    [stages],
+  )
+}
 
 const STATUS_VARIANT: Record<string, 'success' | 'info' | 'neutral'> = {
   active:    'success',
@@ -44,6 +49,7 @@ function enrolledDate(farmerId: string, registeredAt?: string) {
 // ─── Stage tracker ────────────────────────────────────────────────────────────
 
 function StageTracker({ current }: { current: number }) {
+  const WORKFLOW_STAGES = useWorkflowStages()
   return (
     <div className="flex items-start gap-0 overflow-x-auto pb-2">
       {WORKFLOW_STAGES.map((s, idx) => {
@@ -90,6 +96,7 @@ function EnrollmentDetailSheet({
   onAdvance: (farmer: Farmer) => void
   onDecline: (farmer: Farmer) => void
 }) {
+  const WORKFLOW_STAGES = useWorkflowStages()
   const enr = farmer?.enrollment ?? null
   const canAct = !!enr && enr.status === 'active' && enr.currentStage < WORKFLOW_STAGES.length
 
@@ -155,6 +162,7 @@ function EnrollmentDetailSheet({
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export function Main() {
+  const WORKFLOW_STAGES = useWorkflowStages()
   const [farmers, setFarmers] = usePersistedState<Farmer[]>('ew-farmers', [])
   const [programs, setPrograms] = useState<ProgramOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -193,7 +201,7 @@ export function Main() {
   const stageStats = useMemo(() => WORKFLOW_STAGES.map(s => ({
     ...s,
     count: enrolled.filter(f => (f.enrollment?.currentStage ?? 0) === s.stage).length,
-  })), [enrolled])
+  })), [enrolled, WORKFLOW_STAGES])
 
   const visible = useMemo(() => enrolled.filter(f => {
     const enr = f.enrollment!

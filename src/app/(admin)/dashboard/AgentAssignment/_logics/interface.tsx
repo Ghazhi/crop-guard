@@ -7,6 +7,8 @@ export interface AgentSummary {
   farmerCount: number
   checkinCount: number
   capacity:    number
+  partnerId?:   string | null
+  partnerName?: string | null
 }
 
 export interface CohortAgent {

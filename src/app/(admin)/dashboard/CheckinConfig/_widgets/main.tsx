@@ -25,7 +25,7 @@ import {
 import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { PARTNERS } from '@/dataCenter/partners'
-import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import { usePartnerBaselines, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
 import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
 
 
@@ -759,48 +759,33 @@ export function Main() {
 
   // ── Baseline Activities: per-partner P4 view ─────────────────────────────────
   const [baselinePartnerId, setBaselinePartnerId] = useState('')
-  const [partnerP4Questions, setPartnerP4Questions] = useState<PartnerP4Question[]>([])
+  const { baselines: partnerBaselines, saveBaseline: savePartnerBaseline } = usePartnerBaselines()
+  const partnerP4Questions = baselinePartnerId
+    ? (partnerBaselines[baselinePartnerId]?.questions ?? createDefaultP4Questions())
+    : []
 
   function handleBaselinePartnerChange(id: string) {
     setBaselinePartnerId(id)
-    setPartnerP4Questions(id ? (PARTNER_BASELINES[id]?.questions ?? createDefaultP4Questions()) : [])
-  }
-
-  function persistPartnerP4(questions: PartnerP4Question[]) {
-    if (!baselinePartnerId) return
-    PARTNER_BASELINES[baselinePartnerId] = { partnerId: baselinePartnerId, questions }
   }
 
   function addPartnerP4Question(label: string, desc: string) {
-    setPartnerP4Questions(prev => {
-      const next = [...prev, { id: `p4_${Date.now()}`, label, desc, active: true }]
-      persistPartnerP4(next)
-      return next
-    })
+    if (!baselinePartnerId) return
+    savePartnerBaseline(baselinePartnerId, [...partnerP4Questions, { id: `p4_${Date.now()}`, label, desc, active: true }])
   }
 
   function editPartnerP4Question(id: string, label: string, desc: string) {
-    setPartnerP4Questions(prev => {
-      const next = prev.map(q => q.id !== id ? q : { ...q, label, desc })
-      persistPartnerP4(next)
-      return next
-    })
+    if (!baselinePartnerId) return
+    savePartnerBaseline(baselinePartnerId, partnerP4Questions.map(q => q.id !== id ? q : { ...q, label, desc }))
   }
 
   function deletePartnerP4Question(id: string) {
-    setPartnerP4Questions(prev => {
-      const next = prev.filter(q => q.id !== id)
-      persistPartnerP4(next)
-      return next
-    })
+    if (!baselinePartnerId) return
+    savePartnerBaseline(baselinePartnerId, partnerP4Questions.filter(q => q.id !== id))
   }
 
   function togglePartnerP4QuestionActive(id: string) {
-    setPartnerP4Questions(prev => {
-      const next = prev.map(q => q.id !== id ? q : { ...q, active: !q.active })
-      persistPartnerP4(next)
-      return next
-    })
+    if (!baselinePartnerId) return
+    savePartnerBaseline(baselinePartnerId, partnerP4Questions.map(q => q.id !== id ? q : { ...q, active: !q.active }))
   }
 
   // ── crop management ──────────────────────────────────────────────────────────

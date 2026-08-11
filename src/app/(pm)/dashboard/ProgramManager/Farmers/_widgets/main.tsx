@@ -27,7 +27,7 @@ import { PaginationBar } from '@/customComponents/PaginationBar'
 import { getFarmers, getProgramOptions } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/functions'
 import type { Farmer, FriZone, ProgramOption } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import { PM_PROGRAM_IDS, PM_PROGRAMS, isPmProgram } from '@/dataCenter/pmScope'
-import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
+import { useCropOptions } from '@/dataCenter/useCropOptions'
 
 // ── PM scoping ─────────────────────────────────────────────────────────────────
 // Keep unassigned farmers (needed for enroll flows) plus farmers enrolled in one
@@ -91,11 +91,6 @@ const REGION_OPTIONS = [
   { value: 'ahafo',        label: 'Ahafo'        },
   { value: 'western_north',label: 'Western North'},
 ]
-
-function useCropOptions() {
-  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
-  return useMemo(() => cropOptions(crops), [crops])
-}
 
 const GENDER_OPTIONS = [
   { value: 'male',             label: 'Male'             },

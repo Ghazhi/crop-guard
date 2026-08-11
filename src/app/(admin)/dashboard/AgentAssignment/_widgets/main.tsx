@@ -13,6 +13,9 @@ import { ConfirmModal } from '@/customComponents/ConfirmModal'
 
 import { getAgents, getCohorts, getPrograms, getFarmersByCohort, getFarmersByAgent } from '../_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { SelectTemplate } from '@/customComponents/SelectTemplate'
+import { InputTemplate } from '@/customComponents/InputTemplate'
+import { PARTNERS } from '@/dataCenter/partners'
 import type { AgentSummary, CohortRow, ProgramOption, FarmerPreview } from '../_logics/interface'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -391,9 +394,9 @@ function BulkAssignSheet({ open, onClose, agents, cohorts }: {
 
 // ── Agent Card ────────────────────────────────────────────────────────────────
 
-function AgentCard({ agent, isActive, onFilter, onViewFarmers }: {
+function AgentCard({ agent, isActive, onFilter, onViewFarmers, onAssignOrg }: {
   agent: AgentSummary; isActive: boolean
-  onFilter: () => void; onViewFarmers: () => void
+  onFilter: () => void; onViewFarmers: () => void; onAssignOrg: () => void
 }) {
   const pct   = loadPct(agent.farmerCount, agent.capacity)
   const color = loadColor(pct)
@@ -408,9 +411,20 @@ function AgentCard({ agent, isActive, onFilter, onViewFarmers }: {
     >
       <div className="flex items-start gap-3">
         <PersonAvatar name={agent.name} size={40} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm leading-tight" style={{ color: 'var(--brand-forest)' }}>{agent.name}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{agent.regions.join(', ')}</p>
+          {agent.regions.length > 0 && (
+            <p className="text-xs text-gray-400 mt-0.5">{agent.regions.join(', ')}</p>
+          )}
+          <button
+            onClick={e => { e.stopPropagation(); onAssignOrg() }}
+            className="mt-1 inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border transition-colors"
+            style={agent.partnerName
+              ? { color: 'var(--brand-forest)', borderColor: 'var(--brand-pale)', background: 'var(--brand-mint)' }
+              : { color: '#9CA3AF', borderColor: '#E5E7EB' }}
+          >
+            {agent.partnerName ?? 'No organization'}
+          </button>
         </div>
       </div>
 
@@ -443,6 +457,131 @@ function AgentCard({ agent, isActive, onFilter, onViewFarmers }: {
   )
 }
 
+// ── Create Agent sheet ────────────────────────────────────────────────────────
+// Agents belong to an organization — the organization must be chosen first;
+// the rest of the form stays locked until it is, since an agent can't exist
+// independent of the organization it works for.
+
+function CreateAgentSheet({ open, onClose, onSave }: {
+  open: boolean
+  onClose: () => void
+  onSave: (agent: AgentSummary) => void
+}) {
+  const [partnerId, setPartnerId] = useState('')
+  const [name,       setName]     = useState('')
+  const [phone,      setPhone]    = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPartnerId(''); setName(''); setPhone('')
+  }, [open])
+
+  const partner = PARTNERS.find(p => p.id === partnerId)
+  const canSave = !!partner && name.trim() && phone.trim()
+
+  function handleSave() {
+    if (!canSave || !partner) return
+    onSave({
+      id: `ag-${Date.now()}`,
+      name: name.trim(),
+      phone: phone.trim(),
+      regions: [],
+      cohortCount: 0, farmerCount: 0, checkinCount: 0, capacity: 50,
+      partnerId: partner.id, partnerName: partner.name,
+    })
+    onClose()
+  }
+
+  return (
+    <SheetTemplate
+      open={open}
+      onClose={onClose}
+      title="New Agent"
+      footer={
+        <>
+          <ButtonTemplate variant="outline" label="Cancel" onClick={onClose} />
+          <ButtonTemplate variant="primary" label="Add Agent" isDisabled={!canSave} onClick={handleSave} />
+        </>
+      }
+    >
+      <div className="px-6 py-5 flex flex-col gap-4">
+        <SelectTemplate
+          label="Organization" isRequired
+          placeholder="Select an organization…"
+          options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
+          value={partnerId}
+          onChange={e => setPartnerId(e.target.value)}
+        />
+        {!partnerId && (
+          <p className="text-xs text-gray-400 -mt-2">Every agent belongs to an organization — choose one to continue.</p>
+        )}
+        <InputTemplate
+          label="Full Name" isRequired isDisabled={!partnerId}
+          placeholder="e.g. Ama Boateng"
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <InputTemplate
+          label="Phone" isRequired isDisabled={!partnerId}
+          placeholder="e.g. 0241234567"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+        />
+      </div>
+    </SheetTemplate>
+  )
+}
+
+// ── Assign Organization sheet ────────────────────────────────────────────────
+
+function AssignOrgSheet({ open, onClose, agent, onSave }: {
+  open: boolean; onClose: () => void
+  agent: AgentSummary | null
+  onSave: (agentId: string, partnerId: string | null, partnerName: string | null) => void
+}) {
+  const [partnerId, setPartnerId] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPartnerId(agent?.partnerId ?? '')
+  }, [open, agent])
+
+  if (!agent) return null
+
+  function handleSave() {
+    const partner = PARTNERS.find(p => p.id === partnerId)
+    onSave(agent!.id, partner?.id ?? null, partner?.name ?? null)
+    onClose()
+  }
+
+  return (
+    <SheetTemplate
+      open={open}
+      onClose={onClose}
+      title={`${agent.name} — Organization`}
+      size="md"
+      footer={
+        <>
+          <ButtonTemplate variant="outline" label="Cancel" onClick={onClose} />
+          <ButtonTemplate variant="primary" label="Save" onClick={handleSave} />
+        </>
+      }
+    >
+      <div className="px-6 py-5">
+        <SelectTemplate
+          label="Organization"
+          placeholder="No organization"
+          options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
+          value={partnerId}
+          onChange={e => setPartnerId(e.target.value)}
+        />
+      </div>
+    </SheetTemplate>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function Main() {
@@ -467,6 +606,18 @@ export function Main() {
   const [bulkOpen,        setBulkOpen]        = useState(false)
   const [focusCohort,     setFocusCohort]     = useState<CohortRow | null>(null)
   const [focusAgent,      setFocusAgent]      = useState<AgentSummary | null>(null)
+  const [assignOrgOpen,   setAssignOrgOpen]   = useState(false)
+  const [assignOrgAgent,  setAssignOrgAgent]  = useState<AgentSummary | null>(null)
+  const [createAgentOpen, setCreateAgentOpen] = useState(false)
+
+  function handleAssignOrg(agentId: string, partnerId: string | null, partnerName: string | null) {
+    setAgents(prev => prev.map(a => a.id === agentId ? { ...a, partnerId, partnerName } : a))
+  }
+
+  function handleCreateAgent(agent: AgentSummary) {
+    setAgents(prev => [...prev, agent])
+    toast.success(`${agent.name} added to ${agent.partnerName}`)
+  }
 
   useEffect(() => {
     Promise.all([getAgents(), getCohorts(), getPrograms()]).then(([a, c, p]) => {
@@ -558,6 +709,8 @@ export function Main() {
           />
           <ButtonTemplate label="Bulk Assign" leftIcon={<UserCog className="w-3.5 h-3.5" />}
             variant="outline" onClick={() => setBulkOpen(true)} />
+          <ButtonTemplate label="New Agent" leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+            variant="primary" onClick={() => setCreateAgentOpen(true)} />
         </div>
       </div>
 
@@ -592,7 +745,8 @@ export function Main() {
                 <AgentCard agent={a}
                   isActive={filterAgent === a.id}
                   onFilter={() => setFilterAgent(prev => prev === a.id ? '' : a.id)}
-                  onViewFarmers={() => { setFocusAgent(a); setAgentFarmOpen(true) }} />
+                  onViewFarmers={() => { setFocusAgent(a); setAgentFarmOpen(true) }}
+                  onAssignOrg={() => { setAssignOrgAgent(a); setAssignOrgOpen(true) }} />
               </div>
             ))}
         </div>
@@ -794,6 +948,14 @@ export function Main() {
       <AgentFarmersSheet
         open={agentFarmOpen} onClose={() => { setAgentFarmOpen(false); setFocusAgent(null) }}
         agent={focusAgent} programs={programs}
+      />
+      <AssignOrgSheet
+        open={assignOrgOpen} onClose={() => { setAssignOrgOpen(false); setAssignOrgAgent(null) }}
+        agent={assignOrgAgent} onSave={handleAssignOrg}
+      />
+      <CreateAgentSheet
+        open={createAgentOpen} onClose={() => setCreateAgentOpen(false)}
+        onSave={handleCreateAgent}
       />
       <BulkAssignSheet
         open={bulkOpen} onClose={() => setBulkOpen(false)}

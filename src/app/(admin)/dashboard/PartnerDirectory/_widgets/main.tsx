@@ -15,14 +15,14 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter,
 } from '@/components/ui/sheet'
 import { PARTNERS } from '@/dataCenter/partners'
-import type { PartnerStatus } from '@/dataCenter/partners'
-import { PARTNER_BASELINES, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
-import type { PartnerP4Question } from '@/dataCenter/partnerBaselines'
+import type { PartnerStatus, PartnerCategory } from '@/dataCenter/partners'
+import { usePartnerBaselines, createDefaultP4Questions } from '@/dataCenter/partnerBaselines'
+import type { PartnerP4Question, PartnerBaseline } from '@/dataCenter/partnerBaselines'
 import { cn } from '@/lib/utils'
 import { usePersistedState } from '@/lib/usePersistedState'
 
 interface Partner {
-  id: string; name: string; type: string; region: string
+  id: string; name: string; type: string; category: PartnerCategory; region: string
   contact: string; email: string; status: PartnerStatus
   since: string; programs: number
 }
@@ -33,16 +33,17 @@ const INITIAL_PARTNERS: Partner[] = PARTNERS.map(p => ({
 }))
 
 const PARTNER_TYPES = ['Commercial Bank', 'Development Bank', 'Rural Bank', 'MFI', 'NGO / Donor']
+const PARTNER_CATEGORIES: PartnerCategory[] = ['Implementing FBO', 'Partner']
 const REGIONS       = ['Greater Accra', 'Ashanti', 'Northern', 'Upper East', 'Upper West', 'Brong Ahafo', 'Kumasi', 'National']
 
 const STEPS = ['Organisation', 'Primary Contact', 'Review']
 
 interface AddForm {
-  name: string; type: string; region: string; website: string
+  name: string; type: string; category: PartnerCategory | ''; region: string; website: string
   contact: string; email: string; phone: string; role: string
 }
 
-const EMPTY_FORM: AddForm = { name: '', type: '', region: '', website: '', contact: '', email: '', phone: '', role: '' }
+const EMPTY_FORM: AddForm = { name: '', type: '', category: '', region: '', website: '', contact: '', email: '', phone: '', role: '' }
 
 function statusCls(s: PartnerStatus) {
   if (s === 'Active')  return 'bg-green-50 text-green-700 border-green-200'
@@ -104,9 +105,10 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
   function validate(): boolean {
     const next: typeof errors = {}
     if (step === 0) {
-      if (!form.name)   next.name   = 'Organisation name is required'
-      if (!form.type)   next.type   = 'Please select a partner type'
-      if (!form.region) next.region = 'Please select a region'
+      if (!form.name)     next.name     = 'Organisation name is required'
+      if (!form.type)     next.type     = 'Please select a partner type'
+      if (!form.category) next.category = 'Please select a category'
+      if (!form.region)   next.region   = 'Please select a region'
     } else if (step === 1) {
       if (!form.contact) next.contact = 'Contact name is required'
       if (!form.email)   next.email   = 'Email address is required'
@@ -118,11 +120,13 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
   function handleNext() { if (validate()) setStep(s => s + 1) }
 
   function handleSave() {
+    if (!form.category) return
     const now = new Date().toISOString().slice(0, 7)
     onSave({
       id:       `p-${Date.now()}`,
       name:     form.name,
       type:     form.type,
+      category: form.category,
       region:   form.region,
       contact:  form.contact,
       email:    form.email,
@@ -146,7 +150,7 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <SheetTitle>Add Partner</SheetTitle>
+          <SheetTitle>Add Organization</SheetTitle>
           <SheetDescription>Register a new partner organisation</SheetDescription>
 
           {/* Step indicator */}
@@ -175,6 +179,9 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
               </Field>
               <Field label="Partner Type" error={errors.type}>
                 <Select value={form.type} onChange={set('type')} options={PARTNER_TYPES} placeholder="Select type…" error={errors.type} />
+              </Field>
+              <Field label="Category" error={errors.category}>
+                <Select value={form.category} onChange={set('category')} options={PARTNER_CATEGORIES} placeholder="Select category…" error={errors.category} />
               </Field>
               <Field label="Region" error={errors.region}>
                 <Select value={form.region} onChange={set('region')} options={REGIONS} placeholder="Select region…" error={errors.region} />
@@ -209,9 +216,10 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
                   <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Organisation</p>
                 </div>
                 <div className="px-4 py-3 space-y-2 text-sm">
-                  <Row label="Name"   value={form.name} />
-                  <Row label="Type"   value={form.type} />
-                  <Row label="Region" value={form.region} />
+                  <Row label="Name"     value={form.name} />
+                  <Row label="Type"     value={form.type} />
+                  <Row label="Category" value={form.category} />
+                  <Row label="Region"   value={form.region} />
                   {form.website && <Row label="Website" value={form.website} />}
                 </div>
               </div>
@@ -248,7 +256,7 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
             <button onClick={handleSave}
               className="flex-1 h-10 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--brand-forest)' }}>
-              Save Partner
+              Save Organization
             </button>
           )}
         </SheetFooter>
@@ -319,8 +327,9 @@ interface FarmersModal {
   fromIntervention?: boolean
 }
 
-function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline }: {
-  partner: Partner | null; onClose: () => void; onRemove: (p: Partner) => void; onEdit: (p: Partner) => void
+function ViewPartnerSheet({ partner, baselines, onClose, onRemove, onEdit, onManageBaseline }: {
+  partner: Partner | null; baselines: Record<string, PartnerBaseline>
+  onClose: () => void; onRemove: (p: Partner) => void; onEdit: (p: Partner) => void
   onManageBaseline: (p: Partner) => void
 }) {
   const [tab, setTab] = useState<ViewTab>('overview')
@@ -379,7 +388,7 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
               <PersonAvatar name={p.name} size={40} shape="square" />
               <div>
                 <SheetTitle className="text-base">{p.name}</SheetTitle>
-                <SheetDescription>{p.type}</SheetDescription>
+                <SheetDescription>{p.type} · {p.category}</SheetDescription>
               </div>
             </div>
             <ButtonTemplate
@@ -448,11 +457,11 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <Wallet className="w-4 h-4 text-gray-400 shrink-0" />
-                    {PARTNER_BASELINES[p.id] ? (
+                    {baselines[p.id] ? (
                       <div>
                         <p className="text-sm font-medium text-gray-800">ECI assigned</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {PARTNER_BASELINES[p.id].questions.length} question{PARTNER_BASELINES[p.id].questions.length !== 1 ? 's' : ''}
+                          {baselines[p.id].questions.length} question{baselines[p.id].questions.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                     ) : (
@@ -461,7 +470,7 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
                   </div>
                   <button onClick={() => onManageBaseline(p)}
                     className="shrink-0 h-8 px-3 rounded-lg text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-white transition-colors">
-                    {PARTNER_BASELINES[p.id] ? 'Manage' : 'Create'}
+                    {baselines[p.id] ? 'Manage' : 'Create'}
                   </button>
                 </div>
               </div>
@@ -612,7 +621,7 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
             onClick={() => { onClose(); onRemove(p) }}
             className="flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5" /> Remove
+            <Trash2 className="w-3.5 h-3.5" /> Remove Organization
           </button>
           <button onClick={onClose}
             className="flex-1 h-9 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -683,18 +692,20 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit, onManageBaseline
 function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
   partner: Partner | null; open: boolean; onOpenChange: (v: boolean) => void; onSave: (p: Partner) => void
 }) {
-  const [name,    setName]    = useState('')
-  const [type,    setType]    = useState('')
-  const [region,  setRegion]  = useState('')
-  const [contact, setContact] = useState('')
-  const [email,   setEmail]   = useState('')
-  const [status,  setStatus]  = useState<PartnerStatus>('Active')
+  const [name,     setName]     = useState('')
+  const [type,     setType]     = useState('')
+  const [category, setCategory] = useState<PartnerCategory>('Partner')
+  const [region,   setRegion]   = useState('')
+  const [contact,  setContact]  = useState('')
+  const [email,    setEmail]    = useState('')
+  const [status,   setStatus]   = useState<PartnerStatus>('Active')
 
   useEffect(() => {
     if (open && partner) {
       /* eslint-disable react-hooks/set-state-in-effect */
       setName(partner.name)
       setType(partner.type)
+      setCategory(partner.category)
       setRegion(partner.region)
       setContact(partner.contact)
       setEmail(partner.email)
@@ -705,7 +716,7 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
 
   function handleSave() {
     if (!partner || !name.trim()) return
-    onSave({ ...partner, name: name.trim(), type, region, contact, email, status })
+    onSave({ ...partner, name: name.trim(), type, category, region, contact, email, status })
     onOpenChange(false)
   }
 
@@ -713,7 +724,7 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0">
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-100">
-          <SheetTitle>Edit Partner</SheetTitle>
+          <SheetTitle>Edit Organization</SheetTitle>
           <SheetDescription>{partner?.name}</SheetDescription>
         </SheetHeader>
 
@@ -723,6 +734,9 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
           </Field>
           <Field label="Partner Type">
             <Select value={type} onChange={setType} options={PARTNER_TYPES} placeholder="Select type…" />
+          </Field>
+          <Field label="Category">
+            <Select value={category} onChange={v => setCategory(v as PartnerCategory)} options={PARTNER_CATEGORIES} placeholder="Select category…" />
           </Field>
           <Field label="Region">
             <Select value={region} onChange={setRegion} options={REGIONS} placeholder="Select region…" />
@@ -756,9 +770,10 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
 
 // ── Create ECI Sheet ───────────────────────────────────────────────────────────
 
-function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, onSaved }: {
+function CreateBaselineSheet({ open, onOpenChange, partners, baselines, initialPartnerId, onSave }: {
   open: boolean; onOpenChange: (v: boolean) => void; partners: Partner[]
-  initialPartnerId?: string; onSaved: (partnerId: string) => void
+  baselines: Record<string, PartnerBaseline>
+  initialPartnerId?: string; onSave: (partnerId: string, questions: PartnerP4Question[]) => void
 }) {
   const [partnerId,  setPartnerId]  = useState('')
   const [questions,  setQuestions]  = useState<PartnerP4Question[]>([])
@@ -771,14 +786,14 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
     /* eslint-disable react-hooks/set-state-in-effect */
     const pid = initialPartnerId ?? ''
     setPartnerId(pid)
-    setQuestions(pid ? (PARTNER_BASELINES[pid]?.questions ?? createDefaultP4Questions()) : [])
+    setQuestions(pid ? (baselines[pid]?.questions ?? createDefaultP4Questions()) : [])
     setAdding(false); setNewLabel(''); setNewDesc('')
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [open, initialPartnerId])
+  }, [open, initialPartnerId, baselines])
 
   function handlePartnerChange(id: string) {
     setPartnerId(id)
-    setQuestions(id ? (PARTNER_BASELINES[id]?.questions ?? createDefaultP4Questions()) : [])
+    setQuestions(id ? (baselines[id]?.questions ?? createDefaultP4Questions()) : [])
   }
 
   function submitAdd() {
@@ -793,13 +808,12 @@ function CreateBaselineSheet({ open, onOpenChange, partners, initialPartnerId, o
 
   function handleSave() {
     if (!partnerId) return
-    PARTNER_BASELINES[partnerId] = { partnerId, questions }
-    onSaved(partnerId)
+    onSave(partnerId, questions)
     onOpenChange(false)
   }
 
   const selectedPartner = partners.find(p => p.id === partnerId)
-  const alreadyHasBaseline = !!(partnerId && PARTNER_BASELINES[partnerId])
+  const alreadyHasBaseline = !!(partnerId && baselines[partnerId])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -912,8 +926,7 @@ export function Main() {
   const [baselinePartnerFilter, setBaselinePartnerFilter] = useState('')
   const [baselineSheetOpen,     setBaselineSheetOpen]     = useState(false)
   const [baselineSheetPartnerId, setBaselineSheetPartnerId] = useState<string | undefined>(undefined)
-  // bumped whenever a baseline is saved, to force a re-render of rows/badges reading the module-level store
-  const [, setBaselineVersion] = useState(0)
+  const { baselines, saveBaseline } = usePartnerBaselines()
 
   const activeFilterCount = [typeFilter, statusFilter, baselinePartnerFilter].filter(Boolean).length
   const types     = [...new Set(partners.map(p => p.type))]
@@ -951,6 +964,10 @@ export function Main() {
       render: v => <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700 whitespace-nowrap">{String(v)}</span>,
     },
     {
+      key: 'category', label: 'Category',
+      render: v => <BadgeTemplate label={String(v)} variant={v === 'Implementing FBO' ? 'info' : 'neutral'} size="sm" />,
+    },
+    {
       key: 'contact', label: 'Primary Contact',
       render: (v, p) => (
         <>
@@ -981,7 +998,7 @@ export function Main() {
       key: 'id', id: 'p4baseline', label: 'ECI',
       render: (_, p) => (
         <div className="text-center">
-          {PARTNER_BASELINES[p.id] ? (
+          {baselines[p.id] ? (
             <BadgeTemplate label="Assigned" variant="success" size="sm" />
           ) : (
             <span className="text-xs text-gray-300">—</span>
@@ -1018,8 +1035,8 @@ export function Main() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-gray-900">Partners</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{partners.length} registered partner organisations</p>
+          <h1 className="text-xl font-bold text-gray-900">Organizations</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{partners.length} registered organizations</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           <button onClick={() => { setBaselineSheetPartnerId(undefined); setBaselineSheetOpen(true) }}
@@ -1029,7 +1046,7 @@ export function Main() {
           <button onClick={() => setSheetOpen(true)}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90 whitespace-nowrap"
             style={{ backgroundColor: 'var(--brand-forest)' }}>
-            <Plus className="w-4 h-4" /> Add Partner
+            <Plus className="w-4 h-4" /> Add Organization
           </button>
         </div>
       </div>
@@ -1037,7 +1054,7 @@ export function Main() {
       {/* Overview stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
         {[
-          { icon: Building2,    bg: 'bg-green-50',   color: 'text-green-600',   value: totalPartners, label: 'Total Partners' },
+          { icon: Building2,    bg: 'bg-green-50',   color: 'text-green-600',   value: totalPartners, label: 'Total Organizations' },
           { icon: CheckCircle2, bg: 'bg-green-50',  color: 'text-green-600',  value: activeCount,   label: 'Active' },
           { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
           { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
@@ -1159,12 +1176,14 @@ export function Main() {
         open={baselineSheetOpen}
         onOpenChange={setBaselineSheetOpen}
         partners={partners}
+        baselines={baselines}
         initialPartnerId={baselineSheetPartnerId}
-        onSaved={() => setBaselineVersion(v => v + 1)}
+        onSave={saveBaseline}
       />
 
       <ViewPartnerSheet
         partner={viewPartner}
+        baselines={baselines}
         onClose={() => setViewPartner(null)}
         onRemove={p => setRemoveTarget(p)}
         onEdit={p => { setEditPartner(p); setEditOpen(true) }}
@@ -1180,7 +1199,7 @@ export function Main() {
 
       <ConfirmModal
         open={!!removeTarget}
-        title="Remove partner?"
+        title="Remove organization?"
         message={`"${removeTarget?.name}" will be permanently removed from the directory.`}
         confirmLabel="Remove"
         variant="danger"

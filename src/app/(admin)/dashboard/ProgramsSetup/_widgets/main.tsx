@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { usePersistedState } from '@/lib/usePersistedState'
-import { type CropDef, BUILT_IN_CROPS, cropOptions } from '@/dataCenter/checkinConfig'
+import { useCropOptions } from '@/dataCenter/useCropOptions'
 import {
   ChevronDown, Plus, Pencil, PowerOff,
-  ToggleRight, Trash2, Users, GitBranch, Check, X, Eye, Calendar, Wheat,
-  LayoutGrid, List, BarChart2, ChevronUp, Search, UserCog,
+  ToggleRight, Trash2, Users, GitBranch, X, Eye, Calendar, Wheat,
+  LayoutGrid, List, BarChart2, ChevronUp, Search, UserCog, Columns3,
+  AlertTriangle, Award, CheckCircle2, Circle, XCircle,
 } from 'lucide-react'
 import { Main as AgentAssignmentTab } from '@/app/(admin)/dashboard/AgentAssignment/_widgets/main'
 import { cn } from '@/lib/utils'
@@ -22,10 +23,21 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
 import { getPrograms } from '../_logics/functions'
+import { getFarmers } from '../../FarmersRegistry/_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import type { Program, Cohort } from '../_logics/interface'
+import type { Farmer } from '../../FarmersRegistry/_logics/interface'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
+import { PARTNERS } from '@/dataCenter/partners'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
+import {
+  ENROLMENT_COLUMNS, ZONE_COLORS, ZONE_RISK,
+  enrolmentWorkflowDetail, communityDetail, useWorkflowStages,
+} from '../../FarmersRegistry/_widgets/main'
+import {
+  DEFAULT_WORKFLOW_STAGES, DEFAULT_QUALIFYING_STAGE_ID,
+  WORKFLOW_STAGES_KEY, WORKFLOW_QUALIFYING_STAGE_ID_KEY,
+} from '../../Configuration/_logics/workflowConfig'
 
 /* ── constants ──────────────────────────────────────────────────────────────── */
 
@@ -46,11 +58,6 @@ const REGION_OPTIONS = [
   { value: 'WN', label: 'Western North' },
   { value: 'WR', label: 'Western' },
 ]
-
-function useCropOptions() {
-  const [crops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
-  return useMemo(() => cropOptions(crops), [crops])
-}
 
 const AGENT_OPTIONS = [
   { value: '',        label: 'No agent'      },
@@ -271,6 +278,8 @@ type CohortFormData = {
   district: string
   targetCount: number
   agentName: string
+  partnerId: string | null
+  partnerName: string | null
 }
 
 function CohortFormSheet({ open, mode, programName, programs, initial, onSave, onClose, onBack }: {
@@ -291,6 +300,7 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
     district:    initial?.district    ?? '',
     targetCount: String(initial?.targetCount ?? 50),
     agentName:   initial?.agentName   ?? '',
+    partnerId:   initial?.partnerId   ?? '',
   })
 
   useEffect(() => {
@@ -303,6 +313,7 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
       district:    initial?.district    ?? '',
       targetCount: String(initial?.targetCount ?? 50),
       agentName:   initial?.agentName   ?? '',
+      partnerId:   initial?.partnerId   ?? '',
     })
   }, [open, initial, programName, programs])
 
@@ -315,12 +326,15 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
       toast.error('Please fill in all required fields')
       return
     }
+    const partner = PARTNERS.find(p => p.id === form.partnerId)
     onSave({
       name:        form.name,
       region:      form.region,
       district:    form.district,
       targetCount: Number(form.targetCount) || 50,
       agentName:   form.agentName,
+      partnerId:   partner?.id ?? null,
+      partnerName: partner?.name ?? null,
     })
     toast.success(mode === 'add' ? `Cohort "${form.name}" added` : `Cohort "${form.name}" updated`)
     onClose()
@@ -382,6 +396,13 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
         options={AGENT_OPTIONS}
         value={AGENT_OPTIONS.find(a => a.label === form.agentName)?.value ?? ''}
         onChange={e => set('agentName', AGENT_OPTIONS.find(a => a.value === e.target.value)?.label ?? '')}
+      />
+      <SelectTemplate
+        label="PARTNER"
+        placeholder="Select a partner…"
+        options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
+        value={form.partnerId}
+        onChange={e => set('partnerId', e.target.value)}
       />
     </FormSheet>
   )
@@ -478,6 +499,7 @@ function CohortSheet({
     district:    '',
     targetCount: '50',
     agentName:   '',
+    partnerId:   '',
   })
 
   useEffect(() => {
@@ -490,6 +512,7 @@ function CohortSheet({
       district:    cohort.district ?? '',
       targetCount: String(cohort.targetCount ?? 50),
       agentName:   cohort.agentName ?? '',
+      partnerId:   cohort.partnerId ?? '',
     })
   }, [mode, cohort, programName, programs])
 
@@ -499,7 +522,12 @@ function CohortSheet({
     if (!form.name || !form.region || !form.district) {
       toast.error('Please fill in all required fields'); return
     }
-    onSave({ name: form.name, region: form.region, district: form.district, targetCount: Number(form.targetCount) || 50, agentName: form.agentName })
+    const partner = PARTNERS.find(p => p.id === form.partnerId)
+    onSave({
+      name: form.name, region: form.region, district: form.district,
+      targetCount: Number(form.targetCount) || 50, agentName: form.agentName,
+      partnerId: partner?.id ?? null, partnerName: partner?.name ?? null,
+    })
     toast.success(`Cohort "${form.name}" updated`)
     onClose()
   }
@@ -550,6 +578,12 @@ function CohortSheet({
                     <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{cohort.agentName}</span>
                   </div>
                 )}
+                {cohort.partnerName && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Partner</span>
+                    <span className="font-medium" style={{ color: 'var(--brand-forest)' }}>{cohort.partnerName}</span>
+                  </div>
+                )}
               </div>
               <div className="rounded-xl border border-gray-100 p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
@@ -581,6 +615,9 @@ function CohortSheet({
                 options={AGENT_OPTIONS}
                 value={AGENT_OPTIONS.find(a => a.label === form.agentName)?.value ?? ''}
                 onChange={e => set('agentName', AGENT_OPTIONS.find(a => a.value === e.target.value)?.label ?? '')} />
+              <SelectTemplate label="PARTNER" placeholder="Select a partner…"
+                options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
+                value={form.partnerId} onChange={e => set('partnerId', e.target.value)} />
             </>
           )}
         </div>
@@ -1323,13 +1360,325 @@ function ProgramsCohortsTab() {
   )
 }
 
-/* ── Top-level page shell (Programs & Cohorts / Agent Assignment) ────────────── */
+/* ── Beneficiary tab ───────────────────────────────────────────────────────────
+ * Recreates the old FarmersRegistry "Enrolment" table, renamed Beneficiary and
+ * filtered to farmers whose workflow progress has reached (or passed) the
+ * admin-configured qualifying stage — see Configuration > Workflow Stages.
+ */
 
-type ProgramsPageTab = 'cohorts' | 'agents'
+function BeneficiaryTab() {
+  const [farmers, setFarmers] = usePersistedState<Farmer[]>('fr-farmers', [])
+  const [loading, setLoading] = useState(true)
+  const [search,  setSearch]  = usePersistedState('bene-search', '')
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const [visibleColumns, setVisibleColumns] = usePersistedState<Record<string, boolean>>('bene-columns', {
+    farmerDetails: true, programInformation: true, communityDetails: true,
+    enrolmentWorkflow: true, friScore: true,
+  })
+
+  const [allStages] = usePersistedState(WORKFLOW_STAGES_KEY, DEFAULT_WORKFLOW_STAGES)
+  const [qualifyingStageId] = usePersistedState(WORKFLOW_QUALIFYING_STAGE_ID_KEY, DEFAULT_QUALIFYING_STAGE_ID)
+  const WORKFLOW_STAGES = useWorkflowStages()
+  const qualifyingStageNumber = allStages.find(s => s.id === qualifyingStageId)?.stage
+    ?? DEFAULT_WORKFLOW_STAGES.find(s => s.id === DEFAULT_QUALIFYING_STAGE_ID)!.stage
+
+  useEffect(() => {
+    getFarmers().then(f => {
+      setFarmers(prev => prev.length > 0 ? prev : f)
+      setLoading(false)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const beneficiaries = useMemo(() => farmers.filter(f => {
+    const stage = f.enrollment?.currentStage
+    if (stage === undefined || stage === null) return false
+    if (stage < qualifyingStageNumber) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      if (!f.fullName.toLowerCase().includes(q) && !f.phone.includes(q)) return false
+    }
+    return true
+  }), [farmers, qualifyingStageNumber, search])
+
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = usePersistedState('bene-page-size', 25)
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setPage(1) }, [beneficiaries])
+  const paginated = pageSize === 0 ? beneficiaries : beneficiaries.slice((page - 1) * pageSize, page * pageSize)
+
+  return (
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Beneficiary</h1>
+          {!loading && (
+            <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>
+              {beneficiaries.length} farmer{beneficiaries.length !== 1 ? 's' : ''} at or beyond &quot;{WORKFLOW_STAGES.find(s => s.stage === qualifyingStageNumber)?.name ?? 'Active'}&quot;
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-0 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors"
+            placeholder="Search by name or phone..."
+            value={search} onChange={e => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setColumnsOpen(v => !v)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-600 hover:border-gray-300 transition-colors"
+          >
+            <Columns3 className="w-3.5 h-3.5" /> Columns
+            <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', columnsOpen && 'rotate-180')} />
+          </button>
+          {columnsOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setColumnsOpen(false)} />
+              <div className="absolute right-0 top-full mt-1.5 z-20 w-56 rounded-xl border border-gray-100 bg-white shadow-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Toggle Columns</p>
+                  <button
+                    className="text-[11px] font-medium"
+                    style={{ color: 'var(--brand-green)' }}
+                    onClick={() => setVisibleColumns(Object.fromEntries(Object.keys(visibleColumns).map(k => [k, true])))}
+                  >
+                    Show all
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1.5 max-h-72 overflow-y-auto">
+                  {ENROLMENT_COLUMNS.map(col => (
+                    <label key={col.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={visibleColumns[col.key] ?? true}
+                        onChange={() => setVisibleColumns(prev => ({ ...prev, [col.key]: !prev[col.key] }))}
+                        className="w-3.5 h-3.5 rounded border-gray-300 accent-(--brand-forest)"
+                      />
+                      {col.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {!loading && beneficiaries.length > 0 && (
+        <PaginationBar
+          page={page}
+          pageSize={pageSize}
+          total={beneficiaries.length}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
+
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-gray-200 animate-pulse" />)}
+        </div>
+      ) : beneficiaries.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+          <Award className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: 'var(--brand-slate)' }} />
+          <p className="font-medium" style={{ color: 'var(--brand-forest)' }}>No beneficiaries yet</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--brand-slate)' }}>
+            Farmers appear here once their enrollment reaches the qualifying workflow stage.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+          {/* Column header */}
+          <div className="flex items-center px-4 py-2.5 border-b border-gray-100 bg-gray-50/80 min-w-max">
+            {(visibleColumns.farmerDetails ?? true) && (
+              <p className="w-56 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Farmer Details</p>
+            )}
+            {(visibleColumns.programInformation ?? true) && (
+              <p className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Program Information</p>
+            )}
+            {(visibleColumns.communityDetails ?? true) && (
+              <p className="w-44 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Community Details</p>
+            )}
+            {(visibleColumns.enrolmentWorkflow ?? true) && (
+              <p className="w-56 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">Enrolment Workflow</p>
+            )}
+            {(visibleColumns.friScore ?? true) && (
+              <p className="w-40 shrink-0 text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-5">FRI Score</p>
+            )}
+          </div>
+
+          <div className="divide-y divide-gray-100 min-w-max">
+            {paginated.map((f, i) => {
+              const enr = f.enrollment
+              const stageDef = WORKFLOW_STAGES.find(s => s.stage === (enr?.currentStage ?? 0))
+
+              return (
+                <div key={f.id} className={cn(
+                  'flex items-stretch transition-colors',
+                  i % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/40 hover:bg-gray-50',
+                )}>
+                  {(visibleColumns.farmerDetails ?? true) && (
+                    <div className="flex items-center gap-3 py-4 pl-4 pr-5 w-56 shrink-0 border-r border-gray-100">
+                      <PersonAvatar name={f.fullName} size={40} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-sm leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
+                            {f.fullName}
+                          </p>
+                          {f.duplicateFlag && <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className="text-[11px] text-gray-400 font-mono">
+                            <span className="text-[9px] text-gray-300 uppercase tracking-wide mr-0.5">Ph</span>{f.phone}
+                          </span>
+                          <span className="text-gray-200 text-[10px]">·</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none bg-emerald-100 text-emerald-700">Beneficiary</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(visibleColumns.programInformation ?? true) && (
+                    <div className="flex flex-col justify-center py-4 px-5 flex-1 min-w-0 border-r border-gray-100">
+                      {enr ? (
+                        <>
+                          <p className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>
+                            {enr.programName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1 min-w-0">
+                            {enr.cohortName && <span className="text-[11px] text-gray-500 truncate">{enr.cohortName}</span>}
+                            {enr.cohortName && enr.agentName && <span className="text-gray-300 text-[10px] shrink-0">·</span>}
+                            {enr.agentName && (
+                              <span className="flex items-center gap-1 text-[11px] text-gray-500 min-w-0">
+                                <UserCog className="w-3 h-3 text-gray-300 shrink-0" />
+                                <span className="truncate">{enr.agentName}</span>
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-gray-300">—</span>
+                      )}
+                    </div>
+                  )}
+
+                  {(visibleColumns.communityDetails ?? true) && (() => {
+                    const cd = communityDetail(f)
+                    return (
+                      <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-44 border-r border-gray-100">
+                        <p className="text-xs font-medium leading-tight truncate" style={{ color: 'var(--brand-forest)' }}>{cd.communityName || '—'}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{cd.cooperativeName ?? 'No cooperative'}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 truncate">{cd.region || '—'}</p>
+                      </div>
+                    )
+                  })()}
+
+                  {(visibleColumns.enrolmentWorkflow ?? true) && (
+                    <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-56 border-r border-gray-100">
+                      {enr && (enr.currentStage ?? 0) > 0 ? (
+                        <>
+                          <div className="flex gap-px mb-2">
+                            {WORKFLOW_STAGES.map(s => (
+                              <div key={s.stage} className={cn(
+                                'h-1 rounded-sm flex-1',
+                                s.stage < (enr.currentStage ?? 0)   ? 'bg-emerald-400' :
+                                s.stage === (enr.currentStage ?? 0) ? 'bg-(--brand-dark)' : 'bg-gray-200'
+                              )} />
+                            ))}
+                          </div>
+                          {(() => {
+                            const wf = enrolmentWorkflowDetail(f.id, enr)
+                            return (
+                              <div className="flex flex-col gap-1">
+                                <span className="flex items-center gap-1.5 text-[11px] text-gray-600">
+                                  <Calendar className="w-3 h-3 text-gray-400 shrink-0" />
+                                  Reg: {new Date(wf.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                {wf.baselineDone ? (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+                                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Baseline done
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                    <Circle className="w-3 h-3 shrink-0" /> Baseline pending
+                                  </span>
+                                )}
+                                {wf.checkinOnTrack === true ? (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-emerald-600">
+                                    <CheckCircle2 className="w-3 h-3 shrink-0" /> Check-in: On track
+                                  </span>
+                                ) : wf.checkinOnTrack === false ? (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-red-500">
+                                    <XCircle className="w-3 h-3 shrink-0" /> Check-in: Missed
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                                    <Circle className="w-3 h-3 shrink-0" /> No schedule
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })()}
+                          <span className="text-[11px] font-medium flex items-center gap-1 mt-1.5" style={{ color: 'var(--brand-forest)' }}>
+                            <GitBranch className="w-2.5 h-2.5 shrink-0 text-gray-400" />
+                            {stageDef?.name ?? `Stage ${enr.currentStage}`}
+                          </span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">Stage {enr.currentStage} of {WORKFLOW_STAGES.length}</span>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-gray-300">—</span>
+                      )}
+                    </div>
+                  )}
+
+                  {(visibleColumns.friScore ?? true) && (
+                    <div className="flex flex-col justify-center py-4 px-5 shrink-0 w-40">
+                      {f.currentFri !== null ? (
+                        <>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-base font-bold leading-none tabular-nums" style={{ color: 'var(--brand-forest)' }}>{f.currentFri}</span>
+                            <span className="text-[10px] text-gray-400">/ 100</span>
+                          </div>
+                          {f.currentZone && (
+                            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full self-start mt-1.5 leading-none', ZONE_COLORS[f.currentZone])}>
+                              {f.currentZone.replace('Resilience ', '')} · {ZONE_RISK[f.currentZone]}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-300">No score</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Top-level page shell (Programs & Cohorts / Agent Assignment / Beneficiary) ─ */
+
+type ProgramsPageTab = 'cohorts' | 'agents' | 'beneficiary'
 
 const PROGRAMS_PAGE_TABS: { id: ProgramsPageTab; Icon: React.ElementType; label: string }[] = [
-  { id: 'cohorts', Icon: GitBranch, label: 'Programs & Cohorts' },
-  { id: 'agents',  Icon: UserCog,   label: 'Agent Assignment'   },
+  { id: 'cohorts',     Icon: GitBranch, label: 'Programs & Cohorts' },
+  { id: 'agents',      Icon: UserCog,   label: 'Agent Assignment'   },
+  { id: 'beneficiary', Icon: Award,     label: 'Beneficiary'        },
 ]
 
 export function Main() {
@@ -1361,6 +1710,7 @@ export function Main() {
 
       {pageTab === 'cohorts' && <div className="-mt-4"><ProgramsCohortsTab /></div>}
       {pageTab === 'agents' && <div className="-mt-4"><AgentAssignmentTab /></div>}
+      {pageTab === 'beneficiary' && <div className="-mt-4"><BeneficiaryTab /></div>}
     </div>
   )
 }

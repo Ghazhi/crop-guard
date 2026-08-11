@@ -8,6 +8,8 @@ export interface TrainingBundle {
   description: string
   isActive:    boolean
   totalWeeks:  number
+  /** Highest week number pushed live to farmers so far; 0 = nothing published yet. */
+  currentWeek: number
 }
 
 export interface TrainingTemplate {

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sprout, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { type CropDef, BUILT_IN_CROPS } from '@/dataCenter/checkinConfig'
+import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 
 export function CropsSection() {
   const [crops, setCrops] = usePersistedState<CropDef[]>('checkinConfig.crops', BUILT_IN_CROPS)
@@ -41,13 +42,11 @@ export function CropsSection() {
           <Sprout className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Crops</h2>
         </div>
-        <button
+        <ButtonTemplate
+          variant="primary" size="sm" label="Add Crop"
+          leftIcon={<Plus className="w-3.5 h-3.5" />}
           onClick={() => { setAddingCrop(true); setNewCropName('') }}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white rounded-lg transition-colors hover:opacity-90"
-          style={{ background: 'var(--brand-forest)' }}
-        >
-          <Plus className="w-3.5 h-3.5" /> Add Crop
-        </button>
+        />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -72,26 +71,14 @@ export function CropsSection() {
             <div className="flex items-center gap-1 shrink-0">
               {editingCropId === c.id ? (
                 <>
-                  <button onClick={() => handleSaveCropName(c.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded text-green-600 hover:bg-green-50 transition-colors">
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => setEditingCropId(null)}
-                    className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 transition-colors">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
+                  <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Save" leftIcon={<Check className="w-3.5 h-3.5" />} onClick={() => handleSaveCropName(c.id)} />
+                  <ButtonTemplate variant="ghost" size="sm" isIcon tooltip="Cancel" leftIcon={<X className="w-3.5 h-3.5" />} onClick={() => setEditingCropId(null)} />
                 </>
               ) : (
-                <>
-                  <button onClick={() => { setEditingCropId(c.id); setEditingCropName(c.name) }}
-                    className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-gray-500 transition-colors opacity-0 group-hover:opacity-100">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => handleDeleteCrop(c.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </>
+                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                  <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => { setEditingCropId(c.id); setEditingCropName(c.name) }} />
+                  <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => handleDeleteCrop(c.id)} />
+                </div>
               )}
             </div>
           </div>
@@ -107,15 +94,8 @@ export function CropsSection() {
               placeholder="Crop name…"
               className="flex-1 h-8 px-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-(--brand-green)"
             />
-            <button onClick={handleAddCrop}
-              className="flex items-center gap-1 h-8 px-3 text-xs font-semibold text-white rounded-lg hover:opacity-90"
-              style={{ background: 'var(--brand-forest)' }}>
-              <Check className="w-3.5 h-3.5" /> Save
-            </button>
-            <button onClick={() => setAddingCrop(false)}
-              className="flex items-center gap-1 h-8 px-3 text-xs text-gray-500 hover:text-gray-700">
-              <X className="w-3.5 h-3.5" /> Cancel
-            </button>
+            <ButtonTemplate variant="primary" size="sm" label="Save" leftIcon={<Check className="w-3.5 h-3.5" />} onClick={handleAddCrop} />
+            <ButtonTemplate variant="ghost" size="sm" label="Cancel" leftIcon={<X className="w-3.5 h-3.5" />} onClick={() => setAddingCrop(false)} />
           </div>
         )}
       </div>

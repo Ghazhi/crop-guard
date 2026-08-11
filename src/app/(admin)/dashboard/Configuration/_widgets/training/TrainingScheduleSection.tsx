@@ -26,7 +26,7 @@ function emptySchedule(): CohortTrainingSchedule {
   return {
     id: `cts-${Date.now()}`,
     programId: '', programName: '', cohortId: '', cohortName: '',
-    trainingStartDate: null, windowDays: 7, graceDays: 2,
+    trainingStartDate: null, windowDays: 7, graceDays: 2, durationWeeks: 12,
     isConfigured: false,
   }
 }
@@ -75,7 +75,7 @@ function NewScheduleForm({
         value={draft.trainingStartDate ?? ''}
         onChange={e => setDraft({ ...draft, trainingStartDate: e.target.value || null })}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <InputTemplate
           label="Window Days" type="number" min={1}
           value={draft.windowDays}
@@ -85,6 +85,11 @@ function NewScheduleForm({
           label="Grace Days" type="number" min={0}
           value={draft.graceDays}
           onChange={e => setDraft({ ...draft, graceDays: Number(e.target.value) })}
+        />
+        <InputTemplate
+          label="Duration (weeks)" type="number" min={1}
+          value={draft.durationWeeks}
+          onChange={e => setDraft({ ...draft, durationWeeks: Number(e.target.value) })}
         />
       </div>
       <div className="flex justify-end gap-2">
@@ -116,7 +121,7 @@ function EditScheduleForm({
         value={draft.trainingStartDate ?? ''}
         onChange={e => setDraft({ ...draft, trainingStartDate: e.target.value || null })}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <InputTemplate
           label="Window Days" type="number" min={1}
           value={draft.windowDays}
@@ -126,6 +131,11 @@ function EditScheduleForm({
           label="Grace Days" type="number" min={0}
           value={draft.graceDays}
           onChange={e => setDraft({ ...draft, graceDays: Number(e.target.value) })}
+        />
+        <InputTemplate
+          label="Duration (weeks)" type="number" min={1}
+          value={draft.durationWeeks}
+          onChange={e => setDraft({ ...draft, durationWeeks: Number(e.target.value) })}
         />
       </div>
       <div className="flex justify-end gap-2">
@@ -183,7 +193,7 @@ function CohortSchedulesSubTab() {
                   <p className="text-xs text-gray-400 mb-0.5">{s.programName}</p>
                   {s.isConfigured ? (
                     <p className="text-xs text-gray-500">
-                      Starts {s.trainingStartDate ?? '—'} · Window {s.windowDays}d · Grace {s.graceDays}d
+                      Starts {s.trainingStartDate ?? '—'} · Window {s.windowDays}d · Grace {s.graceDays}d · {s.durationWeeks} weeks
                     </p>
                   ) : (
                     <p className="text-xs text-amber-600">No training schedule set — farmers will not see weekly materials until configured.</p>
@@ -389,7 +399,7 @@ export function TrainingScheduleSection() {
       <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {([
           { key: 'cohorts', label: 'Cohort Schedules' },
-          { key: 'overrides', label: 'Per-Farmer Overrides' },
+          { key: 'overrides', label: 'Training Override' },
         ] as const).map(({ key, label }) => {
           const active = subTab === key
           return (

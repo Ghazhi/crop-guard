@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import {
   Users, ClipboardList, UserCheck, TrendingUp, Zap, ArrowUp, ArrowDown, Minus, Phone, MapPin, Search,
   Landmark, Globe2, Building2, Layers, FileText, CloudRain, Grid3x3, RefreshCw, ArrowUpRight, ChevronRight,
+  Settings2,
 } from 'lucide-react'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { CardTemplate }  from '@/customComponents/CardTemplate'
-import { SheetTemplate } from '@/customComponents/SheetTemplate'
-import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
+import { CardTemplate }   from '@/customComponents/CardTemplate'
+import { SheetTemplate }  from '@/customComponents/SheetTemplate'
+import { BadgeTemplate }  from '@/customComponents/BadgeTemplate'
+import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { FARMERS_LIST }  from '@/dataCenter/farmerManagement'
 import { INTERVENTIONS } from '@/dataCenter/interventions'
 import { AGENTS }        from '@/dataCenter/agents'
@@ -22,6 +24,12 @@ import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/int
 import type { AgentSummary } from '@/app/(admin)/dashboard/AgentAssignment/_logics/interface'
 import type { Intervention } from '@/app/(admin)/dashboard/OpportunityPathways/_logics/interface'
 import { cn } from '@/lib/utils'
+import { usePersistedState } from '@/lib/usePersistedState'
+import {
+  DEFAULT_DASHBOARD_WIDGET_VISIBILITY, DASHBOARD_WIDGET_VISIBILITY_KEY,
+  type DashboardWidgetVisibility,
+} from '@/app/(admin)/dashboard/Configuration/_logics/dashboardConfig'
+import { DashboardConfigSection } from '@/app/(admin)/dashboard/Configuration/_widgets/dashboard/DashboardConfigSection'
 
 // ── Zone colors ────────────────────────────────────────────────────────────────
 const ZONE_COLORS: Record<string, string> = {
@@ -356,13 +364,13 @@ function ModulePill({ icon: Icon, label, count, href, onClick }: {
 const TOTAL_COHORTS = PROGRAMS.reduce((sum, p) => sum + p.cohorts.length, 0)
 
 const MODULES = [
-  { icon: Landmark,   label: 'Cooperatives',   count: COOPERATIVES.length,  href: '/dashboard/Governance' },
-  { icon: Globe2,     label: 'Communities',    count: COMMUNITIES.length,   href: '/dashboard/CommunityProfile' },
-  { icon: Building2,  label: 'Programs',       count: PROGRAMS.length,      href: '/dashboard/ProgramsSetup' },
-  { icon: Layers,     label: 'Cohorts',        count: TOTAL_COHORTS,        href: '/dashboard/ProgramsSetup' },
-  { icon: Zap,        label: 'Interventions',  count: INTERVENTIONS.length, href: '/dashboard/OpportunityPathways' },
-  { icon: FileText,   label: 'Applications',   count: 0 },
-]
+  { id: 'module-cooperatives',  icon: Landmark,   label: 'Cooperatives',   count: COOPERATIVES.length,  href: '/dashboard/Governance' },
+  { id: 'module-communities',   icon: Globe2,     label: 'Communities',    count: COMMUNITIES.length,   href: '/dashboard/CommunityProfile' },
+  { id: 'module-programs',      icon: Building2,  label: 'Programs',       count: PROGRAMS.length,      href: '/dashboard/ProgramsSetup' },
+  { id: 'module-cohorts',       icon: Layers,     label: 'Cohorts',        count: TOTAL_COHORTS,        href: '/dashboard/ProgramsSetup' },
+  { id: 'module-interventions', icon: Zap,        label: 'Interventions',  count: INTERVENTIONS.length, href: '/dashboard/OpportunityPathways' },
+  { id: 'module-applications',  icon: FileText,   label: 'Applications',   count: 0 },
+] as const
 
 // ── Cooperatives chart ─────────────────────────────────────────────────────────
 const COOPERATIVE_CHART_DATA = COOPERATIVES
@@ -424,6 +432,10 @@ export function Main() {
   const [agentsOpen,   setAgentsOpen]   = useState(false)
   const [summary,      setSummary]      = useState<string | null>(null)
   const [generating,   setGenerating]   = useState(false)
+  const [configOpen,   setConfigOpen]   = useState(false)
+  const [widgets] = usePersistedState<DashboardWidgetVisibility>(
+    DASHBOARD_WIDGET_VISIBILITY_KEY, DEFAULT_DASHBOARD_WIDGET_VISIBILITY,
+  )
 
   useEffect(() => {
     Promise.all([getStats(), getCropBreakdown(), getZoneBreakdown()]).then(
@@ -463,9 +475,16 @@ export function Main() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Dashboard</h1>
-        <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>Program overview and key metrics</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Dashboard</h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--brand-slate)' }}>Program overview and key metrics</p>
+        </div>
+        <ButtonTemplate
+          variant="outline" size="sm" label="Configure Dashboard"
+          leftIcon={<Settings2 className="w-3.5 h-3.5" />}
+          onClick={() => setConfigOpen(true)}
+        />
       </div>
 
       {loading ? (
@@ -480,27 +499,34 @@ export function Main() {
       ) : stats && (
         <>
           {/* Primary KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-            <StatCard icon={Users}         label="Total Farmers"      value={stats.totalFarmers}      color="bg-(--brand-dark)"  onClick={() => open('totalFarmers')} />
-            <StatCard icon={ClipboardList} label="Active Enrollments" value={stats.activeEnrollments} color="bg-(--brand-green)" onClick={() => open('activeEnrollments')} />
-            <StatCard icon={UserCheck}     label="Verified Farmers"   value={stats.verifiedFarmers}   color="bg-(--brand-mid)"   onClick={() => open('verifiedFarmers')} />
-            <StatCard icon={TrendingUp}    label="Field Agents"       value={stats.totalAgents}       color="bg-(--brand-amber)" onClick={() => setAgentsOpen(true)} />
-          </div>
+          {(widgets['stat-total-farmers'] || widgets['stat-active-enrollments'] || widgets['stat-verified-farmers'] || widgets['stat-field-agents']) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+              {widgets['stat-total-farmers'] && <StatCard icon={Users}         label="Total Farmers"      value={stats.totalFarmers}      color="bg-(--brand-dark)"  onClick={() => open('totalFarmers')} />}
+              {widgets['stat-active-enrollments'] && <StatCard icon={ClipboardList} label="Active Enrollments" value={stats.activeEnrollments} color="bg-(--brand-green)" onClick={() => open('activeEnrollments')} />}
+              {widgets['stat-verified-farmers'] && <StatCard icon={UserCheck}     label="Verified Farmers"   value={stats.verifiedFarmers}   color="bg-(--brand-mid)"   onClick={() => open('verifiedFarmers')} />}
+              {widgets['stat-field-agents'] && <StatCard icon={TrendingUp}    label="Field Agents"       value={stats.totalAgents}       color="bg-(--brand-amber)" onClick={() => setAgentsOpen(true)} />}
+            </div>
+          )}
 
           {/* Modules */}
-          <div>
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-2">Modules</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {MODULES.map(m => <ModulePill key={m.label} {...m} onClick={m.href ? () => router.push(m.href) : undefined} />)}
+          {MODULES.some(m => widgets[m.id]) && (
+            <div>
+              <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-2">Modules</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {MODULES.filter(m => widgets[m.id]).map(m => (
+                  <ModulePill key={m.label} icon={m.icon} label={m.label} count={m.count} href={'href' in m ? m.href : undefined} onClick={'href' in m && m.href ? () => router.push(m.href) : undefined} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
         </>
       )}
 
       {/* Charts */}
-      {!loading && (
+      {!loading && (widgets['chart-top-crops'] || widgets['chart-fri-zone'] || widgets['chart-cooperatives']) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {widgets['chart-top-crops'] && (
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>Top Crops</p>
             <ResponsiveContainer width="100%" height={180}>
@@ -512,7 +538,9 @@ export function Main() {
               </BarChart>
             </ResponsiveContainer>
           </CardTemplate>
+          )}
 
+          {widgets['chart-fri-zone'] && (
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>FRI Zone Distribution</p>
             <ResponsiveContainer width="100%" height={180}>
@@ -549,7 +577,9 @@ export function Main() {
               ))}
             </div>
           </CardTemplate>
+          )}
 
+          {widgets['chart-cooperatives'] && (
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>Cooperatives</p>
             <ResponsiveContainer width="100%" height={180}>
@@ -561,12 +591,14 @@ export function Main() {
               </BarChart>
             </ResponsiveContainer>
           </CardTemplate>
+          )}
         </div>
       )}
 
       {/* Trend charts */}
-      {!loading && stats && (
+      {!loading && stats && (widgets['chart-fri-trend'] || widgets['chart-new-enrollments']) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {widgets['chart-fri-trend'] && (
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>FRI Score Trend (6 months)</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -579,7 +611,9 @@ export function Main() {
               </LineChart>
             </ResponsiveContainer>
           </CardTemplate>
+          )}
 
+          {widgets['chart-new-enrollments'] && (
           <CardTemplate>
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>New Enrollments (6 months)</p>
             <ResponsiveContainer width="100%" height={200}>
@@ -591,12 +625,14 @@ export function Main() {
               </BarChart>
             </ResponsiveContainer>
           </CardTemplate>
+          )}
         </div>
       )}
 
       {/* Climate Exposure + Risk Quadrant */}
-      {!loading && (
+      {!loading && (widgets['climate-exposure'] || widgets['risk-quadrant']) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {widgets['climate-exposure'] && (
           <CardTemplate>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -622,7 +658,9 @@ export function Main() {
               </div>
             </div>
           </CardTemplate>
+          )}
 
+          {widgets['risk-quadrant'] && (
           <CardTemplate>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -649,11 +687,12 @@ export function Main() {
               {riskQuadrant.reduce((s, q) => s + q.count, 0)} scored farmers across {TOTAL_COHORTS} cohorts
             </p>
           </CardTemplate>
+          )}
         </div>
       )}
 
       {/* Norvi AI Program Summary */}
-      {!loading && (
+      {!loading && widgets['norvi-summary'] && (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">
@@ -728,6 +767,19 @@ export function Main() {
         bodyClassName="pt-3 pb-3"
       >
         {AGENTS.map(a => <AgentCard key={a.id} agent={a} />)}
+      </SheetTemplate>
+
+      {/* Configure Dashboard sheet */}
+      <SheetTemplate
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        title="Configure Dashboard"
+        subtitle="Choose which cards, charts, and widgets appear on this page"
+        size="md"
+      >
+        <div className="px-6 py-5">
+          <DashboardConfigSection />
+        </div>
       </SheetTemplate>
     </div>
   )

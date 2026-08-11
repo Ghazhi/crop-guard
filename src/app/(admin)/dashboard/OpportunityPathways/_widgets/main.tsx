@@ -14,8 +14,9 @@ import { ConfirmModal }     from '@/customComponents/ConfirmModal'
 import { getInterventions, getPrograms, getProgramsWithCohorts } from '../_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
+import { PARTNERS } from '@/dataCenter/partners'
 import type {
-  Intervention, ProgramOption, ProgramWithCohorts, EnrolledCohort,
+  Intervention, ProgramOption, ProgramWithCohorts, EnrolledCohort, PartnerAssignment,
   InterventionStatus, InterventionType, ApprovalMode, EligibilityRule, ImprovementStep,
 } from '../_logics/interface'
 import type { Farmer } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
@@ -364,13 +365,14 @@ const TAB_EMPTY: Record<EnrolTab, { icon: React.ReactNode; message: string }> = 
 }
 
 // ── EnrollSheet ────────────────────────────────────────────────────────────────
-function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts, onUpdateCohorts }: {
+function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts, onUpdateCohorts, onAssignPartner }: {
   open: boolean
   onClose: () => void
   intervention: Intervention | null
   onEdit: () => void
   programsWithCohorts: ProgramWithCohorts[]
   onUpdateCohorts: (cohorts: EnrolledCohort[]) => void
+  onAssignPartner: (partnerId: string, cohort: EnrolledCohort) => void
 }) {
   const [tab,          setTab]         = useState<EnrolTab>('eligible')
   const [search,       setSearch]      = useState('')
@@ -395,9 +397,10 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
   const [addOpen,      setAddOpen]     = useState(false)
   const [pickProg,     setPickProg]    = useState('')
   const [pickCohort,   setPickCohort]  = useState('')
+  const [pickPartner,  setPickPartner] = useState('')
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (open) { setTab('eligible'); setSearch(''); setSelected(new Set()); setFilterProg(''); setFilterCohort(''); setAddOpen(false) } }, [open])
+  useEffect(() => { if (open) { setTab('eligible'); setSearch(''); setSelected(new Set()); setFilterProg(''); setFilterCohort(''); setAddOpen(false); setPickPartner('') } }, [open])
 
   if (!intervention) return null
 
@@ -441,8 +444,10 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
     const prog = programsWithCohorts.find(p => p.id === pickProg)
     const coh  = prog?.cohorts.find(c => c.id === pickCohort)
     if (!prog || !coh) return
-    onUpdateCohorts([...enrolledCohorts, { programId: prog.id, programName: prog.name, cohortId: coh.id, cohortName: coh.name }])
-    setPickProg(''); setPickCohort(''); setAddOpen(false)
+    const newCohort: EnrolledCohort = { programId: prog.id, programName: prog.name, cohortId: coh.id, cohortName: coh.name }
+    onUpdateCohorts([...enrolledCohorts, newCohort])
+    if (pickPartner) onAssignPartner(pickPartner, newCohort)
+    setPickProg(''); setPickCohort(''); setPickPartner(''); setAddOpen(false)
   }
 
   function removeCohort(cohortId: string) {
@@ -504,17 +509,22 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
       <div className="px-4 pb-3 shrink-0 space-y-2 border-b border-gray-100">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Enrolled Cohorts</p>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {enrolledCohorts.map(ec => (
-            <span key={ec.cohortId}
-              className="group/chip inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-              <span className="text-green-500 text-[10px] font-normal">{ec.programName.split(' ')[0]} ·</span>{' '}
-              {ec.cohortName}
-              <button onClick={() => removeCohort(ec.cohortId)}
-                className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 hover:bg-green-100 transition-opacity">
-                <X className="w-2.5 h-2.5" />
-              </button>
-            </span>
-          ))}
+          {enrolledCohorts.map(ec => {
+            const partnerId = intervention.partnerAssignments?.find(a => a.cohorts.some(c => c.cohortId === ec.cohortId))?.partnerId
+            const partnerName = partnerId ? PARTNERS.find(p => p.id === partnerId)?.name : null
+            return (
+              <span key={ec.cohortId}
+                className="group/chip inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                <span className="text-green-500 text-[10px] font-normal">{ec.programName.split(' ')[0]} ·</span>{' '}
+                {ec.cohortName}
+                {partnerName && <span className="text-green-500 text-[10px] font-normal">· {partnerName}</span>}
+                <button onClick={() => removeCohort(ec.cohortId)}
+                  className="w-3.5 h-3.5 rounded-full flex items-center justify-center opacity-0 group-hover/chip:opacity-100 hover:bg-green-100 transition-opacity">
+                  <X className="w-2.5 h-2.5" />
+                </button>
+              </span>
+            )
+          })}
           {!addOpen && (
             <button onClick={() => setAddOpen(true)}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors">
@@ -536,8 +546,13 @@ function EnrollSheet({ open, onClose, intervention, onEdit, programsWithCohorts,
               <option value="">Select cohort</option>
               {pickableCohorts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
+            <select value={pickPartner} onChange={e => setPickPartner(e.target.value)}
+              className="h-8 px-2 text-xs border border-gray-200 rounded-lg bg-white flex-1 min-w-32 focus:outline-none">
+              <option value="">Select partner (optional)</option>
+              {PARTNERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
             <ButtonTemplate size="sm" label="Add" isDisabled={!pickProg || !pickCohort} onClick={addCohort} />
-            <ButtonTemplate variant="ghost" size="sm" label="Cancel" onClick={() => { setAddOpen(false); setPickProg(''); setPickCohort('') }} />
+            <ButtonTemplate variant="ghost" size="sm" label="Cancel" onClick={() => { setAddOpen(false); setPickProg(''); setPickCohort(''); setPickPartner('') }} />
           </div>
         )}
       </div>
@@ -965,6 +980,20 @@ export function Main() {
     if (enrollTarget?.id === id) setEnrollTarget(prev => prev ? { ...prev, enrolledCohorts: cohorts } : prev)
   }
 
+  function handleAssignPartner(id: string, partnerId: string, cohort: EnrolledCohort) {
+    function nextAssignments(assignments: PartnerAssignment[] = []): PartnerAssignment[] {
+      const existing = assignments.find(a => a.partnerId === partnerId)
+      if (existing) {
+        return assignments.map(a => a.partnerId === partnerId ? { ...a, cohorts: [...a.cohorts, cohort] } : a)
+      }
+      return [...assignments, { partnerId, cohorts: [cohort] }]
+    }
+    setInterventions(prev => prev.map(iv => iv.id !== id ? iv : { ...iv, partnerAssignments: nextAssignments(iv.partnerAssignments) }))
+    if (enrollTarget?.id === id) {
+      setEnrollTarget(prev => prev ? { ...prev, partnerAssignments: nextAssignments(prev.partnerAssignments) } : prev)
+    }
+  }
+
   function handleSuspend(id: string) {
     setInterventions(prev => prev.map(iv =>
       iv.id !== id ? iv : { ...iv, status: iv.status === 'Suspended' ? 'Active' : 'Suspended' }
@@ -1031,7 +1060,7 @@ export function Main() {
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
         <div className="flex items-center flex-wrap gap-2">
-          <div className="relative flex-1 min-w-[10rem]">
+          <div className="relative flex-1 min-w-40">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               className="w-full border border-gray-200 rounded-lg pl-10 pr-9 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) transition-colors bg-white"
@@ -1165,6 +1194,7 @@ export function Main() {
         onEdit={() => { setEnrollTarget(null); openEdit(enrollTarget!) }}
         programsWithCohorts={programsWithCohorts}
         onUpdateCohorts={cohorts => enrollTarget && handleUpdateCohorts(enrollTarget.id, cohorts)}
+        onAssignPartner={(partnerId, cohort) => enrollTarget && handleAssignPartner(enrollTarget.id, partnerId, cohort)}
       />
 
       <ConfirmModal

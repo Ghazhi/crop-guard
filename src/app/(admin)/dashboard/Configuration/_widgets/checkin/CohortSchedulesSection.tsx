@@ -8,6 +8,7 @@ import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { PARTNERS } from '@/dataCenter/partners'
 import {
   type CohortCheckinSchedule, type BaselineTemplate, type CheckinTemplate,
   SEED_COHORT_SCHEDULES, SEED_BASELINE_TEMPLATES, SEED_CHECKIN_TEMPLATES, PROGRAM_LIST,
@@ -21,6 +22,7 @@ function emptySchedule(): CohortCheckinSchedule {
     windowDays: 7, graceDays: 2, totalWeeks: 12,
     baselineTemplateId: null, checkinTemplateId: null,
     isPaused: false, isConfigured: false,
+    partnerId: null, partnerName: null,
   }
 }
 
@@ -83,6 +85,16 @@ function ScheduleFormSheet({
           value={draft.cohortId}
           onChange={e => setCohort(e.target.value)}
           isDisabled={!draft.programId}
+        />
+        <SelectTemplate
+          label="Partner"
+          placeholder="Select a partner…"
+          options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
+          value={draft.partnerId ?? ''}
+          onChange={e => {
+            const partner = PARTNERS.find(p => p.id === e.target.value)
+            setDraft({ ...draft, partnerId: partner?.id ?? null, partnerName: partner?.name ?? null })
+          }}
         />
 
         <div className="flex flex-col gap-1.5">
@@ -153,6 +165,7 @@ export function CohortSchedulesSection() {
   const [checkinTemplates] = usePersistedState<CheckinTemplate[]>('checkinConfigV2.checkinTemplates', SEED_CHECKIN_TEMPLATES)
 
   const [programFilter, setProgramFilter] = useState<string>('all')
+  const [cohortFilter, setCohortFilter] = useState<string>('all')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<CohortCheckinSchedule | null>(null)
   const [formKey, setFormKey] = useState(0)
@@ -165,8 +178,14 @@ export function CohortSchedulesSection() {
   }
 
   const programsWithSchedules = PROGRAM_LIST.filter(p => schedules.some(s => s.programId === p.id))
-  const filtered = programFilter === 'all' ? schedules : schedules.filter(s => s.programId === programFilter)
+  const schedulesInProgram = programFilter === 'all' ? schedules : schedules.filter(s => s.programId === programFilter)
+  const cohortsWithSchedules = [...new Map(schedulesInProgram.map(s => [s.cohortId, { id: s.cohortId, name: s.cohortName }])).values()]
+  const filtered = cohortFilter === 'all' ? schedulesInProgram : schedulesInProgram.filter(s => s.cohortId === cohortFilter)
 
+  function setProgramFilterAndResetCohort(id: string) {
+    setProgramFilter(id)
+    setCohortFilter('all')
+  }
   function openNew() {
     setEditing(null)
     setFormKey(k => k + 1)
@@ -192,7 +211,7 @@ export function CohortSchedulesSection() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-bold text-gray-900">Cohort Schedules</h3>
+          <h3 className="text-sm font-bold text-gray-900">Check-in Schedule</h3>
           <p className="text-xs text-gray-400">Set start mode, link templates, pause schedules</p>
         </div>
         <ButtonTemplate variant="primary" size="sm" label="New Schedule" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openNew} />
@@ -200,7 +219,7 @@ export function CohortSchedulesSection() {
 
       <div className="flex items-center gap-1.5 flex-wrap">
         <button
-          onClick={() => setProgramFilter('all')}
+          onClick={() => setProgramFilterAndResetCohort('all')}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
             programFilter === 'all' ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300'
           }`}
@@ -211,7 +230,7 @@ export function CohortSchedulesSection() {
         {programsWithSchedules.map(p => (
           <button
             key={p.id}
-            onClick={() => setProgramFilter(p.id)}
+            onClick={() => setProgramFilterAndResetCohort(p.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               programFilter === p.id ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300'
             }`}
@@ -221,6 +240,32 @@ export function CohortSchedulesSection() {
           </button>
         ))}
       </div>
+
+      {cohortsWithSchedules.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setCohortFilter('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              cohortFilter === 'all' ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+            }`}
+            style={cohortFilter === 'all' ? { backgroundColor: 'var(--brand-mid)' } : {}}
+          >
+            All Cohorts
+          </button>
+          {cohortsWithSchedules.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setCohortFilter(c.id)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                cohortFilter === c.id ? 'text-white border-transparent' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+              style={cohortFilter === c.id ? { backgroundColor: 'var(--brand-mid)' } : {}}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
@@ -258,6 +303,11 @@ export function CohortSchedulesSection() {
                       <span className={`text-[11px] px-2 py-0.5 rounded-full border ${checkin ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                         {checkin ?? 'No check-in template'}
                       </span>
+                      {s.partnerName && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-100">
+                          {s.partnerName}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

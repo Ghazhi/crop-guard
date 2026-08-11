@@ -1,0 +1,77 @@
+Crop Guard Review — SaaS / Multi-Tenant Configuration Requirements
+(Note: tenants need extensive self-service configuration in this SaaS system.)
+
+---
+
+## 1. SaaS / Multi-Tenancy
+
+- Admin should be able to configure everything, including the landing page (text and images must be configurable).
+- Multi-tenant model: a tenant should be able to run their own instance — this is the white-label requirement.
+- Two combined capabilities: multi-tenant + white label.
+
+## 2. Dashboard
+
+- Dashboard stats must be modifiable — admin selects what appears; unselected items are hidden.
+- There should still be a sensible default (not blank/empty by default).
+- All cards/widgets on the dashboard must be configurable to show or hide, controlled by the admin.
+- This configuration surface can be named "Config Dashboard" — a UI where the admin selects which cards/widgets to display.
+
+## 3. Governance Page
+
+- The cooperatives list must have filters.
+- "Governance" and "Cooperative Governance" sections should be collapsible (toggle to show/hide).
+- The cooperatives list itself should also be collapsible via a toggle.
+
+## 4. Registry
+
+- Registration flow: every farmer added to the platform goes to Registration first. Enrollment is the separate step that adds a farmer to a program/cohort.
+  - Farmers are never registered directly into a program or cohort — registration is tenant-wide onboarding; enrollment is where the program/cohort decision happens.
+- On the Registration page, we should see all farmers for that tenant, with the ability to filter between:
+  - Farmers enrolled in a program
+  - Farmers not enrolled
+- For farmers who are enrolled, opening their record (sheet) from Registration should show both:
+  - The existing registration details, and
+  - The enrollment data/details currently shown on the Enrollment page's sheet
+- Registry nav simplification: the Registry nav currently has both a Registration tab and an Enrollment tab — keep only the Registration tab/table. The Enrollment tab moves entirely to the Programs page (see Section 5) and is no longer called "Enrollment" there — it becomes "Beneficiary," showing only farmers whose workflow progress is on the Active stage.
+
+## 5. Programs
+
+- Rename "Enrollment" (as currently labeled under Programs) to "Beneficiary."
+- The information/table currently under Registry > Enrollment should move under this Beneficiary tab (on Programs).
+- Only farmers whose workflow progress has reached the "Active" stage should appear under Beneficiaries.
+- The workflow progress stages must be configurable by the tenant admin:
+  - There should be sensible defaults.
+  - Admin can rename stages and choose which stage a farmer must reach before appearing under Beneficiaries.
+
+## 6. Insights
+
+- Add filters here for: Communities, Programs, Cohort, Cooperative.
+
+## 7. Configuration
+
+- **Baselines:** When creating a baseline template, name it using the partner/organization name. Baseline templates must support duplication.
+- **Cohort schedule:** When creating a cohort schedule, the partner must also be selectable.
+  - Where the baseline template is created, also surface the partner selector there — baseline template and check-in template become items/fields on one consolidated form (single combined creation form, not just two entry points co-located on the same screen).
+    - Original note verbatim: "When creating the cohort schedule we need to also select the partner. so where the baselin template is we bring partner select the we push the baseline template and check in template to one place."
+- **Navigation restructuring:**
+  - Move "Partners" from being its own top-level nav item into the Configuration page.
+  - Rename "Partners" to "Organizations." When adding an organization, choose its type: Implementing FBO (Farmer-Based Organization) or Partner. Agents can belong to either type.
+- **Training materials:** support pushing content on a weekly basis, aligned to the current week.
+- **Cohort schedule tab:** add a Program filter (select) and a Cohort filter.
+- **Consistency fix — overrides naming/placement:**
+  - On Check-in Config, "Farmer Override" is its own tab. On Training Materials, the equivalent override tab is currently missing/misplaced — fix so it's consistently a tab there too.
+  - Rename for clarity:
+    - Check-in tab → "Check-in Override" (was "Farmer Override")
+    - Training tab → "Training Override" and "Survey Override" (as separate override tabs under Training)
+- Add a "Duration" field when creating a training schedule.
+- Rename "Cohort Schedule" to "Check-in Schedule."
+- **Survey:** add Survey Template, Survey Schedule, Survey Metrics, and Survey Override.
+- **Configuration nav, final structure:**
+  - My Profile
+  - User Management
+  - Organizations
+  - Activities (sub-tabs: Check-in, Training, Survey)
+
+## 8. Opportunity
+
+- Link partners here: when creating a cohort, a partner must be selected.

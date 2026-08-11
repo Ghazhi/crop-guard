@@ -19,6 +19,7 @@ export interface CohortTrainingSchedule {
   trainingStartDate: string | null
   windowDays:        number
   graceDays:         number
+  durationWeeks:     number
   isConfigured:      boolean
 }
 
@@ -27,14 +28,14 @@ export const SEED_COHORT_TRAINING_SCHEDULES: CohortTrainingSchedule[] = [
     id: 'cts-001',
     programId: 'prog-001', programName: 'WAVE Program',
     cohortId: 'coh-001', cohortName: 'Cohort 1 - Gurubagu',
-    trainingStartDate: '2026-06-01', windowDays: 7, graceDays: 2,
+    trainingStartDate: '2026-06-01', windowDays: 7, graceDays: 2, durationWeeks: 12,
     isConfigured: true,
   },
   {
     id: 'cts-002',
     programId: 'prog-004', programName: 'Soybean Outgrower Scheme',
     cohortId: 'coh-012', cohortName: 'Cohort A - Savannah',
-    trainingStartDate: null, windowDays: 7, graceDays: 2,
+    trainingStartDate: null, windowDays: 7, graceDays: 2, durationWeeks: 12,
     isConfigured: false,
   },
 ]

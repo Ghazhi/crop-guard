@@ -22,6 +22,8 @@ export interface BaselineTemplate {
   title:       string
   description: string
   cropType:    'maize' | 'soybean' | 'cocoa'
+  partnerId:   string | null
+  partnerName: string | null
   p1Items:     BaselineItem[] // Agronomy Readiness
   p2Items:     BaselineItem[] // CSA & Climate-Smart
   p3Items:     BaselineItem[] // Advisory & Commitment
@@ -29,6 +31,8 @@ export interface BaselineTemplate {
   includeEci:  boolean
   eciItems:    BaselineItem[]
   isActive:    boolean
+  /** ID of the CheckinTemplate created together with this baseline template, if any */
+  linkedCheckinTemplateId?: string | null
 }
 
 export const BASELINE_PILLAR_META = {
@@ -53,6 +57,7 @@ export const SEED_BASELINE_TEMPLATES: BaselineTemplate[] = [
     title: 'Soybean Baseline Assessment',
     description: 'Baseline resilience assessment completed at enrollment for the soybean season.',
     cropType: 'soybean',
+    partnerId: null, partnerName: null,
     isActive: true,
     includeEci: true,
     p1Items: [
@@ -94,6 +99,7 @@ export const SEED_BASELINE_TEMPLATES: BaselineTemplate[] = [
     title: 'Cocoa Baseline Assessment',
     description: 'Baseline resilience assessment completed at enrollment for the cocoa season.',
     cropType: 'cocoa',
+    partnerId: null, partnerName: null,
     isActive: true,
     includeEci: true,
     p1Items: [
@@ -250,6 +256,8 @@ export interface CohortCheckinSchedule {
   checkinTemplateId:   string | null
   isPaused:            boolean
   isConfigured:        boolean
+  partnerId?:          string | null
+  partnerName?:        string | null
 }
 
 export const SEED_COHORT_SCHEDULES: CohortCheckinSchedule[] = [

@@ -1,7 +1,7 @@
 'use client'
 
 import { usePersistedState } from '@/lib/usePersistedState'
-import { Settings2, User, Users, Palette, GitBranch, Building2, Zap } from 'lucide-react'
+import { Settings2, User, Users, Palette, GitBranch, Building2, Zap, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MyProfileTab } from './MyProfileTab'
 import { UserManagementTab } from './UserManagementTab'
@@ -9,8 +9,9 @@ import { OrganizationsSection } from './organizations/OrganizationsSection'
 import { ActivitiesShell } from './activities/ActivitiesShell'
 import { BrandingConfigShell } from './branding/BrandingConfigShell'
 import { WorkflowStagesSection } from './workflow/WorkflowStagesSection'
+import { AdvisoryConfigShell } from './advisory/AdvisoryConfigShell'
 
-type ConfigTab = 'profile' | 'users' | 'organizations' | 'activities' | 'branding' | 'workflow'
+type ConfigTab = 'profile' | 'users' | 'organizations' | 'activities' | 'branding' | 'workflow' | 'advisory'
 
 const CONFIG_TABS: { id: ConfigTab; Icon: React.ElementType; label: string }[] = [
   { id: 'profile',       Icon: User,       label: 'My Profile' },
@@ -19,6 +20,7 @@ const CONFIG_TABS: { id: ConfigTab; Icon: React.ElementType; label: string }[] =
   { id: 'activities',    Icon: Zap,        label: 'Activities' },
   { id: 'branding',      Icon: Palette,    label: 'Branding' },
   { id: 'workflow',      Icon: GitBranch,  label: 'Workflow Stages' },
+  { id: 'advisory',      Icon: Lightbulb,  label: 'Advisory' },
 ]
 
 export function Main() {
@@ -62,6 +64,7 @@ export function Main() {
       {tab === 'activities' && <ActivitiesShell />}
       {tab === 'branding' && <BrandingConfigShell />}
       {tab === 'workflow' && <WorkflowStagesSection />}
+      {tab === 'advisory' && <AdvisoryConfigShell />}
     </div>
   )
 }

@@ -20,6 +20,17 @@ export function usePersistedState<T>(key: string, initial: T): [T, (v: T | ((pre
   // sessionStorage is only read after mount, then applied (see effect below)
   const [value, setRaw] = useState<T>(initial)
   const [hydrated, setHydrated] = useState(false)
+  // tracks which key `value`/`hydrated` currently reflect, so a key change (e.g.
+  // switching which org's settings this instance reads) can be detected and the
+  // stale value from the previous key discarded before the persist-effect below
+  // ever gets a chance to write it into the new key's storage.
+  const [loadedKey, setLoadedKey] = useState(key)
+
+  if (key !== loadedKey) {
+    setRaw(initial)
+    setHydrated(false)
+    setLoadedKey(key)
+  }
 
   useEffect(() => {
     try {

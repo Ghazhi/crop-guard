@@ -58,38 +58,46 @@ export function SelectTemplate({
         )
       )}
 
-      <select
-        id={selectId}
-        disabled={isDisabled || options.length === 0}
-        required={isRequired}
-        aria-invalid={!!error}
-        aria-describedby={error ? `${selectId}-error` : `${selectId}-hint`}
-        className={cn(
-          'w-full rounded-lg border bg-white outline-none transition-all appearance-none cursor-pointer',
-          'focus:border-(--brand-green) focus:ring-2 focus:ring-(--brand-green)/20',
-          'disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed',
-          'pr-8',
-          SIZE_MAP[size],
-          error
-            ? 'border-(--brand-red) focus:border-(--brand-red) focus:ring-(--brand-red)/20'
-            : 'border-gray-200 hover:border-gray-300',
-          className,
-        )}
-        {...props}
-      >
-        {options.length === 0 ? (
-          <option value="" disabled>{placeholder ?? 'No options available'}</option>
-        ) : placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          id={selectId}
+          disabled={isDisabled || options.length === 0}
+          required={isRequired}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${selectId}-error` : `${selectId}-hint`}
+          className={cn(
+            'w-full rounded-lg border bg-white outline-none transition-all appearance-none cursor-pointer',
+            'focus:border-(--brand-green) focus:ring-2 focus:ring-(--brand-green)/20',
+            'disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed',
+            'pr-8',
+            SIZE_MAP[size],
+            error
+              ? 'border-(--brand-red) focus:border-(--brand-red) focus:ring-(--brand-red)/20'
+              : 'border-gray-200 hover:border-gray-300',
+            className,
+          )}
+          {...props}
+        >
+          {options.length === 0 ? (
+            <option value="" disabled>{placeholder ?? 'No options available'}</option>
+          ) : placeholder && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <svg
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400"
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
 
       {error && (
         <p id={`${selectId}-error`} className="text-xs text-(--brand-red)">

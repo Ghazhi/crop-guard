@@ -13,9 +13,6 @@ import {
   DEFAULT_LANDING_CONTENT, newHeroSlide, fileToDataUrl,
 } from '../../_logics/branding'
 
-// Navbar and footer branding (logo, sign-in/CTA labels, footer text) are fixed
-// and intentionally not editable here — only hero carousel content and CTAs are.
-
 export function LandingContentSection() {
   const [content, setContent] = usePersistedState<LandingContent>('branding.landingContent', DEFAULT_LANDING_CONTENT)
   const [busySlideId, setBusySlideId] = useState<string | null>(null)
@@ -59,6 +56,53 @@ export function LandingContentSection() {
           <h2 className="text-base font-bold text-gray-900">Landing Page Content</h2>
         </div>
         <ButtonTemplate variant="outline" size="sm" label="Reset to Default" leftIcon={<RotateCcw className="w-3.5 h-3.5" />} onClick={handleReset} />
+      </div>
+
+      {/* Navbar & footer */}
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Navbar</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
+            <FileUploadTemplate
+              accept="image/*"
+              initialPreviewUrl={content.navLogo}
+              onChange={async file => patch({ navLogo: file ? await fileToDataUrl(file) : null })}
+              placeholder="Upload nav logo"
+            />
+            <div className="flex flex-col gap-3">
+              <InputTemplate label="Brand Name" labelVariant="compact" value={content.brandName} onChange={e => patch({ brandName: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <InputTemplate label="Sign In Label" labelVariant="compact" value={content.signInLabel} onChange={e => patch({ signInLabel: e.target.value })} />
+                <InputTemplate label="Nav CTA Label" labelVariant="compact" value={content.ctaLabel} onChange={e => patch({ ctaLabel: e.target.value })} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Footer</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
+            <FileUploadTemplate
+              accept="image/*"
+              initialPreviewUrl={content.footerLogo}
+              onChange={async file => patch({ footerLogo: file ? await fileToDataUrl(file) : null })}
+              placeholder="Upload footer logo"
+            />
+            <div className="flex flex-col gap-3">
+              <InputTemplate label="Footer Tagline" labelVariant="compact" value={content.footerTagline} onChange={e => patch({ footerTagline: e.target.value })} />
+              <InputTemplate label="Footer Copyright" labelVariant="compact" value={content.footerCopyright} onChange={e => patch({ footerCopyright: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
+            <FileUploadTemplate
+              accept="image/*"
+              initialPreviewUrl={content.poweredByLogo}
+              onChange={async file => patch({ poweredByLogo: file ? await fileToDataUrl(file) : null })}
+              placeholder="Upload 'powered by' logo"
+            />
+            <InputTemplate label="'Powered By' Label" labelVariant="compact" value={content.poweredByLabel} onChange={e => patch({ poweredByLabel: e.target.value })} />
+          </div>
+        </div>
       </div>
 
       {/* Hero carousel */}

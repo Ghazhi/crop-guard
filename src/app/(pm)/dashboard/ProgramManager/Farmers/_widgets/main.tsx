@@ -28,6 +28,8 @@ import { getFarmers, getProgramOptions } from '@/app/(admin)/dashboard/FarmersRe
 import type { Farmer, FriZone, ProgramOption } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import { PM_PROGRAM_IDS, PM_PROGRAMS, isPmProgram } from '@/dataCenter/pmScope'
 import { useCropOptions } from '@/dataCenter/useCropOptions'
+import { COMMUNITIES } from '@/dataCenter/communityProfile'
+import { COOPERATIVES } from '@/dataCenter/cooperatives'
 
 // ── PM scoping ─────────────────────────────────────────────────────────────────
 // Keep unassigned farmers (needed for enroll flows) plus farmers enrolled in one
@@ -302,10 +304,10 @@ function Step1({ f, set, programs }: {
 
       <SectionHeader label="Community & Program" />
       <SelectTemplate label="COMMUNITY"
-        options={[{ value: '', label: 'Select community' }]}
+        options={[{ value: '', label: 'Select community' }, ...COMMUNITIES.map(c => ({ value: c.name, label: c.name }))]}
         value={f.community} onChange={e => set('community', e.target.value)} />
       <SelectTemplate label="GROUP / COOPERATIVE"
-        options={[{ value: '', label: 'Select group' }]}
+        options={[{ value: '', label: 'Select group' }, ...COOPERATIVES.map(c => ({ value: c.name, label: c.name }))]}
         value={f.group} onChange={e => set('group', e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
         <SelectTemplate label="PROGRAM (OPTIONAL)"

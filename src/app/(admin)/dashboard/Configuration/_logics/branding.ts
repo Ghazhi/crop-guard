@@ -1,9 +1,8 @@
 // ─── Tenant landing-page config ───────────────────────────────────────────────
 // Hero carousel content + theme colors are editable by a tenant admin from
-// Configuration > Landing Page Config, and read live by the public LandingPage.
+// Configuration > Branding, and read live by the public LandingPage.
 // Persisted via usePersistedState (sessionStorage) — the mock-data equivalent
-// of a per-tenant settings record. Navbar/footer branding (logo, sign-in label,
-// footer text) are fixed and NOT admin-configurable.
+// of a per-tenant settings record.
 
 export interface ThemeColors {
   forest: string

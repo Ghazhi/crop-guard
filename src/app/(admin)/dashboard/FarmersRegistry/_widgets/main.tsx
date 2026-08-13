@@ -8,11 +8,11 @@ import {
   UserMinus, UserCog, Users, Check, GitBranch, UserPlus,
   FileText, UserCheck, Clock, CreditCard, Truck, PackageCheck,
   MapPin, BarChart2, ChevronUp, ChevronDown, SlidersHorizontal,
-  AlertTriangle, Columns3,
+  AlertTriangle, Columns3, Building2,
 } from 'lucide-react'
 import { COOPERATIVES } from '@/dataCenter/cooperatives'
 import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
-import { REGIONS } from '@/dataCenter/communityProfile'
+import { REGIONS, COMMUNITIES } from '@/dataCenter/communityProfile'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import {
@@ -21,6 +21,7 @@ import {
 } from 'recharts'
 
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
@@ -29,7 +30,7 @@ import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 
 import { getFarmers, getProgramOptions } from '../_logics/functions'
-import type { Farmer, FarmerEnrollment, FriZone, ProgramOption } from '../_logics/interface'
+import type { Farmer, FarmerEnrollment, FriZone, ProgramOption, WorkflowActivityEntry } from '../_logics/interface'
 import { DEFAULT_WORKFLOW_STAGES, WORKFLOW_STAGES_KEY } from '../../Configuration/_logics/workflowConfig'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -76,6 +77,28 @@ export function enrolmentWorkflowDetail(farmerId: string, enr: FarmerEnrollment)
   return { registeredAt, baselineDone, checkinOnTrack }
 }
 
+/** Activity log for an enrollment's workflow — uses real entries where present, else derives a
+ * stable one-entry-per-completed-stage timeline from the farmer id so every enrolled row shows something. */
+export function activityLogFor(
+  farmerId: string, enr: FarmerEnrollment, stages: { stage: number; name: string }[],
+): WorkflowActivityEntry[] {
+  if (enr.activityLog) return enr.activityLog
+  const h = hashOf(farmerId)
+  const { registeredAt } = enrolmentWorkflowDetail(farmerId, enr)
+  const start = new Date(registeredAt)
+  return stages
+    .filter(s => s.stage <= enr.currentStage)
+    .map(s => {
+      const date = new Date(start)
+      date.setDate(date.getDate() + (s.stage - 1) * (2 + (h % 5)))
+      return {
+        stage: s.stage, stageName: s.name,
+        status: (enr.status === 'withdrawn' && s.stage === enr.currentStage ? 'declined' : 'approved') as WorkflowActivityEntry['status'],
+        date: date.toISOString().slice(0, 10),
+      }
+    })
+}
+
 function regionLabel(regionCode: string) {
   return REGIONS.find(r => r.code.toLowerCase() === regionCode.toLowerCase())?.name ?? regionCode
 }
@@ -110,6 +133,51 @@ const REGION_OPTIONS = [
   { value: 'ahafo',        label: 'Ahafo'        },
   { value: 'western_north',label: 'Western North'},
 ]
+
+// Farmer.region stores REGIONS' short codes (e.g. 'ah'), distinct from REGION_OPTIONS' slugs
+// (e.g. 'ashanti') used to drive the edit form's dropdowns. Names don't always match verbatim
+// between the two lists (REGIONS has separate 'Bono Ahafo'/'Bono' entries where REGION_OPTIONS
+// only has one 'Bono'), so a couple of overrides are needed on top of the name-derived mapping.
+const REGION_CODE_OVERRIDES: Record<string, string> = { ba: 'bono' }
+
+const REGION_CODE_TO_SLUG: Record<string, string> = Object.fromEntries(
+  REGIONS.map(r => {
+    const code = r.code.toLowerCase()
+    if (REGION_CODE_OVERRIDES[code]) return [code, REGION_CODE_OVERRIDES[code]]
+    const bySlug = REGION_OPTIONS.find(o => o.value === r.name.toLowerCase().replace(/\s+/g, '_'))
+    const byLabel = REGION_OPTIONS.find(o => o.label.toLowerCase() === r.name.toLowerCase())
+    return [code, (bySlug ?? byLabel)?.value ?? code]
+  }),
+)
+
+function resolveRegionSlug(region: string) {
+  return REGION_CODE_TO_SLUG[region.toLowerCase()] ?? region
+}
+
+// Reverses resolveRegionSlug, so saving the edit form writes back the same short code
+// format (e.g. 'ah') that regionLabel()/REGIONS expect, instead of the dropdown's slug.
+// REGION_OPTIONS has no separate 'Bono Ahafo' slug, so 'ba' and 'be' both map to 'bono' —
+// prefer the explicit override ('ba') over an arbitrary array-order pick on the way back.
+function regionSlugToCode(slug: string): string {
+  const overrideMatch = Object.entries(REGION_CODE_OVERRIDES).find(([, s]) => s === slug)
+  if (overrideMatch) return overrideMatch[0]
+  return Object.entries(REGION_CODE_TO_SLUG).find(([, s]) => s === slug)?.[0] ?? slug
+}
+
+// Falls back to the district's own value/label (added as a synthetic option) when it doesn't
+// match DISTRICT_OPTIONS' sample list, so the select still shows the farmer's real district
+// instead of silently reverting to a blank placeholder.
+function resolveDistrict(regionSlug: string, district: string): { value: string; label: string } {
+  const options = DISTRICT_OPTIONS[regionSlug] ?? []
+  const norm = district.trim().toLowerCase()
+  const match = options.find(d => d.value === district || d.label.toLowerCase() === norm)
+  return match ?? { value: district, label: district }
+}
+
+// Reverses resolveDistrict: converts the dropdown's district value back to its display label.
+function districtValueToLabel(regionSlug: string, value: string): string {
+  return (DISTRICT_OPTIONS[regionSlug] ?? []).find(d => d.value === value)?.label ?? value
+}
 
 const GENDER_OPTIONS = [
   { value: 'male',             label: 'Male'             },
@@ -174,10 +242,15 @@ function FilterSelect({
 // ── Add farmer — stepper types ────────────────────────────────────────────────
 
 interface AddFarmerForm {
-  fullName: string; phone: string; nationalId: string
+  fullName: string; phone: string; nationalId: string; idType: string
   dateOfBirth: string; gender: string; region: string; district: string
   community: string; primaryCrop: string; farmSize: string; gpsLocation: string
   consentGiven: boolean
+  ownsHouse: '' | 'yes' | 'no'; maritalStatus: string; childrenCount: string
+  ownsTractor: '' | 'yes' | 'no'; otherBusiness: '' | 'yes' | 'no'
+  loanType: string; accountType: string; averageIncome: string
+  hasAgricInsurance: '' | 'yes' | 'no'
+  desiredAssets: string[]; inputCredit: '' | 'yes' | 'no'
 }
 
 interface StepperForm {
@@ -193,7 +266,10 @@ interface StepperForm {
   ownsHouse: '' | 'yes' | 'no'; maritalStatus: string; numChildren: string
   otherBusiness: '' | 'yes' | 'no'; nativeCommunity: '' | 'yes' | 'no'
   communityPrefs: string[]
-  // Step 5
+  // Step 5 — Financial
+  loanType: string; accountType: string; averageIncome: string
+  hasAgricInsurance: '' | 'yes' | 'no'
+  // Step 6 — Support
   engagedAgric: '' | 'yes' | 'no'; desiredAssets: string[]
   inputCredit: '' | 'yes' | 'no'; engagedOrgs: '' | 'yes' | 'no'
   suggestions: string; gpsLocation: string; consentGiven: boolean
@@ -207,6 +283,7 @@ const EMPTY_STEPPER: StepperForm = {
   ownsTractor: '',
   ownsHouse: '', maritalStatus: '', numChildren: '0', otherBusiness: '',
   nativeCommunity: '', communityPrefs: [],
+  loanType: '', accountType: '', averageIncome: '', hasAgricInsurance: '',
   engagedAgric: '', desiredAssets: [], inputCredit: '', engagedOrgs: '',
   suggestions: '', gpsLocation: '', consentGiven: false,
 }
@@ -343,10 +420,10 @@ function Step1({ f, set, programs }: {
 
       <SectionHeader label="Community & Program" />
       <SelectTemplate label="COMMUNITY"
-        options={[{ value: '', label: 'Select community' }]}
+        options={[{ value: '', label: 'Select community' }, ...COMMUNITIES.map(c => ({ value: c.name, label: c.name }))]}
         value={f.community} onChange={e => set('community', e.target.value)} />
       <SelectTemplate label="GROUP / COOPERATIVE"
-        options={[{ value: '', label: 'Select group' }]}
+        options={[{ value: '', label: 'Select group' }, ...COOPERATIVES.map(c => ({ value: c.name, label: c.name }))]}
         value={f.group} onChange={e => set('group', e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
         <SelectTemplate label="PROGRAM (OPTIONAL)"
@@ -594,7 +671,44 @@ function GpsField({ value, onChange }: { value: string; onChange: (v: string) =>
   )
 }
 
-function Step5({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
+const LOAN_TYPE_OPTIONS = [
+  { value: '', label: 'Select loan type' },
+  { value: 'input_credit', label: 'Input Credit' },
+  { value: 'equipment', label: 'Equipment Loan' },
+  { value: 'working_capital', label: 'Working Capital' },
+  { value: 'none', label: 'None' },
+]
+
+const ACCOUNT_TYPE_OPTIONS = [
+  { value: '', label: 'Select account type' },
+  { value: 'bank', label: 'Bank Account' },
+  { value: 'mobile_money', label: 'Mobile Money' },
+  { value: 'none', label: 'None' },
+]
+
+function Step5Financial({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
+  return (
+    <div className="space-y-3">
+      <SectionHeader label="Loan & Credit" />
+      <SelectTemplate label="LOAN TYPE"
+        options={LOAN_TYPE_OPTIONS} value={f.loanType} onChange={e => set('loanType', e.target.value)} />
+      <InputTemplate label="AVERAGE MONTHLY INCOME (GHS)" type="number" placeholder="e.g. 800"
+        value={f.averageIncome} onChange={e => set('averageIncome', e.target.value)} />
+
+      <SectionHeader label="Payment Details" />
+      <SelectTemplate label="ACCOUNT TYPE"
+        options={ACCOUNT_TYPE_OPTIONS} value={f.accountType} onChange={e => set('accountType', e.target.value)} />
+
+      <SectionHeader label="Insurance" />
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">HAS AGRICULTURAL INSURANCE?</p>
+        <YesNo value={f.hasAgricInsurance} onChange={v => set('hasAgricInsurance', v)} />
+      </div>
+    </div>
+  )
+}
+
+function Step6({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
   const ASSETS = ['Tractor', 'Irrigation system', 'Storage facility', 'Processing equipment', 'Solar pump', 'Drone sprayer', 'Motorbike', 'Other']
   return (
     <div className="space-y-3">
@@ -663,7 +777,7 @@ function Step5({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: Step
 
 // ── Step titles ───────────────────────────────────────────────────────────────
 
-const STEP_TITLES = ['Basic Details', 'Identity Details', 'Farm Details', 'Household Details', 'Support Details']
+const STEP_TITLES = ['Personal', 'Identity', 'Farm', 'Household', 'Financial', 'Support']
 
 // ── AddFarmerSheet ────────────────────────────────────────────────────────────
 
@@ -675,7 +789,7 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<StepperForm>(EMPTY_STEPPER)
   const [saving, setSaving] = useState(false)
-  const TOTAL = 5
+  const TOTAL = 6
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -699,7 +813,7 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
     if (step === 3) {
       if (!form.primaryCrop)      { toast.error('Primary crop is required'); return false }
     }
-    if (step === 5) {
+    if (step === 6) {
       if (!form.consentGiven)     { toast.error('Farmer consent is required'); return false }
     }
     return true
@@ -715,6 +829,7 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
       fullName:     `${form.firstName} ${form.lastName}`.trim(),
       phone:        form.phone,
       nationalId:   form.idNumber,
+      idType:       form.idType,
       dateOfBirth:  form.dob,
       gender:       form.gender,
       region:       '',
@@ -724,6 +839,17 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
       farmSize:     form.acres,
       gpsLocation:  form.gpsLocation,
       consentGiven: form.consentGiven,
+      ownsHouse:    form.ownsHouse,
+      maritalStatus: form.maritalStatus,
+      childrenCount: form.numChildren,
+      ownsTractor:  form.ownsTractor,
+      otherBusiness: form.otherBusiness,
+      loanType:     form.loanType,
+      accountType:  form.accountType,
+      averageIncome: form.averageIncome,
+      hasAgricInsurance: form.hasAgricInsurance,
+      desiredAssets: form.desiredAssets,
+      inputCredit:  form.inputCredit,
     })
     onClose()
   }
@@ -733,7 +859,8 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
     2: <Step2 f={form} set={set} />,
     3: <Step3 f={form} set={set} />,
     4: <Step4 f={form} set={set} />,
-    5: <Step5 f={form} set={set} />,
+    5: <Step5Financial f={form} set={set} />,
+    6: <Step6 f={form} set={set} />,
   }
 
   return (
@@ -770,32 +897,40 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
 // ── Edit farmer form types ─────────────────────────────────────────────────────
 
 interface EditFarmerForm {
-  fullName: string; phone: string; nationalId: string
+  fullName: string; phone: string; nationalId: string; idType: string
   dateOfBirth: string; gender: string; region: string; district: string
-  community: string; primaryCrop: string; farmSize: string
+  community: string; group: string; primaryCrop: string; farmSize: string
   programId: string; cohortId: string; agentName: string
+  ownsHouse: '' | 'yes' | 'no'; maritalStatus: string; childrenCount: string
+  ownsTractor: '' | 'yes' | 'no'; otherBusiness: '' | 'yes' | 'no'
+  loanType: string; accountType: string; averageIncome: string
+  hasAgricInsurance: '' | 'yes' | 'no'
+  desiredAssets: string[]; inputCredit: '' | 'yes' | 'no'
 }
 const EMPTY_EDIT: EditFarmerForm = {
-  fullName: '', phone: '', nationalId: '', dateOfBirth: '', gender: '',
-  region: '', district: '', community: '', primaryCrop: '', farmSize: '',
+  fullName: '', phone: '', nationalId: '', idType: '', dateOfBirth: '', gender: '',
+  region: '', district: '', community: '', group: '', primaryCrop: '', farmSize: '',
   programId: '', cohortId: '', agentName: '',
+  ownsHouse: '', maritalStatus: '', childrenCount: '0', ownsTractor: '', otherBusiness: '',
+  loanType: '', accountType: '', averageIncome: '', hasAgricInsurance: '',
+  desiredAssets: [], inputCredit: '',
 }
 
 const DISTRICT_OPTIONS: Record<string, { value: string; label: string }[]> = {
   savannah:      [{ value: 'north_gonja', label: 'North Gonja' }, { value: 'central_gonja', label: 'Central Gonja' }, { value: 'east_gonja', label: 'East Gonja' }, { value: 'west_gonja', label: 'West Gonja' }, { value: 'sawla_tuna_kalba', label: 'Sawla-Tuna-Kalba' }, { value: 'bole', label: 'Bole' }],
-  northern:      [{ value: 'tamale_metro', label: 'Tamale Metro' }, { value: 'sagnarigu', label: 'Sagnarigu' }, { value: 'kumbungu', label: 'Kumbungu' }, { value: 'nanton', label: 'Nanton' }],
-  upper_east:    [{ value: 'bolgatanga_muni', label: 'Bolgatanga Muni' }, { value: 'bawku_muni', label: 'Bawku Muni' }, { value: 'kassena_nankana', label: 'Kassena-Nankana' }],
-  upper_west:    [{ value: 'wa_muni', label: 'Wa Muni' }, { value: 'jirapa', label: 'Jirapa' }, { value: 'lawra', label: 'Lawra' }],
+  northern:      [{ value: 'tamale_metro', label: 'Tamale Metro' }, { value: 'sagnarigu', label: 'Sagnarigu' }, { value: 'kumbungu', label: 'Kumbungu' }, { value: 'nanton', label: 'Nanton' }, { value: 'yendi', label: 'Yendi' }],
+  upper_east:    [{ value: 'bolgatanga_muni', label: 'Bolgatanga Municipal' }, { value: 'bawku_muni', label: 'Bawku Municipal' }, { value: 'kassena_nankana', label: 'Kassena-Nankana' }],
+  upper_west:    [{ value: 'wa_muni', label: 'Wa Municipal' }, { value: 'jirapa', label: 'Jirapa' }, { value: 'lawra', label: 'Lawra' }],
   north_east:    [{ value: 'nalerigu_gambaga', label: 'Nalerigu-Gambaga' }, { value: 'chereponi', label: 'Chereponi' }],
-  ashanti:       [{ value: 'kumasi_metro', label: 'Kumasi Metro' }, { value: 'oforikrom', label: 'Oforikrom' }, { value: 'asokwa', label: 'Asokwa' }],
+  ashanti:       [{ value: 'kumasi_metro', label: 'Kumasi Metro' }, { value: 'oforikrom', label: 'Oforikrom' }, { value: 'asokwa', label: 'Asokwa' }, { value: 'kwabre_east', label: 'Kwabre East' }, { value: 'ejisu_juaben', label: 'Ejisu-Juaben' }],
   eastern:       [{ value: 'koforidua', label: 'Koforidua' }, { value: 'kwahu_west', label: 'Kwahu West' }],
   western:       [{ value: 'sekondi_takoradi', label: 'Sekondi-Takoradi' }, { value: 'ahanta_west', label: 'Ahanta West' }],
   central:       [{ value: 'cape_coast_metro', label: 'Cape Coast Metro' }, { value: 'komenda_edina', label: 'Komenda-Edina-Eguafo' }],
   volta:         [{ value: 'ho_muni', label: 'Ho Muni' }, { value: 'hohoe', label: 'Hohoe' }],
   greater_accra: [{ value: 'accra_metro', label: 'Accra Metro' }, { value: 'tema_metro', label: 'Tema Metro' }],
   oti:           [{ value: 'dambai', label: 'Dambai' }, { value: 'nkwanta_south', label: 'Nkwanta South' }],
-  bono:          [{ value: 'sunyani_muni', label: 'Sunyani Muni' }, { value: 'berekum_east', label: 'Berekum East' }],
-  bono_east:     [{ value: 'techiman_muni', label: 'Techiman Muni' }, { value: 'kintampo_north', label: 'Kintampo North' }],
+  bono:          [{ value: 'sunyani_muni', label: 'Sunyani Municipal' }, { value: 'berekum_east', label: 'Berekum East' }],
+  bono_east:     [{ value: 'techiman_muni', label: 'Techiman Municipal' }, { value: 'kintampo_north', label: 'Kintampo North' }],
   ahafo:         [{ value: 'goaso', label: 'Goaso' }, { value: 'asunafo_north', label: 'Asunafo North' }],
   western_north: [{ value: 'sefwi_wiawso', label: 'Sefwi Wiawso' }, { value: 'bibiani_anhwiaso', label: 'Bibiani-Anhwiaso-Bekwai' }],
 }
@@ -1018,8 +1153,169 @@ function BulkUploadSheet({ open, onClose }: { open: boolean; onClose: () => void
 
 // ── Farmer sheet (view + edit combined) ───────────────────────────────────────
 
+const EDIT_STEP_TITLES = STEP_TITLES
+
+type SetEditField = <K extends keyof EditFarmerForm>(k: K, v: EditFarmerForm[K]) => void
+
+function EditStep1({ form, setField }: { form: EditFarmerForm; setField: SetEditField }) {
+  const communityBase = COMMUNITIES.map(c => ({ value: c.name, label: c.name }))
+  const communityOptions = form.community && !communityBase.some(c => c.value === form.community)
+    ? [...communityBase, { value: form.community, label: form.community }]
+    : communityBase
+  return (
+    <div className="space-y-3">
+      <InputTemplate label="FULL NAME" isRequired placeholder="Ama Mensah"
+        value={form.fullName} onChange={e => setField('fullName', e.target.value)} />
+      <div className="grid grid-cols-2 gap-3">
+        <InputTemplate label="PHONE" isRequired placeholder="0221234567"
+          value={form.phone} onChange={e => setField('phone', e.target.value)} />
+        <SelectTemplate label="GENDER"
+          options={[{ value: '', label: 'Select gender' }, ...GENDER_OPTIONS]}
+          value={form.gender} onChange={e => setField('gender', e.target.value)} />
+      </div>
+      <InputTemplate label="DATE OF BIRTH" type="date"
+        value={form.dateOfBirth} onChange={e => setField('dateOfBirth', e.target.value)} />
+      <SelectTemplate label="COMMUNITY"
+        options={[{ value: '', label: 'Select community' }, ...communityOptions]}
+        value={form.community} onChange={e => setField('community', e.target.value)} />
+      <SelectTemplate label="GROUP / COOPERATIVE"
+        options={[{ value: '', label: 'Select group' }, ...COOPERATIVES.map(c => ({ value: c.name, label: c.name }))]}
+        value={form.group} onChange={e => setField('group', e.target.value)} />
+    </div>
+  )
+}
+
+function EditStep2Identity({ form, setField }: { form: EditFarmerForm; setField: SetEditField }) {
+  return (
+    <div className="space-y-3">
+      <SelectTemplate label="ID TYPE" isRequired
+        options={[
+          { value: '', label: 'Select ID type' },
+          { value: 'ghana_card', label: 'Ghana Card' },
+          { value: 'passport', label: 'Passport' },
+          { value: 'voter_id', label: "Voter's ID" },
+          { value: 'nhis', label: 'NHIS Card' },
+          { value: 'drivers', label: "Driver's Licence" },
+        ]}
+        value={form.idType} onChange={e => setField('idType', e.target.value)} />
+      <InputTemplate label="NATIONAL ID" isRequired placeholder="GHA-XXXXXXXXX-X"
+        value={form.nationalId} onChange={e => setField('nationalId', e.target.value)} />
+    </div>
+  )
+}
+
+function EditStep3Farm({ form, setField, programs }: {
+  form: EditFarmerForm
+  setField: SetEditField
+  programs: ProgramOption[]
+}) {
+  const CROP_OPTIONS = useCropOptions()
+  const districts = form.region ? (DISTRICT_OPTIONS[form.region] ?? []) : []
+  const districtOptions = form.district && !districts.some(d => d.value === form.district)
+    ? [...districts, { value: form.district, label: form.district }]
+    : districts
+  const cohorts = programs.find(p => p.id === form.programId)?.cohorts ?? []
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <SelectTemplate label="REGION" isRequired
+          options={[{ value: '', label: 'Select region' }, ...REGION_OPTIONS]}
+          value={form.region} onChange={e => setField('region', e.target.value)} />
+        <SelectTemplate label="DISTRICT" isRequired
+          options={[{ value: '', label: form.region ? 'Select district' : 'Select region first' }, ...districtOptions]}
+          value={form.district} onChange={e => setField('district', e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SelectTemplate label="PRIMARY CROP" isRequired
+          options={[{ value: '', label: 'Select crop' }, ...CROP_OPTIONS]}
+          value={form.primaryCrop} onChange={e => setField('primaryCrop', e.target.value)} />
+        <InputTemplate label="FARM SIZE (HA)" type="number" placeholder="2.5"
+          value={form.farmSize} onChange={e => setField('farmSize', e.target.value)} />
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">OWNS A TRACTOR?</p>
+        <YesNo value={form.ownsTractor} onChange={v => setField('ownsTractor', v)} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <SelectTemplate label="PROGRAM (OPTIONAL)"
+          options={[{ value: '', label: 'None' }, ...programs.map(p => ({ value: p.id, label: p.name }))]}
+          value={form.programId} onChange={e => setField('programId', e.target.value)} />
+        <SelectTemplate label="COHORT (OPTIONAL)"
+          options={[{ value: '', label: 'None' }, ...cohorts.map(c => ({ value: c.id, label: c.name }))]}
+          value={form.cohortId} onChange={e => setField('cohortId', e.target.value)} />
+      </div>
+      <InputTemplate label="FIELD AGENT" placeholder="Agent name"
+        value={form.agentName} onChange={e => setField('agentName', e.target.value)} />
+    </div>
+  )
+}
+
+const MARITAL_OPTIONS = [
+  { value: '', label: 'Select' },
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+]
+
+function EditStep4Household({ form, setField }: { form: EditFarmerForm; setField: SetEditField }) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">OWNS A HOUSE?</p>
+          <YesNo value={form.ownsHouse} onChange={v => setField('ownsHouse', v)} />
+        </div>
+        <SelectTemplate label="MARITAL STATUS"
+          options={MARITAL_OPTIONS} value={form.maritalStatus}
+          onChange={e => setField('maritalStatus', e.target.value)} />
+      </div>
+      <InputTemplate label="NUMBER OF CHILDREN" type="number" placeholder="0"
+        value={form.childrenCount} onChange={e => setField('childrenCount', e.target.value)} />
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">ANY OTHER BUSINESS?</p>
+        <YesNo value={form.otherBusiness} onChange={v => setField('otherBusiness', v)} />
+      </div>
+    </div>
+  )
+}
+
+function EditStep5Financial({ form, setField }: { form: EditFarmerForm; setField: SetEditField }) {
+  return (
+    <div className="space-y-3">
+      <SelectTemplate label="LOAN TYPE"
+        options={LOAN_TYPE_OPTIONS} value={form.loanType} onChange={e => setField('loanType', e.target.value)} />
+      <InputTemplate label="AVERAGE MONTHLY INCOME (GHS)" type="number" placeholder="e.g. 800"
+        value={form.averageIncome} onChange={e => setField('averageIncome', e.target.value)} />
+      <SelectTemplate label="ACCOUNT TYPE"
+        options={ACCOUNT_TYPE_OPTIONS} value={form.accountType} onChange={e => setField('accountType', e.target.value)} />
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">HAS AGRICULTURAL INSURANCE?</p>
+        <YesNo value={form.hasAgricInsurance} onChange={v => setField('hasAgricInsurance', v)} />
+      </div>
+    </div>
+  )
+}
+
+const EDIT_ASSETS = ['Tractor', 'Irrigation system', 'Storage facility', 'Processing equipment', 'Solar pump', 'Drone sprayer', 'Motorbike', 'Other']
+
+function EditStep6Support({ form, setField }: { form: EditFarmerForm; setField: SetEditField }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">DESIRED ASSETS (SELECT ALL THAT APPLY)</p>
+        <ChipSelect options={EDIT_ASSETS} value={form.desiredAssets} onChange={v => setField('desiredAssets', v)} />
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">WILLING TO PARTICIPATE IN INPUT CREDIT?</p>
+        <YesNo value={form.inputCredit} onChange={v => setField('inputCredit', v)} />
+      </div>
+    </div>
+  )
+}
+
 function FarmerSheet({
-  mode, farmer, onClose, onModeChange, onSave, onUnenroll,
+  mode, farmer, onClose, onModeChange, onSave, onUnenroll, programs,
 }: {
   mode: 'view' | 'edit' | null
   farmer: Farmer | null
@@ -1027,36 +1323,51 @@ function FarmerSheet({
   onModeChange: (m: 'view' | 'edit') => void
   onSave: (f: EditFarmerForm) => void
   onUnenroll: () => void
+  programs: ProgramOption[]
 }) {
-  const CROP_OPTIONS = useCropOptions()
   const WORKFLOW_STAGES = useWorkflowStages()
   const [form, setForm] = useState<EditFarmerForm>(EMPTY_EDIT)
   const [saving, setSaving] = useState(false)
+  const [editStep, setEditStep] = useState(1)
+  const EDIT_TOTAL = 6
 
   useEffect(() => {
     if (mode === 'edit' && farmer) {
+      const regionSlug = farmer.region ? resolveRegionSlug(farmer.region) : ''
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         fullName:    farmer.fullName    ?? '',
         phone:       farmer.phone       ?? '',
         nationalId:  farmer.nationalId  ?? '',
+        idType:      farmer.idType      ?? '',
         dateOfBirth: farmer.dateOfBirth ?? '',
         gender:      farmer.gender      ?? '',
-        region:      farmer.region      ?? '',
-        district:    farmer.district    ?? '',
+        region:      regionSlug,
+        district:    farmer.district ? resolveDistrict(regionSlug, farmer.district).value : '',
         community:   farmer.community   ?? '',
+        group:       '',
         primaryCrop: farmer.primaryCrop ?? '',
         farmSize:    farmer.farmSize    ?? '',
         programId:   farmer.enrollment?.programId ?? '',
         cohortId:    farmer.enrollment?.cohortId  ?? '',
         agentName:   farmer.enrollment?.agentName ?? '',
+        ownsHouse:      farmer.ownsHouse      ?? '',
+        maritalStatus:  farmer.maritalStatus  ?? '',
+        childrenCount:  farmer.childrenCount  ?? '0',
+        ownsTractor:    farmer.ownsTractor    ?? '',
+        otherBusiness:  farmer.otherBusiness  ?? '',
+        loanType:          farmer.loanType          ?? '',
+        accountType:       farmer.accountType       ?? '',
+        averageIncome:     farmer.averageIncome     ?? '',
+        hasAgricInsurance: farmer.hasAgricInsurance ?? '',
+        desiredAssets: farmer.desiredAssets ?? [],
+        inputCredit:   farmer.inputCredit   ?? '',
       })
+      setEditStep(1)
     }
   }, [mode, farmer])
 
-  const districts = form.region ? (DISTRICT_OPTIONS[form.region] ?? []) : []
-
-  function setField<K extends keyof EditFarmerForm>(k: K, v: string) {
+  function setField<K extends keyof EditFarmerForm>(k: K, v: EditFarmerForm[K]) {
     setForm(prev => {
       const n = { ...prev, [k]: v }
       if (k === 'programId') n.cohortId = ''
@@ -1065,9 +1376,25 @@ function FarmerSheet({
     })
   }
 
-  async function handleSave() {
-    if (!form.fullName.trim()) { toast.error('Full name is required'); return }
-    if (!form.phone.trim())    { toast.error('Phone is required'); return }
+  function validateEditStep(): boolean {
+    if (editStep === 1) {
+      if (!form.fullName.trim()) { toast.error('Full name is required'); return false }
+      if (!form.phone.trim())    { toast.error('Phone is required'); return false }
+    }
+    if (editStep === 2) {
+      if (!form.nationalId.trim()) { toast.error('National ID is required'); return false }
+    }
+    if (editStep === 3) {
+      if (!form.region)      { toast.error('Region is required'); return false }
+      if (!form.district)    { toast.error('District is required'); return false }
+      if (!form.primaryCrop) { toast.error('Primary crop is required'); return false }
+    }
+    return true
+  }
+
+  async function handleEditNext() {
+    if (!validateEditStep()) return
+    if (editStep < EDIT_TOTAL) { setEditStep(s => s + 1); return }
     setSaving(true)
     await new Promise(r => setTimeout(r, 400))
     setSaving(false)
@@ -1079,141 +1406,216 @@ function FarmerSheet({
   const isEdit = mode === 'edit'
   const enr = farmer?.enrollment
 
+  const editStepContent: Record<number, React.ReactNode> = {
+    1: <EditStep1 form={form} setField={setField} />,
+    2: <EditStep2Identity form={form} setField={setField} />,
+    3: <EditStep3Farm form={form} setField={setField} programs={programs} />,
+    4: <EditStep4Household form={form} setField={setField} />,
+    5: <EditStep5Financial form={form} setField={setField} />,
+    6: <EditStep6Support form={form} setField={setField} />,
+  }
+
   return (
     <SheetTemplate
       open={open}
       onClose={onClose}
-      onBack={isEdit ? () => onModeChange('view') : undefined}
-      title={isEdit ? `Edit — ${farmer?.fullName ?? ''}` : (farmer?.fullName ?? '')}
+      onBack={isEdit ? () => (editStep > 1 ? setEditStep(s => s - 1) : onModeChange('view')) : undefined}
+      title={isEdit ? EDIT_STEP_TITLES[editStep - 1] : (farmer?.fullName ?? '')}
+      subtitle={isEdit ? `Step ${editStep} of ${EDIT_TOTAL} — Editing ${farmer?.fullName ?? ''}` : undefined}
       size="lg"
       bodyClassName={isEdit ? 'px-6 py-5 space-y-4' : 'px-6 py-5 space-y-5'}
       footer={isEdit ? (
         <>
-          <ButtonTemplate variant="outline" label="Cancel" fullWidth onClick={onClose} />
-          <ButtonTemplate label={saving ? 'Saving…' : 'Save Changes'} fullWidth isDisabled={saving} onClick={handleSave} />
+          <ButtonTemplate variant="outline" label={editStep === 1 ? 'Cancel' : '← Back'} fullWidth
+            onClick={editStep === 1 ? onClose : () => setEditStep(s => s - 1)} />
+          <ButtonTemplate
+            label={editStep === EDIT_TOTAL ? (saving ? 'Saving…' : 'Save Changes') : 'Next →'}
+            fullWidth isDisabled={saving} onClick={handleEditNext} />
         </>
       ) : undefined}
     >
       {!farmer ? null : isEdit ? (
         <>
-          {farmer && (
-            <div className="rounded-xl p-3 space-y-1.5 -mt-1" style={{ background: 'var(--brand-gray)', border: '1px solid var(--brand-pale)' }}>
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="text-gray-400">📞</span> {farmer.phone}
-                </span>
-                {form.district && (
-                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <MapPin className="w-3 h-3 text-gray-400" />
-                    {DISTRICT_OPTIONS[form.region]?.find(d => d.value === form.district)?.label ?? form.district}
-                  </span>
-                )}
-              </div>
-              {form.primaryCrop && (
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span>🌾</span> {CROP_OPTIONS.find(c => c.value === form.primaryCrop)?.label ?? form.primaryCrop}
-                </span>
-              )}
-              {enr && (
-                <p className="text-xs font-medium" style={{ color: 'var(--brand-dark)' }}>
-                  Enrolled: {enr.programName}
-                </p>
-              )}
-            </div>
-          )}
-
-          <InputTemplate label="FULL NAME" isRequired placeholder="Ama Mensah"
-            value={form.fullName} onChange={e => setField('fullName', e.target.value)} />
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="PHONE" isRequired placeholder="0221234567"
-              value={form.phone} onChange={e => setField('phone', e.target.value)} />
-            <InputTemplate label="NATIONAL ID" isRequired placeholder="GHA-XXXXXXXXX-X"
-              value={form.nationalId} onChange={e => setField('nationalId', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="DATE OF BIRTH" type="date"
-              value={form.dateOfBirth} onChange={e => setField('dateOfBirth', e.target.value)} />
-            <SelectTemplate label="GENDER"
-              options={[{ value: '', label: 'Select gender' }, ...GENDER_OPTIONS]}
-              value={form.gender} onChange={e => setField('gender', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="REGION" isRequired
-              options={[{ value: '', label: 'Select region' }, ...REGION_OPTIONS]}
-              value={form.region} onChange={e => setField('region', e.target.value)} />
-            <SelectTemplate label="DISTRICT" isRequired
-              options={[{ value: '', label: form.region ? 'Select district' : 'Select region first' }, ...districts]}
-              value={form.district} onChange={e => setField('district', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="COMMUNITY" placeholder="Community"
-              value={form.community} onChange={e => setField('community', e.target.value)} />
-            <SelectTemplate label="PRIMARY CROP" isRequired
-              options={[{ value: '', label: 'Select crop' }, ...CROP_OPTIONS]}
-              value={form.primaryCrop} onChange={e => setField('primaryCrop', e.target.value)} />
-          </div>
-
-          <InputTemplate label="FARM SIZE (HA)" type="number" placeholder="2.5"
-            value={form.farmSize} onChange={e => setField('farmSize', e.target.value)} />
+          <StepIndicator step={editStep} total={EDIT_TOTAL} />
+          {editStepContent[editStep]}
         </>
-      ) : (
+      ) : (() => {
+        const comm = communityDetail(farmer)
+        return (
         <>
           <div className="flex justify-end">
             <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
               leftIcon={<Pencil className="w-3.5 h-3.5" />}
               onClick={() => onModeChange('edit')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {([
-              ['Phone',     farmer.phone],
-              ['Status',    enr ? 'Enrolled' : 'Not enrolled'],
-              ['Program',   enr?.programName ?? '—'],
-              ['Cohort',    enr?.cohortName  ?? '—'],
-              ['Agent',     enr?.agentName   ?? '—'],
-              ['FRI Score', farmer.currentFri !== null ? `${farmer.currentFri}/100` : 'No score'],
-              ['Zone',      farmer.currentZone?.replace('Resilience ', '') ?? '—'],
-            ] as [string, string][]).map(([k, v]) => (
-              <div key={k} className="bg-gray-50 rounded-lg p-3">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
-                <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
-              </div>
-            ))}
+
+          {/* Farmer Details */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Farmer Details</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['Phone',       farmer.phone],
+                ['National ID', farmer.nationalId || '—'],
+                ['Gender',      farmer.gender || '—'],
+                ['Date of Birth', farmer.dateOfBirth || '—'],
+                ['Primary Crop', farmer.primaryCrop || '—'],
+                ['Farm Size (ha)', farmer.farmSize || '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap border-t pt-4">
+
+          {/* Program Information */}
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program Information</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['Status',    enr ? 'Enrolled' : 'Not enrolled'],
+                ['Program',   enr?.programName ?? '—'],
+                ['Cohort',    enr?.cohortName  ?? '—'],
+                ['Agent',     enr?.agentName   ?? '—'],
+                ['FRI Score', farmer.currentFri !== null ? `${farmer.currentFri}/100` : 'No score'],
+                ['Zone',      farmer.currentZone?.replace('Resilience ', '') ?? '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                </div>
+              ))}
+            </div>
             {enr && (
-              <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Unenroll"
-                leftIcon={<UserMinus className="w-3.5 h-3.5" />}
-                className="text-red-600! border-red-200 hover:bg-red-50"
-                onClick={onUnenroll} />
+              <div className="flex gap-2 flex-wrap pt-1">
+                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Unenroll"
+                  leftIcon={<UserMinus className="w-3.5 h-3.5" />}
+                  className="text-red-600! border-red-200 hover:bg-red-50"
+                  onClick={onUnenroll} />
+              </div>
             )}
           </div>
+
+          {/* Program History */}
+          {farmer.enrollmentHistory && farmer.enrollmentHistory.length > 0 && (
+            <div className="space-y-2 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program History</p>
+              </div>
+              <div className="space-y-2">
+                {farmer.enrollmentHistory.map((h, i) => (
+                  <div key={h.id ?? i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{h.programName}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {h.cohortName ?? '—'} · {h.graduatedAt ? `Graduated ${h.graduatedAt}` : h.withdrawnAt ? `Withdrawn ${h.withdrawnAt}` : ''}
+                      </p>
+                    </div>
+                    <BadgeTemplate label={h.status} variant={h.status === 'graduated' ? 'success' : 'neutral'} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Community Details */}
+          <div className="space-y-2 border-t pt-4">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Community Details</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['Community',   comm.communityName || '—'],
+                ['Region',      comm.region || '—'],
+                ['District',    farmer.district || '—'],
+                ['Cooperative', comm.cooperativeName ?? '—'],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Enrolment Workflow Details */}
           {enr && (enr.currentStage ?? 0) > 0 && (
             <div className="border-t pt-4 space-y-3">
               <div className="flex items-center gap-2">
                 <GitBranch className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enrollment Workflow</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enrolment Workflow Details</p>
               </div>
-              <div className="flex gap-px">
-                {WORKFLOW_STAGES.map(s => (
-                  <div key={s.stage} className={cn(
-                    'h-1.5 rounded-sm flex-1',
-                    s.stage < enr.currentStage  ? 'bg-emerald-400' :
-                    s.stage === enr.currentStage ? 'bg-(--brand-dark)' : 'bg-gray-200'
-                  )} />
-                ))}
+              <div className="flex items-start gap-0 overflow-x-auto pb-1">
+                {WORKFLOW_STAGES.map((s, idx) => {
+                  const done = s.stage < enr.currentStage
+                  const active = s.stage === enr.currentStage
+                  const Icon = s.icon
+                  return (
+                    <div key={s.stage} className="flex items-start min-w-0">
+                      <div className="flex flex-col items-center min-w-[68px]">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors"
+                          style={{
+                            backgroundColor: done ? '#34d399' : active ? 'var(--brand-dark)' : '#e5e7eb',
+                            color: done || active ? 'white' : '#9ca3af',
+                          }}
+                        >
+                          {done ? <Check className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
+                        </div>
+                        <p className={cn('text-[10px] text-center mt-1 leading-tight max-w-[64px]', active ? 'font-semibold' : 'font-medium', done || active ? '' : 'text-gray-400')}
+                          style={done || active ? { color: 'var(--brand-forest)' } : undefined}>
+                          {s.name}
+                        </p>
+                      </div>
+                      {idx < WORKFLOW_STAGES.length - 1 && (
+                        <div className="w-6 h-0.5 mt-4 shrink-0" style={{ backgroundColor: done ? '#34d399' : '#e5e7eb' }} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-              <p className="text-xs font-medium" style={{ color: 'var(--brand-forest)' }}>
-                Stage {enr.currentStage}: {WORKFLOW_STAGES.find(s => s.stage === enr.currentStage)?.name}
-              </p>
               <p className="text-[11px] text-gray-400">Stage {enr.currentStage} of {WORKFLOW_STAGES.length}</p>
+
+              {/* Activity Log */}
+              <div className="pt-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Activity Log</p>
+                <div className="space-y-1.5">
+                  {[...activityLogFor(farmer.id, enr, WORKFLOW_STAGES)].reverse().map(entry => (
+                    <div key={entry.stage}
+                      className={cn(
+                        'flex items-start gap-2.5 rounded-lg px-3 py-2',
+                        entry.status === 'declined' ? 'bg-red-50' : 'bg-gray-50',
+                      )}
+                    >
+                      <div className={cn(
+                        'w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
+                        entry.status === 'declined' ? 'bg-red-500' : 'bg-emerald-500',
+                      )} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium" style={{ color: 'var(--brand-forest)' }}>
+                          Stage {entry.stage}: {entry.stageName}
+                        </p>
+                        {entry.notes && <p className="text-[11px] text-gray-500 mt-0.5">{entry.notes}</p>}
+                      </div>
+                      <span className="text-[10px] text-gray-400 shrink-0">{entry.date}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </>
-      )}
+        )
+      })()}
     </SheetTemplate>
   )
 }
@@ -1497,10 +1899,15 @@ export function Main() {
     setFarmers(prev => [...prev, {
       id: `f-${Date.now()}`,
       fullName: form.fullName, phone: form.phone,
-      nationalId: form.nationalId, dateOfBirth: form.dateOfBirth,
+      nationalId: form.nationalId, idType: form.idType, dateOfBirth: form.dateOfBirth,
       gender: form.gender, region: form.region, district: form.district,
       community: form.community, primaryCrop: form.primaryCrop, farmSize: form.farmSize,
       enrollment: null, currentFri: null, currentZone: null, duplicateFlag: false,
+      ownsHouse: form.ownsHouse, maritalStatus: form.maritalStatus, childrenCount: form.childrenCount,
+      ownsTractor: form.ownsTractor, otherBusiness: form.otherBusiness,
+      loanType: form.loanType, accountType: form.accountType, averageIncome: form.averageIncome,
+      hasAgricInsurance: form.hasAgricInsurance,
+      desiredAssets: form.desiredAssets, inputCredit: form.inputCredit,
     }])
     toast.success(`${form.fullName} added`)
   }
@@ -1509,12 +1916,19 @@ export function Main() {
     if (!focusFarmer) return
     const prog = programs.find(p => p.id === form.programId)
     const coh  = prog?.cohorts.find(c => c.id === form.cohortId)
+    const regionCode = form.region ? regionSlugToCode(form.region) : ''
+    const districtLabel = form.district ? districtValueToLabel(form.region, form.district) : ''
     setFarmers(prev => prev.map(f => f.id !== focusFarmer.id ? f : {
       ...f,
       fullName: form.fullName, phone: form.phone,
-      nationalId: form.nationalId, dateOfBirth: form.dateOfBirth,
-      gender: form.gender, region: form.region, district: form.district,
+      nationalId: form.nationalId, idType: form.idType, dateOfBirth: form.dateOfBirth,
+      gender: form.gender, region: regionCode, district: districtLabel,
       community: form.community, primaryCrop: form.primaryCrop, farmSize: form.farmSize,
+      ownsHouse: form.ownsHouse, maritalStatus: form.maritalStatus, childrenCount: form.childrenCount,
+      ownsTractor: form.ownsTractor, otherBusiness: form.otherBusiness,
+      loanType: form.loanType, accountType: form.accountType, averageIncome: form.averageIncome,
+      hasAgricInsurance: form.hasAgricInsurance,
+      desiredAssets: form.desiredAssets, inputCredit: form.inputCredit,
       enrollment: form.programId ? {
         programId: form.programId, programName: prog!.name,
         cohortId: form.cohortId || null, cohortName: coh?.name ?? null,
@@ -1901,6 +2315,7 @@ export function Main() {
         onModeChange={setFarmerMode}
         onSave={handleEditSave}
         onUnenroll={() => { setUnenrollTarget(focusFarmer); setFarmerMode(null); setFocusFarmer(null) }}
+        programs={programs}
       />
       <AssignAgentSheet open={assignAgentOpen} onClose={() => setAssignAgentOpen(false)}
         farmer={focusFarmer} farmerCount={selected.size} />

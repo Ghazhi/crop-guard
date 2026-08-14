@@ -84,7 +84,7 @@ export const SEED_CUSTOM_ROLES: CustomRole[] = [
 // ─── Permission page groups ──────────────────────────────────────────────────
 
 export const PAGE_GROUPS: { group: string; pages: string[] }[] = [
-  { group: 'Staff Portal', pages: ['Farmer Registry', 'Farmer Enrollment', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance', 'User Management'] },
+  { group: 'Staff Portal', pages: ['Farmer Registry', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance', 'User Management'] },
   { group: 'Analytics & Intelligence', pages: ['FRI Dashboard', 'Risk Intelligence', 'Intelligence Dashboard', 'Reports'] },
   { group: 'Portals', pages: ['Opportunities / Interventions', 'Credits Module', 'Finance & Insurance', 'Partner / MERL', 'Agronomist'] },
 ]
@@ -107,7 +107,7 @@ export function presetPermissionsFor(role: BuiltInRole): RolePermission[] {
     return ALL_PAGE_KEYS.map(p => fullPermission(role, p))
   }
   if (role === 'staff' || role === 'agent') {
-    const staffPages = ['Farmer Registry', 'Farmer Enrollment', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance']
+    const staffPages = ['Farmer Registry', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance']
     return ALL_PAGE_KEYS.map(p =>
       staffPages.includes(p) ? { ...fullPermission(role, p), delete: false } : emptyPermission(role, p)
     )

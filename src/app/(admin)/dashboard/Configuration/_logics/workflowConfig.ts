@@ -1,8 +1,8 @@
 // ─── Workflow Stages: admin-editable enrollment workflow stage names ─────────
 // A tenant admin can rename stages and choose which stage qualifies a farmer
 // as a "Beneficiary" (Programs & Cohorts > Beneficiary tab). All consumers
-// (FarmersRegistry's FarmerSheet, EnrollmentWorkflow, ProgramsSetup) read
-// stage names from this same persisted source so a rename propagates everywhere.
+// (FarmersRegistry's FarmerSheet, ProgramsSetup) read stage names from this
+// same persisted source so a rename propagates everywhere.
 
 export interface WorkflowStageDef {
   id:    string

@@ -467,15 +467,9 @@ function CreateAgentSheet({ open, onClose, onSave }: {
   onClose: () => void
   onSave: (agent: AgentSummary) => void
 }) {
-  const [partnerId, setPartnerId] = useState('')
-  const [name,       setName]     = useState('')
-  const [phone,      setPhone]    = useState('')
-
-  useEffect(() => {
-    if (!open) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPartnerId(''); setName(''); setPhone('')
-  }, [open])
+  const [partnerId, setPartnerId] = usePersistedState('aa-create-agent-partnerId', '')
+  const [name,       setName]     = usePersistedState('aa-create-agent-name', '')
+  const [phone,      setPhone]    = usePersistedState('aa-create-agent-phone', '')
 
   const partner = PARTNERS.find(p => p.id === partnerId)
   const canSave = !!partner && name.trim() && phone.trim()
@@ -490,6 +484,7 @@ function CreateAgentSheet({ open, onClose, onSave }: {
       cohortCount: 0, farmerCount: 0, checkinCount: 0, capacity: 50,
       partnerId: partner.id, partnerName: partner.name,
     })
+    setPartnerId(''); setName(''); setPhone('')
     onClose()
   }
 

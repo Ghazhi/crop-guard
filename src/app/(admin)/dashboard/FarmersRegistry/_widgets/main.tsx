@@ -5,10 +5,10 @@ import { usePersistedState } from '@/lib/usePersistedState'
 import { useCropOptions } from '@/dataCenter/useCropOptions'
 import {
   Search, X, Download, Upload, RefreshCw, Plus, Pencil,
-  UserMinus, UserCog, Users, Check, GitBranch, UserPlus,
+  UserCog, Users, Check, GitBranch, UserPlus,
   FileText, UserCheck, Clock, CreditCard, Truck, PackageCheck,
   MapPin, BarChart2, ChevronUp, ChevronDown, SlidersHorizontal,
-  AlertTriangle, Columns3, Building2,
+  AlertTriangle, Columns3, Building2, ArrowRight,
 } from 'lucide-react'
 import { COOPERATIVES } from '@/dataCenter/cooperatives'
 import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
@@ -26,8 +26,8 @@ import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { FileUploadTemplate } from '@/customComponents/FileUploadTemplate'
-import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { ScrollTabsTemplate } from '@/customComponents/ScrollTabsTemplate'
 
 import { getFarmers, getProgramOptions } from '../_logics/functions'
 import type { Farmer, FarmerEnrollment, FriZone, ProgramOption, WorkflowActivityEntry } from '../_logics/interface'
@@ -62,6 +62,12 @@ export const ZONE_RISK: Record<FriZone, string> = {
   'Resilience Builder': 'Managed Risk',
   'Resilience Learner': 'Elevated Risk',
   'Resilience Starter': 'Critical Risk',
+}
+
+const ENROLLMENT_STATUS_VARIANT: Record<string, 'success' | 'info' | 'neutral'> = {
+  active:    'success',
+  graduated: 'info',
+  withdrawn: 'neutral',
 }
 
 function hashOf(id: string) {
@@ -786,15 +792,10 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
   onSave: (form: AddFarmerForm) => void
   programs: ProgramOption[]
 }) {
-  const [step, setStep] = useState(1)
-  const [form, setForm] = useState<StepperForm>(EMPTY_STEPPER)
+  const [step, setStep] = usePersistedState('fr-add-farmer-step', 1)
+  const [form, setForm] = usePersistedState<StepperForm>('fr-add-farmer-form', EMPTY_STEPPER)
   const [saving, setSaving] = useState(false)
   const TOTAL = 6
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (open) { setStep(1); setForm(EMPTY_STEPPER) }
-  }, [open])
 
   function set(k: keyof StepperForm, v: StepperForm[keyof StepperForm]) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -851,6 +852,8 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
       desiredAssets: form.desiredAssets,
       inputCredit:  form.inputCredit,
     })
+    setStep(1)
+    setForm(EMPTY_STEPPER)
     onClose()
   }
 
@@ -1315,21 +1318,28 @@ function EditStep6Support({ form, setField }: { form: EditFarmerForm; setField: 
 }
 
 function FarmerSheet({
-  mode, farmer, onClose, onModeChange, onSave, onUnenroll, programs,
+  mode, farmer, onClose, onModeChange, onSave, onAdvance, onDecline, programs,
 }: {
   mode: 'view' | 'edit' | null
   farmer: Farmer | null
   onClose: () => void
   onModeChange: (m: 'view' | 'edit') => void
   onSave: (f: EditFarmerForm) => void
-  onUnenroll: () => void
+  onAdvance: (f: Farmer) => void
+  onDecline: (f: Farmer) => void
   programs: ProgramOption[]
 }) {
   const WORKFLOW_STAGES = useWorkflowStages()
   const [form, setForm] = useState<EditFarmerForm>(EMPTY_EDIT)
   const [saving, setSaving] = useState(false)
   const [editStep, setEditStep] = useState(1)
+  const [sheetTab, setSheetTab] = useState<'details' | 'enrolment'>('details')
   const EDIT_TOTAL = 6
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSheetTab('details')
+  }, [farmer?.id])
 
   useEffect(() => {
     if (mode === 'edit' && farmer) {
@@ -1405,6 +1415,7 @@ function FarmerSheet({
   const open = mode !== null && farmer !== null
   const isEdit = mode === 'edit'
   const enr = farmer?.enrollment
+  const canAct = !!enr && enr.status === 'active' && enr.currentStage < WORKFLOW_STAGES.length
 
   const editStepContent: Record<number, React.ReactNode> = {
     1: <EditStep1 form={form} setField={setField} />,
@@ -1432,6 +1443,18 @@ function FarmerSheet({
             label={editStep === EDIT_TOTAL ? (saving ? 'Saving…' : 'Save Changes') : 'Next →'}
             fullWidth isDisabled={saving} onClick={handleEditNext} />
         </>
+      ) : (farmer && enr && canAct) ? (
+        <>
+          <ButtonTemplate variant="outline" fullWidth
+            leftIcon={<X className="w-3.5 h-3.5" />}
+            label="Decline"
+            className="text-red-600! border-red-200 hover:bg-red-50"
+            onClick={() => onDecline(farmer)} />
+          <ButtonTemplate variant="primary" fullWidth
+            leftIcon={<ArrowRight className="w-3.5 h-3.5" />}
+            label={`Advance to Stage ${enr.currentStage + 1}`}
+            onClick={() => onAdvance(farmer)} />
+        </>
       ) : undefined}
     >
       {!farmer ? null : isEdit ? (
@@ -1441,177 +1464,216 @@ function FarmerSheet({
         </>
       ) : (() => {
         const comm = communityDetail(farmer)
+        const enrolledDate = enr ? enrolmentWorkflowDetail(farmer.id, enr).registeredAt : null
         return (
         <>
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2">
+            <ScrollTabsTemplate className="gap-1 p-1 rounded-full border border-gray-200 bg-gray-50" fadeColor="gray-50">
+              {([
+                { key: 'details' as const,   label: 'Details' },
+                { key: 'enrolment' as const, label: 'Enrolment' },
+              ]).map(({ key, label }) => (
+                <button key={key}
+                  onClick={() => setSheetTab(key)}
+                  className="px-4 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+                  style={sheetTab === key
+                    ? { backgroundColor: 'white', color: 'var(--brand-forest)', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
+                    : { color: '#6b7280' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </ScrollTabsTemplate>
             <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
               leftIcon={<Pencil className="w-3.5 h-3.5" />}
               onClick={() => onModeChange('edit')} />
           </div>
 
-          {/* Farmer Details */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Farmer Details</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ['Phone',       farmer.phone],
-                ['National ID', farmer.nationalId || '—'],
-                ['Gender',      farmer.gender || '—'],
-                ['Date of Birth', farmer.dateOfBirth || '—'],
-                ['Primary Crop', farmer.primaryCrop || '—'],
-                ['Farm Size (ha)', farmer.farmSize || '—'],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
-                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Program Information */}
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program Information</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ['Status',    enr ? 'Enrolled' : 'Not enrolled'],
-                ['Program',   enr?.programName ?? '—'],
-                ['Cohort',    enr?.cohortName  ?? '—'],
-                ['Agent',     enr?.agentName   ?? '—'],
-                ['FRI Score', farmer.currentFri !== null ? `${farmer.currentFri}/100` : 'No score'],
-                ['Zone',      farmer.currentZone?.replace('Resilience ', '') ?? '—'],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
-                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
-                </div>
-              ))}
-            </div>
-            {enr && (
-              <div className="flex gap-2 flex-wrap pt-1">
-                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Unenroll"
-                  leftIcon={<UserMinus className="w-3.5 h-3.5" />}
-                  className="text-red-600! border-red-200 hover:bg-red-50"
-                  onClick={onUnenroll} />
-              </div>
-            )}
-          </div>
-
-          {/* Program History */}
-          {farmer.enrollmentHistory && farmer.enrollmentHistory.length > 0 && (
-            <div className="space-y-2 border-t pt-4">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program History</p>
-              </div>
+          {sheetTab === 'details' && (
+            <>
+              {/* Farmer Details */}
               <div className="space-y-2">
-                {farmer.enrollmentHistory.map((h, i) => (
-                  <div key={h.id ?? i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{h.programName}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {h.cohortName ?? '—'} · {h.graduatedAt ? `Graduated ${h.graduatedAt}` : h.withdrawnAt ? `Withdrawn ${h.withdrawnAt}` : ''}
-                      </p>
-                    </div>
-                    <BadgeTemplate label={h.status} variant={h.status === 'graduated' ? 'success' : 'neutral'} size="sm" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Community Details */}
-          <div className="space-y-2 border-t pt-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Community Details</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {([
-                ['Community',   comm.communityName || '—'],
-                ['Region',      comm.region || '—'],
-                ['District',    farmer.district || '—'],
-                ['Cooperative', comm.cooperativeName ?? '—'],
-              ] as [string, string][]).map(([k, v]) => (
-                <div key={k} className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
-                  <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Farmer Details</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Enrolment Workflow Details */}
-          {enr && (enr.currentStage ?? 0) > 0 && (
-            <div className="border-t pt-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <GitBranch className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Enrolment Workflow Details</p>
-              </div>
-              <div className="flex items-start gap-0 overflow-x-auto pb-1">
-                {WORKFLOW_STAGES.map((s, idx) => {
-                  const done = s.stage < enr.currentStage
-                  const active = s.stage === enr.currentStage
-                  const Icon = s.icon
-                  return (
-                    <div key={s.stage} className="flex items-start min-w-0">
-                      <div className="flex flex-col items-center min-w-[68px]">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors"
-                          style={{
-                            backgroundColor: done ? '#34d399' : active ? 'var(--brand-dark)' : '#e5e7eb',
-                            color: done || active ? 'white' : '#9ca3af',
-                          }}
-                        >
-                          {done ? <Check className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
-                        </div>
-                        <p className={cn('text-[10px] text-center mt-1 leading-tight max-w-[64px]', active ? 'font-semibold' : 'font-medium', done || active ? '' : 'text-gray-400')}
-                          style={done || active ? { color: 'var(--brand-forest)' } : undefined}>
-                          {s.name}
-                        </p>
-                      </div>
-                      {idx < WORKFLOW_STAGES.length - 1 && (
-                        <div className="w-6 h-0.5 mt-4 shrink-0" style={{ backgroundColor: done ? '#34d399' : '#e5e7eb' }} />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              <p className="text-[11px] text-gray-400">Stage {enr.currentStage} of {WORKFLOW_STAGES.length}</p>
-
-              {/* Activity Log */}
-              <div className="pt-1">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Activity Log</p>
-                <div className="space-y-1.5">
-                  {[...activityLogFor(farmer.id, enr, WORKFLOW_STAGES)].reverse().map(entry => (
-                    <div key={entry.stage}
-                      className={cn(
-                        'flex items-start gap-2.5 rounded-lg px-3 py-2',
-                        entry.status === 'declined' ? 'bg-red-50' : 'bg-gray-50',
-                      )}
-                    >
-                      <div className={cn(
-                        'w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
-                        entry.status === 'declined' ? 'bg-red-500' : 'bg-emerald-500',
-                      )} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium" style={{ color: 'var(--brand-forest)' }}>
-                          Stage {entry.stage}: {entry.stageName}
-                        </p>
-                        {entry.notes && <p className="text-[11px] text-gray-500 mt-0.5">{entry.notes}</p>}
-                      </div>
-                      <span className="text-[10px] text-gray-400 shrink-0">{entry.date}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    ['Phone',       farmer.phone],
+                    ['National ID', farmer.nationalId || '—'],
+                    ['Gender',      farmer.gender || '—'],
+                    ['Date of Birth', farmer.dateOfBirth || '—'],
+                    ['Primary Crop', farmer.primaryCrop || '—'],
+                    ['Farm Size (ha)', farmer.farmSize || '—'],
+                  ] as [string, string][]).map(([k, v]) => (
+                    <div key={k} className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                      <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
+
+              {/* Program History */}
+              {farmer.enrollmentHistory && farmer.enrollmentHistory.length > 0 && (
+                <div className="space-y-2 border-t pt-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Program History</p>
+                  </div>
+                  <div className="space-y-2">
+                    {farmer.enrollmentHistory.map((h, i) => (
+                      <div key={h.id ?? i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{h.programName}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            {h.cohortName ?? '—'} · {h.graduatedAt ? `Graduated ${h.graduatedAt}` : h.withdrawnAt ? `Withdrawn ${h.withdrawnAt}` : ''}
+                          </p>
+                        </div>
+                        <BadgeTemplate label={h.status} variant={h.status === 'graduated' ? 'success' : 'neutral'} size="sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Community Details */}
+              <div className="space-y-2 border-t pt-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Community Details</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    ['Community',   comm.communityName || '—'],
+                    ['Region',      comm.region || '—'],
+                    ['District',    farmer.district || '—'],
+                    ['Cooperative', comm.cooperativeName ?? '—'],
+                  ] as [string, string][]).map(([k, v]) => (
+                    <div key={k} className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                      <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {sheetTab === 'enrolment' && (
+            <>
+              {!enr ? (
+                <div className="py-10 text-center text-gray-400 text-sm">This farmer has no active enrollment.</div>
+              ) : (
+                <>
+                  {/* Current Enrollment */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Current Enrollment</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 text-xs">
+                      <div>
+                        <span className="text-gray-400">Program</span>
+                        <p className="font-medium mt-0.5" style={{ color: 'var(--brand-forest)' }}>{enr.programName}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Cohort</span>
+                        <p className="font-medium mt-0.5" style={{ color: 'var(--brand-forest)' }}>{enr.cohortName ?? '—'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Status</span>
+                        <p className="mt-0.5"><BadgeTemplate label={enr.status} variant={ENROLLMENT_STATUS_VARIANT[enr.status] ?? 'neutral'} size="sm" /></p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Enrolled</span>
+                        <p className="font-medium mt-0.5" style={{ color: 'var(--brand-forest)' }}>
+                          {enrolledDate ? new Date(enrolledDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {([
+                        ['FRI Score', farmer.currentFri !== null ? `${farmer.currentFri}/100` : 'No score'],
+                        ['Zone',      farmer.currentZone?.replace('Resilience ', '') ?? '—'],
+                      ] as [string, string][]).map(([k, v]) => (
+                        <div key={k} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
+                          <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Enrolment Workflow Details */}
+                  {(enr.currentStage ?? 0) > 0 && (
+                    <div className="border-t pt-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <GitBranch className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Workflow Progress</p>
+                      </div>
+                      <div className="flex items-start gap-0 overflow-x-auto pb-1">
+                        {WORKFLOW_STAGES.map((s, idx) => {
+                          const done = s.stage < enr.currentStage
+                          const active = s.stage === enr.currentStage
+                          const Icon = s.icon
+                          return (
+                            <div key={s.stage} className="flex items-start min-w-0">
+                              <div className="flex flex-col items-center min-w-[68px]">
+                                <div
+                                  className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors"
+                                  style={{
+                                    backgroundColor: done ? '#34d399' : active ? 'var(--brand-dark)' : '#e5e7eb',
+                                    color: done || active ? 'white' : '#9ca3af',
+                                  }}
+                                >
+                                  {done ? <Check className="w-4 h-4" /> : <Icon className="w-3.5 h-3.5" />}
+                                </div>
+                                <p className={cn('text-[10px] text-center mt-1 leading-tight max-w-[64px]', active ? 'font-semibold' : 'font-medium', done || active ? '' : 'text-gray-400')}
+                                  style={done || active ? { color: 'var(--brand-forest)' } : undefined}>
+                                  {s.name}
+                                </p>
+                              </div>
+                              {idx < WORKFLOW_STAGES.length - 1 && (
+                                <div className="w-6 h-0.5 mt-4 shrink-0" style={{ backgroundColor: done ? '#34d399' : '#e5e7eb' }} />
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <p className="text-[11px] text-gray-400">Stage {enr.currentStage} of {WORKFLOW_STAGES.length}</p>
+
+                      {/* Activity Log */}
+                      <div className="pt-1">
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Activity Log</p>
+                        <div className="space-y-1.5">
+                          {[...activityLogFor(farmer.id, enr, WORKFLOW_STAGES)].reverse().map(entry => (
+                            <div key={entry.stage}
+                              className={cn(
+                                'flex items-start gap-2.5 rounded-lg px-3 py-2',
+                                entry.status === 'declined' ? 'bg-red-50' : 'bg-emerald-50',
+                              )}
+                            >
+                              <div className={cn(
+                                'w-1.5 h-1.5 rounded-full mt-1.5 shrink-0',
+                                entry.status === 'declined' ? 'bg-red-500' : 'bg-emerald-500',
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium" style={{ color: 'var(--brand-forest)' }}>
+                                  Stage {entry.stage}: {entry.stageName}
+                                </p>
+                                {entry.notes && <p className="text-[11px] text-gray-500 mt-0.5">{entry.notes}</p>}
+                              </div>
+                              <span className="text-[10px] text-gray-400 shrink-0">{entry.date}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </>
         )
@@ -1830,10 +1892,11 @@ export function Main() {
   const [assignAgentOpen,  setAssignAgentOpen]  = useState(false)
   const [enrollOpen,       setEnrollOpen]       = useState(false)
   const [bulkUploadOpen,   setBulkUploadOpen]   = useState(false)
-  const [focusFarmer,      setFocusFarmer]      = useState<Farmer | null>(null)
+  const [focusFarmerId,    setFocusFarmerId]    = useState<string | null>(null)
+  const focusFarmer = farmers.find(f => f.id === focusFarmerId) ?? null
+  function setFocusFarmer(f: Farmer | null) { setFocusFarmerId(f?.id ?? null) }
   const [statsOpen,        setStatsOpen]        = useState(false)
   const [filtersOpen,      setFiltersOpen]      = useState(false)
-  const [unenrollTarget,   setUnenrollTarget]   = useState<Farmer | null>(null)
 
   useEffect(() => {
     Promise.all([getFarmers(), getProgramOptions()]).then(([f, p]) => {
@@ -1940,9 +2003,20 @@ export function Main() {
     toast.success(`${form.fullName} updated`)
   }
 
-  function unenrollFarmer(f: Farmer) {
-    setFarmers(prev => prev.map(x => x.id === f.id ? { ...x, enrollment: null } : x))
-    toast.success(`${f.fullName} unenrolled`)
+  function advanceStage(f: Farmer) {
+    if (!f.enrollment) return
+    const nextStage = f.enrollment.currentStage + 1
+    setFarmers(prev => prev.map(x => x.id === f.id && x.enrollment
+      ? { ...x, enrollment: { ...x.enrollment, currentStage: x.enrollment.currentStage + 1 } }
+      : x))
+    toast.success(`${f.fullName} advanced to stage ${nextStage}`)
+  }
+
+  function declineEnrollment(f: Farmer) {
+    setFarmers(prev => prev.map(x => x.id === f.id && x.enrollment
+      ? { ...x, enrollment: { ...x.enrollment, status: 'withdrawn' } }
+      : x))
+    toast.success(`${f.fullName}'s enrollment declined`)
     setFocusFarmer(null)
   }
 
@@ -2314,7 +2388,8 @@ export function Main() {
         onClose={() => { setFarmerMode(null); setFocusFarmer(null) }}
         onModeChange={setFarmerMode}
         onSave={handleEditSave}
-        onUnenroll={() => { setUnenrollTarget(focusFarmer); setFarmerMode(null); setFocusFarmer(null) }}
+        onAdvance={advanceStage}
+        onDecline={declineEnrollment}
         programs={programs}
       />
       <AssignAgentSheet open={assignAgentOpen} onClose={() => setAssignAgentOpen(false)}
@@ -2322,15 +2397,6 @@ export function Main() {
       <EnrollSheet open={enrollOpen} onClose={() => setEnrollOpen(false)}
         farmerCount={selected.size} programs={programs} />
       <BulkUploadSheet open={bulkUploadOpen} onClose={() => setBulkUploadOpen(false)} />
-      <ConfirmModal
-        open={!!unenrollTarget}
-        title="Remove from programme?"
-        message={`${unenrollTarget?.fullName ?? 'This farmer'} will be unenrolled. This cannot be undone.`}
-        confirmLabel="Remove"
-        variant="danger"
-        onConfirm={() => { if (unenrollTarget) unenrollFarmer(unenrollTarget); setUnenrollTarget(null) }}
-        onCancel={() => setUnenrollTarget(null)}
-      />
     </div>
   )
 }

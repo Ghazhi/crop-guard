@@ -9,7 +9,7 @@ import {
   Menu, X, LogOut, ChevronRight, PanelLeftClose, PanelLeftOpen, Lock,
   Handshake, FileText, PieChart,
   BookOpen, ClipboardList, AlertTriangle,
-  Target, BarChart3, Settings2, ClipboardCheck,
+  Target, BarChart3, Settings2,
   FolderKanban, ShieldCheck, Landmark, GraduationCap, Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -28,7 +28,6 @@ const STAFF_NAV: NavItem[] = [
   // { href: '/dashboard/CommunityProfile',    label: 'Community Profile',    icon: Globe2,            locked: false },
   { href: '/dashboard/FarmersRegistry',     label: 'Registry',             icon: Users,             locked: false },
   { href: '/dashboard/ProgramsSetup',       label: 'Programs',             icon: Building2,         locked: false },
-  { href: '/dashboard/EnrollmentWorkflow',  label: 'Enrollment',           icon: ClipboardCheck,    locked: false },
   { href: '/dashboard/Insights',            label: 'Insights',             icon: Sparkles,          locked: false },
   { href: '/dashboard/OpportunityPathways', label: 'Opportunities',        icon: Zap,               locked: false },
   // { href: '/dashboard/CheckinConfig',       label: 'Check-in Config',      icon: SlidersHorizontal, locked: false },

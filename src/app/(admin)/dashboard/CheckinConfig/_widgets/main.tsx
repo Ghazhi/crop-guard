@@ -104,7 +104,7 @@ function PartnerP4Panel({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
           ECI ({questions.length})
@@ -393,7 +393,7 @@ function BaselineActivityCard({
         <p className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
         {activities.length === 0 && !adding && (
           <p className="text-sm text-gray-400 py-6 text-center">No activities yet.</p>
         )}
@@ -581,7 +581,7 @@ function CheckInListCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
           Questions ({questions.length})
@@ -1191,7 +1191,7 @@ export function Main() {
   ]
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4 p-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       {/* page header */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -1266,7 +1266,7 @@ export function Main() {
 
               {/* crop tabs — every crop shows up, whether or not it has weeks yet */}
               {crops.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
                   <Sprout className="w-8 h-8 text-gray-200" />
                   <p className="text-sm font-medium text-gray-400">No crops yet</p>
                   <p className="text-xs text-gray-300">Add a crop in the Crops section to start configuring weekly check-ins.</p>
@@ -1282,7 +1282,7 @@ export function Main() {
                   />
 
                   {weeks.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
                       <CalendarDays className="w-8 h-8 text-gray-200" />
                       <p className="text-sm font-medium text-gray-400">No weeks configured yet</p>
                       <ButtonTemplate
@@ -1326,7 +1326,7 @@ export function Main() {
                   }
 
                   return (
-                    <div key={w.week} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div key={w.week} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
                       {/* week header */}
                       <div className="w-full flex items-center gap-3 px-4 py-3 group/weekheader hover:bg-gray-50 transition-colors">
                         <div
@@ -1574,7 +1574,7 @@ export function Main() {
               </div>
 
               {CHECKIN_LISTS.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
                   <ListChecks className="w-8 h-8 text-gray-200" />
                   <p className="text-sm font-medium text-gray-400">No check-in lists yet</p>
                   <p className="text-xs text-gray-300">Click &quot;New Check-in List&quot; to create a named question set for cohort schedules.</p>
@@ -1630,7 +1630,7 @@ export function Main() {
                 </button>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
                 {crops.map(c => (
                   <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 group">
                     {editingCropId === c.id ? (
@@ -1718,13 +1718,13 @@ export function Main() {
               </div>
 
               {schedules.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
                   <CalendarDays className="w-8 h-8 text-gray-200" />
                   <p className="text-sm font-medium text-gray-400">No cohort schedules yet</p>
                   <p className="text-xs text-gray-300">Click &quot;New Schedule&quot; to assign a baseline to a cohort.</p>
                 </div>
               ) : (
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
                   <DatagridTemplate<CohortSchedule>
                     columns={SCHEDULE_COLUMNS}
                     data={schedules}
@@ -1964,7 +1964,7 @@ export function Main() {
               </div>
 
               {BASELINE_OPTIONS.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+                <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
                   <Layers className="w-8 h-8 text-gray-200" />
                   <p className="text-sm font-medium text-gray-400">No baselines yet</p>
                   <p className="text-xs text-gray-300">Click &quot;New Baseline&quot; to create one with the four default pillars (P1-P4).</p>
@@ -2022,7 +2022,7 @@ export function Main() {
               </div>
 
               {!baselinePartnerId ? (
-                <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+                <div className="py-16 text-center text-gray-400 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
                   <Wallet className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">Select a partner to view their ECI.</p>
                 </div>

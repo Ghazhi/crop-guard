@@ -134,7 +134,7 @@ function StatCard({ label, value, valueColor, sub }: {
   label: string; value: string | number; valueColor?: string; sub?: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex flex-col gap-1 min-w-0">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-4 py-3 flex flex-col gap-1 min-w-0">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</p>
       <p className="text-3xl font-bold leading-none" style={{ color: valueColor ?? 'var(--brand-forest)' }}>{value}</p>
       {sub && <p className="text-xs text-gray-400">{sub}</p>}
@@ -745,7 +745,7 @@ export function Main() {
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 space-y-5" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -811,7 +811,7 @@ export function Main() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-3 grid grid-cols-1 sm:flex sm:items-center gap-2">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-3 grid grid-cols-1 sm:flex sm:items-center gap-2">
         <div className="relative sm:flex-1 sm:min-w-48">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <input
@@ -846,7 +846,7 @@ export function Main() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
         <div className="p-4">
           <DatagridTemplate<FRIFarmer>
             columns={FRI_FARMER_COLUMNS}

@@ -53,7 +53,7 @@ function NewScheduleForm({
   const canCreate = !!draft.programId && !!draft.cohortId
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-4">
       <p className="text-sm font-semibold text-gray-900">New Training Schedule</p>
       <SelectTemplate
         label="Program" isRequired
@@ -114,7 +114,7 @@ function EditScheduleForm({
   const [draft, setDraft] = useState<CohortTrainingSchedule>(schedule)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-4">
       <p className="text-sm font-semibold text-gray-900">Edit Schedule — {schedule.cohortName}</p>
       <InputTemplate
         label="Training Start Date" type="date"
@@ -174,7 +174,7 @@ function CohortSchedulesSubTab() {
       )}
 
       {schedules.length === 0 && !creating ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <Calendar className="w-8 h-8 text-gray-200" />
           <p className="text-sm font-medium text-gray-400 text-center">No cohort schedules yet.</p>
         </div>
@@ -184,7 +184,7 @@ function CohortSchedulesSubTab() {
             editingId === s.id ? (
               <EditScheduleForm key={s.id} schedule={s} onCancel={() => setEditingId(null)} onSave={handleSave} />
             ) : (
-              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-3">
+              <div key={s.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <p className="text-sm font-semibold text-gray-900">{s.cohortName}</p>
@@ -302,7 +302,7 @@ function PerFarmerOverridesSubTab() {
         results.length === 0 ? (
           <p className="text-xs text-gray-400 italic">No farmers found for &quot;{searchTerm}&quot;.</p>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
             {results.map(f => (
               <button
                 key={f.id}
@@ -322,7 +322,7 @@ function PerFarmerOverridesSubTab() {
 
       {selectedFarmer && (
         <div className="flex flex-col gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between gap-3">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <PersonAvatar name={selectedFarmer.fullName} size={36} />
               <div className="min-w-0">
@@ -347,7 +347,7 @@ function PerFarmerOverridesSubTab() {
               {weeks.map(w => {
                 const status = statusFor(selectedFarmer.id, w.weekNumber)
                 return (
-                  <div key={w.id} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+                  <div key={w.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-3 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-gray-100 text-xs font-bold text-gray-500">
                       W{w.weekNumber}
                     </div>

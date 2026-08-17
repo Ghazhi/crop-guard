@@ -71,7 +71,7 @@ export function WorkflowStagesSection() {
         stage or later appear on the Programs &amp; Cohorts &gt; Beneficiary tab.
       </p>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
         {sortedStages.length === 0 && !addingStage && (
           <p className="text-sm text-gray-400 text-center py-8">No workflow stages yet. Click &quot;Add Stage&quot; to get started.</p>
         )}

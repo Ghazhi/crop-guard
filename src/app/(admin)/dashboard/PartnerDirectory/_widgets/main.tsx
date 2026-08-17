@@ -521,7 +521,7 @@ function ViewPartnerSheet({ partner, baselines, onClose, onRemove, onEdit, onMan
                 const filled = totalTarget > 0 ? Math.min(100, Math.round((totalEnrolled / totalTarget) * 100)) : 0
                 const statusVariant = prog.status === 'Active' ? 'success' : 'neutral'
                 return (
-                  <CardTemplate key={prog.id} noPadding className="overflow-hidden">
+                  <CardTemplate key={prog.id} noPadding className="overflow-hidden bg-(--surface-card) border border-(--brand-pale)/40">
                     <div className="px-6 pt-4 pb-3">
                       <div className="flex items-start justify-between gap-3 mb-1">
                         <h3 className="text-base font-bold truncate" style={{ color: 'var(--brand-forest)' }}>{prog.name}</h3>
@@ -582,7 +582,7 @@ function ViewPartnerSheet({ partner, baselines, onClose, onRemove, onEdit, onMan
           {tab === 'interventions' && (
             <div className="pt-3 space-y-3">
               {MOCK_INTERVENTIONS.map(intervention => (
-                <div key={intervention.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div key={intervention.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-900 text-sm">{intervention.name}</span>
@@ -840,7 +840,7 @@ function CreateBaselineSheet({ open, onOpenChange, partners, baselines, initialP
                 </p>
               )}
 
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
                     ECI ({questions.length})
@@ -1030,7 +1030,7 @@ export function Main() {
   ]
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 space-y-5" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -1059,7 +1059,7 @@ export function Main() {
           { icon: Clock,        bg: 'bg-amber-50',  color: 'text-amber-600',  value: pendingCount,  label: 'Pending' },
           { icon: Layers,       bg: 'bg-purple-50', color: 'text-purple-600', value: totalPrograms, label: 'Total Programs' },
         ].map(({ icon: Icon, bg, color, value, label }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
+          <div key={label} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-3 flex items-center gap-3">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
               <Icon className={`w-4 h-4 ${color}`} />
             </div>
@@ -1073,7 +1073,7 @@ export function Main() {
 
       {/* Filters */}
       {/* Filters + Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
 
         {/* Search + filter toggle */}
         <div className="px-5 py-4 border-b border-gray-100 space-y-3">

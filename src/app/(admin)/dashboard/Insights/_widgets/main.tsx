@@ -54,7 +54,7 @@ function StatCard({ icon: Icon, iconColor, iconBg, label, value, sub }: {
   label: string; value: string | number; sub: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-2">
       <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', iconBg)}>
         <Icon className={cn('w-4 h-4', iconColor)} />
       </div>
@@ -128,7 +128,7 @@ function AIOverviewTab({ farmers }: { farmers: Farmer[] }) {
       </div>
 
       {/* FRI Zone Distribution */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
         <p className="text-sm font-semibold text-gray-900 mb-4">FRI Zone Distribution</p>
         <div className="flex flex-col gap-3">
           {stats.zoneCounts.map(({ zone, count }) => {
@@ -149,7 +149,7 @@ function AIOverviewTab({ farmers }: { farmers: Farmer[] }) {
       </div>
 
       {/* Norvi AI Intelligence Summary */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
         <div className="px-5 py-4 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">
             <Sparkles className="w-4.5 h-4.5 text-white" />
@@ -303,7 +303,7 @@ function ClimateExposureTab({ cohortIds }: { cohortIds: Set<string> | null }) {
         return (
           <div className="flex flex-col gap-4">
             {/* Detail header */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between gap-4 flex-wrap">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5 flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-base font-bold text-gray-900">{record.cohortName}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{record.district} · {record.farmerCount} farmer{record.farmerCount !== 1 ? 's' : ''} · {record.programName}</p>
@@ -321,7 +321,7 @@ function ClimateExposureTab({ cohortIds }: { cohortIds: Set<string> | null }) {
               {exposure.components.map(c => {
                 const Icon = COMPONENT_ICON[c.key]
                 return (
-                  <div key={c.key} className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div key={c.key} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--brand-mint)' }}>
                         <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brand-forest)' }} />
@@ -487,7 +487,7 @@ function RiskQuadrantTab({ farmers }: { farmers: Farmer[] }) {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-left">
@@ -648,7 +648,7 @@ export function Main() {
   }, [hasActiveFilter, filteredFarmers])
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-6 space-y-5" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--brand-mint)' }}>
@@ -683,7 +683,7 @@ export function Main() {
 
       {/* Filters — apply to AI Overview, Climate Exposure, Risk Quadrant */}
       {INSIGHTS_FILTER_TABS.includes(tab) && (
-        <div className="flex flex-col gap-2 bg-white rounded-xl border border-gray-200 p-3">
+        <div className="flex flex-col gap-2 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <SelectTemplate size="sm" options={communityOptions} value={communityFilter} onChange={e => setCommunityFilter(e.target.value)} />
             <SelectTemplate size="sm" options={programOptions} value={programFilter} onChange={e => { setProgramFilter(e.target.value); setCohortFilter('all') }} />

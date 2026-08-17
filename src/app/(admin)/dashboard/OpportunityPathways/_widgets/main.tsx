@@ -889,7 +889,7 @@ function InterventionCard({ intervention: iv, onSuspend, onEnroll, onDelete }: O
 // ── Stat card ──────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-4 py-3 flex items-center gap-3">
       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
            style={{ background: 'var(--brand-mint)' }}>
         {icon}
@@ -1058,7 +1058,7 @@ export function Main() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4 space-y-3">
         <div className="flex items-center flex-wrap gap-2">
           <div className="relative flex-1 min-w-40">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -86,7 +86,7 @@ function StatCard({ icon, iconBg, label, value, trend }: {
   icon: React.ReactNode; iconBg: string; label: string; value: string | number; trend: string
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-start gap-3">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4 flex items-start gap-3">
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
         {icon}
       </div>
@@ -165,7 +165,7 @@ function GroupRiskPanel({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
           <p className="text-sm font-semibold text-gray-800 mb-4">Risk Distribution — {selected.name}</p>
           <div className="flex items-center gap-6">
             <ResponsiveContainer width="55%" height={200}>
@@ -202,7 +202,7 @@ function GroupRiskPanel({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
           <p className="text-sm font-semibold text-gray-800 px-5 pt-5 pb-3">At-Risk Farmers — {selected.name}</p>
           <div className="divide-y divide-gray-50">
             {atRisk.length === 0 ? (
@@ -237,7 +237,7 @@ function GroupRiskPanel({
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
         <p className="text-sm font-semibold text-gray-800 mb-4">{chartTitle}</p>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={groups} margin={{ left: 0, right: 16, top: 4, bottom: 0 }}>
@@ -258,7 +258,7 @@ function GroupRiskPanel({
           <div
             key={g.id}
             onClick={() => onSelect(g.id)}
-            className="bg-white rounded-xl border border-gray-100 p-5 cursor-pointer hover:border-(--brand-mid) hover:shadow-sm transition-all"
+            className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5 cursor-pointer hover:border-(--brand-mid) hover:shadow-sm transition-all"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="min-w-0">
@@ -278,11 +278,11 @@ function GroupRiskPanel({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-lg p-2.5">
+              <div className="bg-(--brand-mint)/50 rounded-lg p-2.5">
                 <p className="text-xs text-gray-500">Avg FRI Score</p>
                 <p className="text-lg font-bold text-gray-900 mt-0.5">{g.avgFri}</p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-2.5">
+              <div className="bg-(--brand-mint)/50 rounded-lg p-2.5">
                 <p className="text-xs text-gray-500">Check-in Rate</p>
                 <p className="text-lg font-bold text-gray-900 mt-0.5">{g.checkinRate}%</p>
               </div>
@@ -556,7 +556,7 @@ export function Main() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Risk Distribution donut */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-800 mb-4">Risk Distribution</p>
               <div className="flex items-center gap-6">
                 <ResponsiveContainer width="100%" height={180}>
@@ -587,7 +587,7 @@ export function Main() {
             </div>
 
             {/* Top Risk Factors horizontal bar */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-800 mb-4">Top Risk Factors</p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart
@@ -646,7 +646,7 @@ export function Main() {
         ]
 
         return (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
             {/* Filter bar */}
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -725,7 +725,7 @@ export function Main() {
 
       {/* ── By Region ── */}
       {tab === 'by-region' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
           <p className="text-sm font-semibold text-gray-800 mb-4">Risk by Region</p>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart
@@ -781,7 +781,7 @@ export function Main() {
         <div className="space-y-4">
 
           {/* Avg FRI area chart */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
             <p className="text-sm font-semibold text-gray-800 mb-4">Average FRI Score Over Time</p>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={TREND_DATA} margin={{ left: 0, right: 16, top: 4, bottom: 0 }}>
@@ -803,7 +803,7 @@ export function Main() {
 
           {/* Dropouts + Enrollments */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-800 mb-4">Dropouts per Month</p>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={TREND_DATA} margin={{ left: 0, right: 8, top: 4, bottom: 0 }} barSize={28}>
@@ -815,7 +815,7 @@ export function Main() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-800 mb-4">New Enrollments per Month</p>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={TREND_DATA} margin={{ left: 0, right: 8, top: 4, bottom: 0 }} barSize={28}>
@@ -831,19 +831,19 @@ export function Main() {
 
           {/* Summary stat row */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
               <p className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>+8 pts</p>
               <p className="text-xs font-semibold text-gray-700 mt-0.5">FRI improvement</p>
               <p className="text-[11px] mt-0.5" style={{ color: 'var(--brand-green)' }}>Jan — Jun</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
               <p className="text-xl font-bold text-red-500">
                 {TREND_DATA.reduce((s, d) => s + d.dropouts, 0)}
               </p>
               <p className="text-xs font-semibold text-gray-700 mt-0.5">Total dropouts</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Last 6 months</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
               <p className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>
                 {TREND_DATA.reduce((s, d) => s + d.enrollments, 0)}
               </p>
@@ -856,7 +856,7 @@ export function Main() {
 
       {/* ── Norvi AI ── */}
       {tab === 'norvi-ai' && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
           {/* Dark header */}
           <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">

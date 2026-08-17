@@ -49,7 +49,7 @@ export function ThemeColorsSection() {
         These colors apply across the entire platform — dashboard, sidebar, buttons, and the public landing page.
       </p>
 
-      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 divide-y divide-gray-100">
         {THEME_COLOR_FIELDS.map(({ key, label, hint }) => (
           <div key={key} className="flex items-center gap-4 px-4 py-3">
             <label className="relative shrink-0 w-10 h-10 rounded-lg border border-gray-200 overflow-hidden cursor-pointer" style={{ backgroundColor: draft[key] }}>

@@ -3,10 +3,11 @@ import { getSession } from '@/lib/session'
 import { LandingPage } from './_widgets/LandingPage'
 
 const ROLE_HOME: Record<string, string> = {
-  partner: '/dashboard/PartnerPortal',
-  finance: '/dashboard/FinancePortal',
-  pm:      '/dashboard/ProgramManager',
-  staff:   '/dashboard/Dashboard',
+  partner:     '/dashboard/PartnerPortal',
+  finance:     '/dashboard/FinancePortal',
+  pm:          '/dashboard/ProgramManager',
+  staff:       '/dashboard/Dashboard',
+  super_admin: '/superadmin',
 }
 
 export default async function RootPage() {

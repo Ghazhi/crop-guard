@@ -124,7 +124,7 @@ function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }: {
   label: string; value: string | number; sub?: React.ReactNode
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5 flex flex-col gap-3">
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconBg}`}>
         <Icon className={`w-4.5 h-4.5 ${iconColor}`} />
       </div>
@@ -164,7 +164,7 @@ export function Main() {
   }
 
   return (
-    <div className="p-6 max-w-300 mx-auto">
+    <div className="p-6 max-w-300 mx-auto" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
 
       {/* header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
@@ -232,7 +232,7 @@ export function Main() {
           {/* charts row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* enrollment by program */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Enrollment by Program</p>
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={ENROLL_DATA} layout="vertical" margin={{ left: 20, right: 16, top: 0, bottom: 0 }}>
@@ -245,7 +245,7 @@ export function Main() {
             </div>
 
             {/* FRI zone distribution */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">FRI Zone Distribution</p>
               <div className="flex items-center gap-6">
                 <ResponsiveContainer width={130} height={130}>
@@ -273,7 +273,7 @@ export function Main() {
           {/* charts row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* weekly FRI trend */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Weekly Average FRI Score Trend</p>
               <ResponsiveContainer width="100%" height={140}>
                 <LineChart data={TREND_DATA} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
@@ -288,7 +288,7 @@ export function Main() {
             </div>
 
             {/* agent leaderboard */}
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Agent Leaderboard (30 days)</p>
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={LEADERBOARD_DATA} margin={{ left: 0, right: 8, top: 0, bottom: 0 }}>
@@ -305,7 +305,7 @@ export function Main() {
           </div>
 
           {/* open risk flags */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
             <p className="text-sm font-semibold text-gray-900 mb-4">Open Risk Flags</p>
             {openRiskFlags === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 gap-2">
@@ -335,7 +335,7 @@ export function Main() {
             {WEEKLY_REPORTS.map(w => {
               const open = expandedWeek === w.week
               return (
-                <div key={w.week} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div key={w.week} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
                   <button
                     onClick={() => setExpandedWeek(open ? null : w.week)}
                     className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors"

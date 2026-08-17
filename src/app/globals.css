@@ -64,6 +64,10 @@
   --brand-slate: #4A5568;
   --brand-gray: #EDF2F7;
 
+  /* Admin dashboard surfaces — warmer, green-tinted alternatives to plain white/gray-50 */
+  --surface-page: #F3F8F5;
+  --surface-card: #FCFEFC;
+
   /* Semantic colors — light mode */
   --background: hsl(0 0% 100%);
   --foreground: hsl(222 47% 11%);

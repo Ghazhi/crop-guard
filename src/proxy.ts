@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const ROLE_HOME: Record<string, string> = {
-  staff:   '/dashboard/Dashboard',
-  partner: '/dashboard/PartnerPortal',
-  finance: '/dashboard/FinancePortal',
-  pm:      '/dashboard/ProgramManager',
+  staff:       '/dashboard/Dashboard',
+  partner:     '/dashboard/PartnerPortal',
+  finance:     '/dashboard/FinancePortal',
+  pm:          '/dashboard/ProgramManager',
+  super_admin: '/superadmin',
 }
 
 function parseSession(req: NextRequest): { role: string } | null {
@@ -74,9 +75,20 @@ export function proxy(req: NextRequest) {
     }
   }
 
+  // Super Admin — a platform-operator role that manages tenants, kept in its
+  // own top-level route space, entirely separate from /dashboard/* portals
+  if (pathname.startsWith('/superadmin')) {
+    if (!session) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+    if (session.role !== 'super_admin') {
+      return NextResponse.redirect(new URL(ROLE_HOME[session.role] ?? '/login', req.url))
+    }
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/', '/login', '/dashboard/:path*'],
+  matcher: ['/', '/login', '/dashboard/:path*', '/superadmin/:path*'],
 }

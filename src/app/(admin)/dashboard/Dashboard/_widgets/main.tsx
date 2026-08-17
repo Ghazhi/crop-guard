@@ -318,7 +318,7 @@ function StatCard({ icon: Icon, label, value, color, sub, onClick }: {
 }) {
   return (
     <CardTemplate
-      className={['h-full transition-shadow border border-transparent', onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200' : ''].join(' ')}
+      className={['h-full transition-shadow bg-(--surface-card) border border-(--brand-pale)/40', onClick ? 'cursor-pointer hover:shadow-md hover:border-(--brand-pale)' : ''].join(' ')}
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
@@ -474,7 +474,7 @@ export function Main() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: 'var(--brand-forest)' }}>Dashboard</h1>
@@ -527,7 +527,7 @@ export function Main() {
       {!loading && (widgets['chart-top-crops'] || widgets['chart-fri-zone'] || widgets['chart-cooperatives']) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {widgets['chart-top-crops'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>Top Crops</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={cropData} barSize={28}>
@@ -541,7 +541,7 @@ export function Main() {
           )}
 
           {widgets['chart-fri-zone'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>FRI Zone Distribution</p>
             <ResponsiveContainer width="100%" height={180}>
               <PieChart>
@@ -580,7 +580,7 @@ export function Main() {
           )}
 
           {widgets['chart-cooperatives'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>Cooperatives</p>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={COOPERATIVE_CHART_DATA} layout="vertical" margin={{ left: 8, right: 16 }}>
@@ -599,7 +599,7 @@ export function Main() {
       {!loading && stats && (widgets['chart-fri-trend'] || widgets['chart-new-enrollments']) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {widgets['chart-fri-trend'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>FRI Score Trend (6 months)</p>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={buildTrend(stats.avgFRI ?? 0)} margin={{ top: 8, right: 16, left: -12, bottom: 0 }}>
@@ -614,7 +614,7 @@ export function Main() {
           )}
 
           {widgets['chart-new-enrollments'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm font-semibold mb-4" style={{ color: 'var(--brand-forest)' }}>New Enrollments (6 months)</p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={buildTrend(stats.activeEnrollments)} barSize={28}>
@@ -633,7 +633,7 @@ export function Main() {
       {!loading && (widgets['climate-exposure'] || widgets['risk-quadrant']) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {widgets['climate-exposure'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <CloudRain className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />
@@ -661,7 +661,7 @@ export function Main() {
           )}
 
           {widgets['risk-quadrant'] && (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Grid3x3 className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />
@@ -693,7 +693,7 @@ export function Main() {
 
       {/* Norvi AI Program Summary */}
       {!loading && widgets['norvi-summary'] && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">
               <Zap className="w-4 h-4 text-white" />

@@ -1,10 +1,11 @@
 import type { AuthResult, UserRole, AuthUser } from './interface'
 
 const MOCK_USERS: { username: string; password: string; role: UserRole; user: AuthUser }[] = [
-  { username: 'staff',   password: 'staff123',   role: 'staff',   user: { name: 'Abena Owusu',   initials: 'AO', org: 'CropGuard'       } },
-  { username: 'partner', password: 'partner123', role: 'partner', user: { name: 'Kwame Mensah',  initials: 'KM', org: 'Fidelity Bank', partnerId: 'p-001' } },
-  { username: 'finance', password: 'finance123', role: 'finance', user: { name: 'Akosua Asante', initials: 'AA', org: 'Agricultural DFI' } },
-  { username: 'pm',      password: 'pm123',      role: 'pm',      user: { name: 'Kofi Asante',   initials: 'KA', org: 'CropGuard'       } },
+  { username: 'staff',      password: 'staff123',      role: 'staff',       user: { name: 'Abena Owusu',   initials: 'AO', org: 'CropGuard'       } },
+  { username: 'partner',    password: 'partner123',    role: 'partner',     user: { name: 'Kwame Mensah',  initials: 'KM', org: 'Fidelity Bank', partnerId: 'p-001' } },
+  { username: 'finance',    password: 'finance123',    role: 'finance',     user: { name: 'Akosua Asante', initials: 'AA', org: 'Agricultural DFI' } },
+  { username: 'pm',         password: 'pm123',         role: 'pm',          user: { name: 'Kofi Asante',   initials: 'KA', org: 'CropGuard'       } },
+  { username: 'superadmin', password: 'superadmin123', role: 'super_admin', user: { name: 'Nana Adjei',    initials: 'NA', org: 'CropGuard'       } },
 ]
 
 // Used server-side by the API route

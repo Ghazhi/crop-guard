@@ -61,7 +61,7 @@ export function LandingContentSection() {
       {/* Navbar & footer */}
       <div className="flex flex-col gap-3">
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Navbar</p>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
             <FileUploadTemplate
               accept="image/*"
@@ -80,7 +80,7 @@ export function LandingContentSection() {
         </div>
 
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Footer</p>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-3">
           <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
             <FileUploadTemplate
               accept="image/*"
@@ -113,7 +113,7 @@ export function LandingContentSection() {
         </div>
 
         {content.heroSlides.map((slide, i) => (
-          <div key={slide.id} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+          <div key={slide.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
                 <GripVertical className="w-3.5 h-3.5 text-gray-300" />

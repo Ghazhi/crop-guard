@@ -10,10 +10,11 @@ import type { AuthUser, UserRole } from '@/app/login/_logics/interface'
 import { REGIONS } from '@/dataCenter/communityProfile'
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  staff:   'Staff',
-  partner: 'Partner',
-  finance: 'Finance',
-  pm:      'Program Manager',
+  staff:       'Staff',
+  partner:     'Partner',
+  finance:     'Finance',
+  pm:          'Program Manager',
+  super_admin: 'Super Admin',
 }
 
 const REGION_OPTIONS = REGIONS.map(r => ({ value: r.code, label: r.name }))
@@ -87,7 +88,7 @@ export function MyProfileTab() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
       {/* Profile card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-6">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-6 flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 text-white text-2xl font-bold"
@@ -146,7 +147,7 @@ export function MyProfileTab() {
       </div>
 
       {/* Change password card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col gap-4">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-6 flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <Lock className="w-4 h-4" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-sm font-bold text-gray-900">Change Password</h2>

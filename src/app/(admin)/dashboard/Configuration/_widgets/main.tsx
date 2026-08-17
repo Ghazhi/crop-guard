@@ -27,7 +27,7 @@ export function Main() {
   const [tab, setTab] = usePersistedState<ConfigTab>('config-tab', 'profile')
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--brand-mint)' }}>
           <Settings2 className="w-5 h-5" style={{ color: 'var(--brand-forest)' }} />

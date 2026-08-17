@@ -718,7 +718,7 @@ export function Main() {
             { label: 'Unassigned',      value: unassignedCount },
             { label: 'Total Farmers',   value: cohorts.reduce((s, c) => s + c.farmerCount, 0) },
           ] as { label: string; value: number }[]).map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+            <div key={label} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
               <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-2">{label}</p>
               <p className="text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
             </div>
@@ -751,7 +751,7 @@ export function Main() {
       {(() => {
         const activeFilterCount = [filterProgram, filterCohort].filter(Boolean).length
         return (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
@@ -838,7 +838,7 @@ export function Main() {
           onPageChange={setPage} onPageSizeChange={setPageSize}
         />
       )}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <p className="text-sm font-semibold" style={{ color: 'var(--brand-forest)' }}>
             {activeAgentName ? `${activeAgentName}'s Cohorts` : 'All Cohorts'}{' '}

@@ -11,6 +11,7 @@ import {
   BookOpen, ClipboardList, AlertTriangle,
   Target, BarChart3, Settings2,
   FolderKanban, ShieldCheck, Landmark, GraduationCap, Sparkles,
+  History, Shield,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -54,6 +55,18 @@ const FINANCE_NAV = [
   { href: '/dashboard/FinancePortal/Compliance',   label: 'Compliance & Audit',  icon: ClipboardList,   locked: false },
 ]
 
+const SUPER_ADMIN_NAV: NavItem[] = [
+  { href: '/superadmin',              label: 'Overview',        icon: LayoutDashboard, locked: false },
+  { section: true, label: 'Tenants' },
+  { href: '/superadmin/Tenants',      label: 'Tenants',         icon: Building2,       locked: false },
+  { href: '/superadmin/ActivityLog',  label: 'Activity Log',    icon: History,         locked: false },
+  { section: true, label: 'Platform' },
+  { href: '/superadmin/PlatformUsers', label: 'Platform Users', icon: Users,           locked: false },
+  { href: '/superadmin/Roles',         label: 'Roles',          icon: Shield,          locked: false },
+  { href: '/superadmin/Settings',      label: 'System Settings', icon: Settings2,      locked: false },
+  { href: '/superadmin/AuditLog',      label: 'Audit Log',      icon: ClipboardList,   locked: false },
+]
+
 const PM_NAV: NavItem[] = [
   { href: '/dashboard/ProgramManager',                   label: 'Overview',              icon: LayoutDashboard, locked: false },
   { section: true, label: 'Programs' },
@@ -72,15 +85,16 @@ const PM_NAV: NavItem[] = [
 // root-level portal links (e.g. '/dashboard/PartnerPortal') should only match their
 // exact path — otherwise they'd swallow every sub-route as a prefix match
 function navLinkMatches(pathname: string, href: string): boolean {
-  const isExactOnly = href.endsWith('/ProgramManager') || href.endsWith('/PartnerPortal') || href.endsWith('/FinancePortal')
+  const isExactOnly = href.endsWith('/ProgramManager') || href.endsWith('/PartnerPortal') || href.endsWith('/FinancePortal') || href === '/superadmin'
   return pathname === href || (!isExactOnly && pathname.startsWith(href + '/'))
 }
 
 const ROLE_META: Record<UserRole, { label: string; color: string; navBg: string }> = {
-  staff:   { label: 'Staff Portal',           color: 'var(--brand-forest)', navBg: 'var(--brand-forest)' },
-  partner: { label: 'Partner Portal',         color: '#1e3a5f',             navBg: '#1e3a5f'             },
-  finance: { label: 'Finance Portal',         color: '#7c3a00',             navBg: '#7c3a00'             },
-  pm:      { label: 'Program Manager Portal', color: '#312e81',             navBg: '#312e81'             },
+  staff:       { label: 'Staff Portal',           color: 'var(--brand-forest)', navBg: 'var(--brand-forest)' },
+  partner:     { label: 'Partner Portal',         color: '#1e3a5f',             navBg: '#1e3a5f'             },
+  finance:     { label: 'Finance Portal',         color: '#7c3a00',             navBg: '#7c3a00'             },
+  pm:          { label: 'Program Manager Portal', color: '#312e81',             navBg: '#312e81'             },
+  super_admin: { label: 'Super Admin',            color: '#1f2937',             navBg: '#1f2937'             },
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -119,7 +133,7 @@ export function DashboardLayout({ children, initialRole, initialUser }: Dashboar
     fetch('/api/auth/logout', { method: 'POST' }).finally(() => router.push('/login'))
   }
 
-  const nav  = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : role === 'pm' ? PM_NAV : STAFF_NAV
+  const nav  = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : role === 'pm' ? PM_NAV : role === 'super_admin' ? SUPER_ADMIN_NAV : STAFF_NAV
   const meta = ROLE_META[role]
 
   const sidebarW = collapsed ? 'md:w-16' : 'md:w-60'

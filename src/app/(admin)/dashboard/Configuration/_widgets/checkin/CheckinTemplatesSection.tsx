@@ -153,7 +153,7 @@ function WeekAccordion({
           grouped[item.component]!.push(item)
         }
         return (
-          <div key={week.weekNumber} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div key={week.weekNumber} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
             <button
               onClick={() => toggleWeek(week.weekNumber)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
@@ -268,7 +268,7 @@ export function CheckinTemplatesSection() {
       </div>
 
       {templates.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <ClipboardCheck className="w-8 h-8 text-gray-200" />
           <p className="text-sm font-medium text-gray-400 text-center">No check-in templates yet. Create one to get started.</p>
         </div>
@@ -277,7 +277,7 @@ export function CheckinTemplatesSection() {
           {templates.map(t => {
             const open = expandedId === t.id
             return (
-              <div key={t.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div key={t.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
                 <div className="flex items-start justify-between gap-3 p-4">
                   <button className="min-w-0 flex-1 text-left" onClick={() => setExpandedId(open ? null : t.id)}>
                     <div className="flex items-center gap-2 flex-wrap mb-1">

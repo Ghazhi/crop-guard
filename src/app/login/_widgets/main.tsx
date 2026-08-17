@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react'
 import { login } from '../_logics/functions'
 import { LoaderTemplate } from '@/customComponents/LoaderTemplate'
+import { ForgotPasswordFlow } from './ForgotPasswordFlow'
 
 const BRAND = '#2C5F3F'
 
@@ -15,6 +16,7 @@ export function Main() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
+  const [forgotOpen,   setForgotOpen]   = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,6 +28,7 @@ export function Main() {
     if (result.role === 'partner') router.push('/dashboard/PartnerPortal')
     else if (result.role === 'finance') router.push('/dashboard/FinancePortal')
     else if (result.role === 'pm') router.push('/dashboard/ProgramManager')
+    else if (result.role === 'super_admin') router.push('/superadmin')
     else router.push('/dashboard/Dashboard')
   }
 
@@ -54,6 +57,10 @@ export function Main() {
           <p className="text-xs tracking-wide" style={{ color: '#5A9E74' }}>Data-smart. Farmer-first.</p>
         </div>
 
+        {forgotOpen ? (
+          <ForgotPasswordFlow onBack={() => setForgotOpen(false)} />
+        ) : (
+        <>
         {/* Form */}
         <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
 
@@ -108,6 +115,14 @@ export function Main() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => setForgotOpen(true)}
+              className="self-end text-xs font-medium transition-colors"
+              style={{ color: BRAND }}
+            >
+              Forgot password?
+            </button>
           </div>
 
           {/* Submit */}
@@ -126,10 +141,11 @@ export function Main() {
         <div className="mx-6 mb-4 flex items-center gap-1.5 flex-wrap">
           <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500 mr-1">Try:</span>
           {[
-            { role: 'Staff',   user: 'staff',   pass: 'staff123'   },
-            { role: 'Partner', user: 'partner', pass: 'partner123' },
-            { role: 'Finance', user: 'finance', pass: 'finance123' },
-            { role: 'PM',      user: 'pm',      pass: 'pm123'      },
+            { role: 'Staff',       user: 'staff',      pass: 'staff123'      },
+            { role: 'Partner',     user: 'partner',    pass: 'partner123'    },
+            { role: 'Finance',     user: 'finance',    pass: 'finance123'    },
+            { role: 'PM',          user: 'pm',         pass: 'pm123'         },
+            { role: 'Super Admin', user: 'superadmin', pass: 'superadmin123' },
           ].map(({ role, user, pass }) => (
             <button key={role} type="button"
               onClick={() => { setUsername(user); setPassword(pass) }}
@@ -149,6 +165,8 @@ export function Main() {
             <span className="cursor-pointer" style={{ color: '#3D7A56' }}>Privacy Policy</span>.
           </p>
         </div>
+        </>
+        )}
 
         {/* Powered by */}
         <div className="border-t border-gray-100 px-6 py-3 text-center bg-gray-50">

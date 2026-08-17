@@ -495,7 +495,7 @@ function LinkedProgramsTab({ opportunities }: { opportunities: { intervention: I
       </p>
 
       {cards.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+        <div className="py-16 text-center text-gray-400 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
           <Layers className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No programmes linked yet.</p>
         </div>
@@ -503,7 +503,7 @@ function LinkedProgramsTab({ opportunities }: { opportunities: { intervention: I
         cards.map(prog => {
           const filled = prog.target > 0 ? Math.min(100, Math.round((prog.enrolled / prog.target) * 100)) : 0
           return (
-            <CardTemplate key={prog.id} noPadding className="overflow-hidden">
+            <CardTemplate key={prog.id} noPadding className="overflow-hidden bg-(--surface-card) border border-(--brand-pale)/40">
               <div className="px-6 pt-4 pb-3">
                 <div className="flex items-start justify-between gap-3 mb-1">
                   <h3 className="text-base font-bold truncate" style={{ color: 'var(--brand-forest)' }}>{prog.name}</h3>
@@ -692,7 +692,7 @@ function LinkedInterventionsTab({
       </div>
 
       {opportunities.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+        <div className="py-16 text-center text-gray-400 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
           <Zap className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">No opportunities assigned yet.</p>
           <button onClick={onAssign}
@@ -837,7 +837,7 @@ function P4BaselineTab({
   return (
     <div className="space-y-4">
       {/* assignment toggle */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center justify-between gap-4">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-gray-900">Assign ECI</p>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -848,13 +848,13 @@ function P4BaselineTab({
       </div>
 
       {!assigned ? (
-        <div className="py-16 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
+        <div className="py-16 text-center text-gray-400 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
           <Wallet className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Not assigned to ECI yet.</p>
           <p className="text-xs mt-1">Toggle it on above to give this partner its own ECI questions.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
               ECI ({questions.length})
@@ -1068,7 +1068,7 @@ export function Main({ partnerId }: { partnerId: string }) {
   const headerVariant = partner.status === 'Active' ? 'success' : partner.status === 'Pending' ? 'warning' : 'neutral'
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
 
       <button onClick={() => router.back()}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
@@ -1076,7 +1076,7 @@ export function Main({ partnerId }: { partnerId: string }) {
       </button>
 
       {/* Partner header */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-wrap items-start gap-5">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5 flex flex-wrap items-start gap-5">
         <PersonAvatar name={partner.name} size={56} shape="square" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">

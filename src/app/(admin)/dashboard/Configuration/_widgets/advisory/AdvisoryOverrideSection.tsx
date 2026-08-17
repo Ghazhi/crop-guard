@@ -122,12 +122,12 @@ export function AdvisoryOverrideSection() {
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">3. Farmers</p>
           {cohortFarmers.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center gap-2">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-8 flex flex-col items-center gap-2">
               <Users className="w-7 h-7 text-gray-200" />
               <p className="text-sm text-gray-400">No farmers in this cohort.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
               {cohortFarmers.map(f => {
                 const paused = pausedSet.has(f.id)
                 return (

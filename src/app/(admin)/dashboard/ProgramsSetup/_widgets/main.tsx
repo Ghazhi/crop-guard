@@ -937,7 +937,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
 
   return (
     <>
-      <CardTemplate noPadding className="overflow-hidden">
+      <CardTemplate noPadding className="overflow-hidden bg-(--surface-card) border border-(--brand-pale)/40">
         {/* Program body */}
         <div className={cn('px-6 pt-4 pb-3', !isActive && 'opacity-50 pointer-events-none')}>
           <div className="flex items-start justify-between gap-3 mb-1">
@@ -1101,7 +1101,7 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
 
 function OverviewCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-2">{label}</p>
       <p className="text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
@@ -1321,7 +1321,7 @@ function ProgramsCohortsTab() {
             {[1, 2].map(i => <div key={i} className="h-48 rounded-xl bg-gray-200 animate-pulse" />)}
           </div>
         ) : filtered.length === 0 ? (
-          <CardTemplate>
+          <CardTemplate className="bg-(--surface-card) border border-(--brand-pale)/40">
             <p className="text-sm text-center text-gray-400 py-8">
               {search ? 'No programs match your search.' : 'No programs yet.'}
             </p>
@@ -1338,7 +1338,7 @@ function ProgramsCohortsTab() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
             {paginated.map(program => (
               <ProgramListRow
                 key={program.id}
@@ -1490,7 +1490,7 @@ function BeneficiaryTab() {
           {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-gray-200 animate-pulse" />)}
         </div>
       ) : beneficiaries.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-20 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
           <Award className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: 'var(--brand-slate)' }} />
           <p className="font-medium" style={{ color: 'var(--brand-forest)' }}>No beneficiaries yet</p>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-slate)' }}>
@@ -1498,7 +1498,7 @@ function BeneficiaryTab() {
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-x-auto">
           {/* Column header */}
           <div className="flex items-center px-4 py-2.5 border-b border-gray-100 bg-gray-50/80 min-w-max">
             {(visibleColumns.farmerDetails ?? true) && (
@@ -1685,7 +1685,7 @@ export function Main() {
   const [pageTab, setPageTab] = usePersistedState<ProgramsPageTab>('ps-page-tab', 'cohorts')
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="p-6 pb-0">
         <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit max-w-full overflow-x-auto">
           {PROGRAMS_PAGE_TABS.map(({ id, Icon, label }) => {

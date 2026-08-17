@@ -30,7 +30,7 @@ export function DashboardConfigSection() {
       </div>
 
       {groups.map(group => (
-        <div key={group} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div key={group} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
           <p className="px-4 pt-3 pb-1 text-[10px] font-semibold tracking-widest uppercase text-gray-400">{group}</p>
           <div className="divide-y divide-gray-100">
             {DASHBOARD_WIDGETS.filter(w => w.group === group).map(w => (

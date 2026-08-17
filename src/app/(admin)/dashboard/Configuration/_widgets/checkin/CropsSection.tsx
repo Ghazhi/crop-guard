@@ -49,7 +49,7 @@ export function CropsSection() {
         />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
         {crops.length === 0 && !addingCrop && (
           <p className="text-sm text-gray-400 text-center py-8">No crops yet. Click &quot;Add Crop&quot; to get started.</p>
         )}

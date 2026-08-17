@@ -190,7 +190,7 @@ export function Main() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4 p-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
@@ -203,7 +203,7 @@ export function Main() {
       </div>
 
       {bundles.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
           <GraduationCap className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-sm">No training bundles yet</p>
         </div>
@@ -213,7 +213,7 @@ export function Main() {
             const isOpen = expandedBundle === bundle.id
             const weeks = weeksForBundle(bundle)
             return (
-              <div key={bundle.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div key={bundle.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
                 <div
                   className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 cursor-pointer"
                   onClick={() => setExpandedBundle(isOpen ? null : bundle.id)}

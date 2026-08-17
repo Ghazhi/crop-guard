@@ -192,7 +192,7 @@ export function AdvisoryScheduleSection() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <Calendar className="w-8 h-8 text-gray-200" />
           <p className="text-sm font-medium text-gray-400 text-center">No advisory schedules for this filter.</p>
         </div>
@@ -201,7 +201,7 @@ export function AdvisoryScheduleSection() {
           {filtered.map(s => {
             const template = templateTitle(s.advisoryTemplateId)
             return (
-              <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-3">
+              <div key={s.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">

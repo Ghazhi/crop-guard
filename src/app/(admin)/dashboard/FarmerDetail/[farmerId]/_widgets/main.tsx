@@ -624,7 +624,7 @@ export function Main({ farmerId }: { farmerId: string }) {
 
       {/* ── Pillar Scores ──────────────────────────────────────────────────── */}
       <div className="mb-6">
-        <CardTemplate title="Pillar Scores">
+        <CardTemplate title="Pillar Scores" className="bg-(--surface-card) border border-(--brand-pale)/40">
           {activeWeekData ? (
             <>
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -645,7 +645,7 @@ export function Main({ farmerId }: { farmerId: string }) {
 
       {/* ── Season Progress chart ──────────────────────────────────────────── */}
       <div className="mb-6">
-        <CardTemplate title="Season Progress (Weeks 1–12)">
+        <CardTemplate title="Season Progress (Weeks 1–12)" className="bg-(--surface-card) border border-(--brand-pale)/40">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={chartData} margin={{ top: 8, right: 24, left: -12, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--brand-mint)" />
@@ -747,7 +747,7 @@ export function Main({ farmerId }: { farmerId: string }) {
       {/* ── Active Risk Flags ──────────────────────────────────────────────── */}
       {flags.length > 0 && (
         <div className="mb-6">
-          <CardTemplate title="Active Risk Flags" noPadding>
+          <CardTemplate title="Active Risk Flags" noPadding className="bg-(--surface-card) border border-(--brand-pale)/40">
             <div className="p-4">
               <DatagridTemplate<RiskFlag>
                 columns={RISK_FLAG_COLUMNS}
@@ -771,7 +771,7 @@ export function Main({ farmerId }: { farmerId: string }) {
             </h2>
           </div>
 
-          <CardTemplate title="FRI Threshold Overview" subtitle="Farmer score vs. intervention requirements">
+          <CardTemplate title="FRI Threshold Overview" subtitle="Farmer score vs. intervention requirements" className="bg-(--surface-card) border border-(--brand-pale)/40">
             <FriThresholdBar
               interventions={interventions}
               farmerScore={farmer.totalScore}

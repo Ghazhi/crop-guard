@@ -206,7 +206,7 @@ function SessionCard({
   const cropLabel = cropOpts.find(c => c.value === session.cropType)?.label
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col gap-2.5">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex flex-col gap-2.5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-1.5 flex-wrap">
           <SessionTypeBadge type={session.sessionType} />
@@ -305,7 +305,7 @@ export function TrainingSessionsSection() {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <Video className="w-8 h-8 text-gray-200" />
           <p className="text-sm font-medium text-gray-400 text-center">No training sessions yet. Create one to get started.</p>
         </div>

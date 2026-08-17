@@ -231,7 +231,7 @@ function CheckinWeeksEditor({
           grouped[item.component]!.push(item)
         }
         return (
-          <div key={week.weekNumber} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div key={week.weekNumber} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 overflow-hidden">
             <button
               type="button"
               onClick={() => toggleWeek(week.weekNumber)}
@@ -553,14 +553,14 @@ export function BaselineTemplatesSection() {
       </div>
 
       {templates.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center gap-2">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <Layers className="w-8 h-8 text-gray-200" />
           <p className="text-sm font-medium text-gray-400 text-center">No baseline templates yet. Create one to get started.</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {templates.map(t => (
-            <div key={t.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-3">
+            <div key={t.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <p className="text-sm font-semibold text-gray-900">{t.title}</p>

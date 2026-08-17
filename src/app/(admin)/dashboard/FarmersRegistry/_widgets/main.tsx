@@ -1506,7 +1506,7 @@ function FarmerSheet({
                     ['Primary Crop', farmer.primaryCrop || '—'],
                     ['Farm Size (ha)', farmer.farmSize || '—'],
                   ] as [string, string][]).map(([k, v]) => (
-                    <div key={k} className="bg-gray-50 rounded-lg p-3">
+                    <div key={k} className="bg-(--brand-mint)/50 rounded-lg p-3">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
                       <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
                     </div>
@@ -1523,7 +1523,7 @@ function FarmerSheet({
                   </div>
                   <div className="space-y-2">
                     {farmer.enrollmentHistory.map((h, i) => (
-                      <div key={h.id ?? i} className="bg-gray-50 rounded-lg p-3 flex items-center justify-between gap-3">
+                      <div key={h.id ?? i} className="bg-(--brand-mint)/50 rounded-lg p-3 flex items-center justify-between gap-3">
                         <div>
                           <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{h.programName}</p>
                           <p className="text-[10px] text-gray-400 mt-0.5">
@@ -1550,7 +1550,7 @@ function FarmerSheet({
                     ['District',    farmer.district || '—'],
                     ['Cooperative', comm.cooperativeName ?? '—'],
                   ] as [string, string][]).map(([k, v]) => (
-                    <div key={k} className="bg-gray-50 rounded-lg p-3">
+                    <div key={k} className="bg-(--brand-mint)/50 rounded-lg p-3">
                       <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
                       <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
                     </div>
@@ -1572,7 +1572,7 @@ function FarmerSheet({
                       <Building2 className="w-4 h-4" style={{ color: 'var(--brand-mid)' }} />
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Current Enrollment</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 text-xs">
+                    <div className="grid grid-cols-2 gap-3 bg-(--brand-mint)/50 rounded-lg p-4 text-xs">
                       <div>
                         <span className="text-gray-400">Program</span>
                         <p className="font-medium mt-0.5" style={{ color: 'var(--brand-forest)' }}>{enr.programName}</p>
@@ -1597,7 +1597,7 @@ function FarmerSheet({
                         ['FRI Score', farmer.currentFri !== null ? `${farmer.currentFri}/100` : 'No score'],
                         ['Zone',      farmer.currentZone?.replace('Resilience ', '') ?? '—'],
                       ] as [string, string][]).map(([k, v]) => (
-                        <div key={k} className="bg-gray-50 rounded-lg p-3">
+                        <div key={k} className="bg-(--brand-mint)/50 rounded-lg p-3">
                           <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{k}</p>
                           <p className="font-medium text-xs" style={{ color: 'var(--brand-forest)' }}>{v}</p>
                         </div>
@@ -1704,7 +1704,7 @@ function countBy<T>(items: T[], key: (item: T) => string): { name: string; value
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-2">{label}</p>
       <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
@@ -1714,7 +1714,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 function ChartCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
       <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-3">{label}</p>
       {children}
     </div>
@@ -1820,7 +1820,7 @@ function FarmerStatsPanel({ farmers }: { farmers: Farmer[] }) {
   const orgEngagementData = [{ name: 'Not Engaged', value: total }]
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-5">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-5 space-y-5">
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard label="Total Farmers" value={total} />
@@ -2066,7 +2066,7 @@ export function Main() {
 
       {/* ── Statistics ──────────────────────────────────────────────────────── */}
       {statsOpen && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
             <div>
               <p className="font-semibold text-sm" style={{ color: 'var(--brand-forest)' }}>Farmer Statistics</p>
@@ -2085,7 +2085,7 @@ export function Main() {
       )}
 
       {/* ── Filters ─────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -2308,7 +2308,7 @@ export function Main() {
           {[1,2,3,4,5].map(i => <div key={i} className="h-20 rounded-xl bg-gray-200 animate-pulse" />)}
         </div>
       ) : displayed.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-100">
+        <div className="text-center py-20 bg-(--surface-card) rounded-xl border border-(--brand-pale)/40">
           <Users className="w-10 h-10 mx-auto mb-3 opacity-20" style={{ color: 'var(--brand-slate)' }} />
           <p className="font-medium" style={{ color: 'var(--brand-forest)' }}>No farmers found</p>
           <p className="text-sm mt-1" style={{ color: 'var(--brand-slate)' }}>Adjust your filters or add a new farmer.</p>
@@ -2317,7 +2317,7 @@ export function Main() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">

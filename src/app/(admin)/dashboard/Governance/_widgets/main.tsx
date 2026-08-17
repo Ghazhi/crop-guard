@@ -134,7 +134,7 @@ const PAGE_SIZE = 8
 
 function SummaryCard({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: number | string }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
           <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brand-forest)' }} />
@@ -248,7 +248,7 @@ function CooperativeGovernance() {
         <div className={cn('min-w-0 flex flex-col gap-4', !coopListCollapsed && 'lg:col-span-2')}>
           {sectionTab === 'cooperative' && (
             !selectedCoop ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
                 <Gavel className="w-12 h-12 mb-3 opacity-30" />
                 <p className="text-sm">Select a cooperative from the list</p>
               </div>
@@ -263,7 +263,7 @@ function CooperativeGovernance() {
 
           {sectionTab === 'governance' && (
             !selectedCoop ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
                 <Gavel className="w-12 h-12 mb-3 opacity-30" />
                 <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
               </div>
@@ -308,7 +308,7 @@ function CooperativeGovernance() {
                     </div>
 
                     {/* sub-tab content */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-5">
                       {govTab === 'leadership' && (
                         <LeadershipTab officers={officers} setOfficers={setOfficers} cooperatives={cooperatives} scopeId={selectedCoop.id} coopName={coopName} />
                       )}
@@ -344,7 +344,7 @@ function CooperativeGovernance() {
 
           {sectionTab === 'insights' && (
             !selectedCoop ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
                 <Sparkles className="w-12 h-12 mb-3 opacity-30" />
                 <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
               </div>
@@ -362,7 +362,7 @@ function CooperativeGovernance() {
 
           {sectionTab === 'reports' && (
             !selectedCoop ? (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
+              <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-20 text-gray-400">
                 <FileText className="w-12 h-12 mb-3 opacity-30" />
                 <p className="text-sm">Select a cooperative from the Cooperative tab first</p>
               </div>
@@ -515,7 +515,7 @@ function CooperativeDetailPanel({
       </div>
 
       {editing && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-4">
+        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-5 flex flex-col gap-4">
           <InputTemplate label="Cooperative Name" value={coop.name} isDisabled className="bg-gray-100 text-gray-400 cursor-not-allowed" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SelectTemplate label="Chairperson" options={chairpersonOptions} value={chairpersonFarmerId} onChange={e => setChairpersonFarmerId(e.target.value)} />
@@ -528,7 +528,7 @@ function CooperativeDetailPanel({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-5">
         <div className="flex items-center gap-2 mb-4">
           <Users2 className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h3 className="text-sm font-bold text-gray-900">Farmers in Cooperative ({farmersInCoop.length})</h3>
@@ -1415,7 +1415,7 @@ function FundsTab({
         <ButtonTemplate variant="primary" size="sm" label="Add Transaction" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
         <p className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-1">Net Balance</p>
         <p className="text-xl font-bold" style={{ color: 'var(--brand-forest)' }}>GHS {total.toLocaleString()}</p>
       </div>
@@ -1580,7 +1580,7 @@ function TrainingPlaceholderTab() {
 
 function TraceStat({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
           <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brand-forest)' }} />
@@ -1790,7 +1790,7 @@ function TraceabilityTab() {
 
 function InsightsStat({ icon: Icon, label, value, negative }: { icon: React.ElementType; label: string; value: string | number; negative?: boolean }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4">
       <div className="flex items-center gap-2 mb-2">
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--brand-mint)' }}>
           <Icon className="w-3.5 h-3.5" style={{ color: 'var(--brand-forest)' }} />
@@ -1875,7 +1875,7 @@ function CooperativeInsightsTab({
         <InsightsStat icon={Award}        label="Members"         value={coop.memberCount} />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-gray-100">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900">AI-Generated Insights</p>
@@ -2053,7 +2053,7 @@ function CooperativeReportsTab({
         })}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-gray-100">
           <div className="flex items-center gap-2 min-w-0">
             <activeType.Icon className="w-4 h-4 shrink-0" style={{ color: 'var(--brand-forest)' }} />
@@ -2098,13 +2098,13 @@ function CooperativeReportsTab({
       <div className="flex flex-col gap-2">
         <h3 className="text-sm font-bold text-gray-900">Saved Reports ({reportsForType.length})</h3>
         {reportsForType.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center justify-center py-10 text-gray-400">
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-10 text-gray-400">
             <FileText className="w-8 h-8 mb-2 opacity-30" />
             <p className="text-sm">No saved reports for this type yet.</p>
           </div>
         ) : (
           reportsForType.map(r => (
-            <div key={r.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            <div key={r.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4">
               <p className="text-sm text-gray-700 leading-relaxed">{r.text}</p>
               <p className="text-[11px] text-gray-400 mt-2">Generated on {r.generatedAt}</p>
             </div>
@@ -2196,7 +2196,7 @@ function OrgInsightsTab() {
         <InsightsStat icon={FileText} label="Documents" value={scopedDocuments.length} />
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
         <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--brand-forest)' }}>
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/10">
             <Sparkles className="w-4 h-4 text-white" />
@@ -2257,7 +2257,7 @@ export function Main() {
   const [pageTab, setPageTab] = usePersistedState<PageTab>('gov-page-tab', 'profiles')
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex flex-col gap-4 p-6 pb-0">
         {/* page header */}
         <div className="flex items-start justify-between gap-4">

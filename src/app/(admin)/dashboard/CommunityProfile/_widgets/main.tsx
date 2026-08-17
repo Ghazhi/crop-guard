@@ -812,7 +812,7 @@ export function Main() {
   const paginated = pageSize === 0 ? activeList : activeList.slice((page - 1) * pageSize, page * pageSize)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       {/* Header */}
       <div className="flex flex-wrap items-start gap-2 min-w-0">
         <div className="min-w-0">
@@ -832,7 +832,7 @@ export function Main() {
             { label: 'With Leader',    value: communities.filter(c => !!c.leaderName).length },
             { label: 'Regions Covered', value: new Set(communities.map(c => c.regionName)).size },
           ] as { label: string; value: number }[]).map(({ label, value }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-100 px-5 py-4">
+            <div key={label} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 px-5 py-4">
               <p className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 mb-2">{label}</p>
               <p className="text-3xl font-bold" style={{ color: 'var(--brand-forest)' }}>{value}</p>
             </div>

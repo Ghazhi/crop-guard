@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Building2, Plus, Pencil, Trash2, Mail, Calendar, Ban, Power } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Search, Ban, Power } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
@@ -10,31 +10,28 @@ import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
+import { DatagridTemplate, type DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { getTenants } from '../_logics/functions'
-import type { Tenant, TenantPlanTier, TenantStatus } from '../_logics/interface'
+import type { Tenant, TenantStatus } from '../_logics/interface'
 import { AUDIT_LOG_KEY, SEED_AUDIT_LOG, newAuditEntry } from '../../AuditLog/_logics/functions'
 import type { AuditLogEntry } from '../../AuditLog/_logics/interface'
 
 const CURRENT_ACTOR = 'Nana Adjei'
 
-const PLAN_OPTIONS: { value: TenantPlanTier; label: string }[] = [
-  { value: 'starter',    label: 'Starter' },
-  { value: 'pro',        label: 'Pro' },
-  { value: 'enterprise', label: 'Enterprise' },
-]
-
-const PLAN_VARIANT: Record<TenantPlanTier, 'neutral' | 'info' | 'success'> = {
-  starter: 'neutral', pro: 'info', enterprise: 'success',
-}
-
 const STATUS_VARIANT: Record<TenantStatus, 'success' | 'danger'> = {
   active: 'success', suspended: 'danger',
 }
 
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'active', label: 'Active' },
+  { value: 'suspended', label: 'Suspended' },
+]
+
 function emptyTenant(): Tenant {
   return {
     id: `ten-${Date.now()}`, name: '', subdomain: '',
-    planTier: 'starter', status: 'active', contactEmail: '', createdAt: new Date().toISOString().slice(0, 10),
+    status: 'active', contactEmail: '', createdAt: new Date().toISOString().slice(0, 10),
   }
 }
 
@@ -88,20 +85,12 @@ function TenantFormSheet({
           value={draft.contactEmail}
           onChange={e => setDraft({ ...draft, contactEmail: e.target.value })}
         />
-        <div className="grid grid-cols-2 gap-3">
-          <SelectTemplate
-            label="Plan Tier"
-            options={PLAN_OPTIONS}
-            value={draft.planTier}
-            onChange={e => setDraft({ ...draft, planTier: e.target.value as TenantPlanTier })}
-          />
-          <SelectTemplate
-            label="Status"
-            options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }]}
-            value={draft.status}
-            onChange={e => setDraft({ ...draft, status: e.target.value as TenantStatus })}
-          />
-        </div>
+        <SelectTemplate
+          label="Status"
+          options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }]}
+          value={draft.status}
+          onChange={e => setDraft({ ...draft, status: e.target.value as TenantStatus })}
+        />
       </div>
     </SheetTemplate>
   )
@@ -114,6 +103,8 @@ export function Main() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<Tenant | null>(null)
   const [deleting, setDeleting] = useState<Tenant | null>(null)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   useEffect(() => {
     getTenants().then(t => {
@@ -122,6 +113,11 @@ export function Main() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const filtered = tenants.filter(t =>
+    (t.name.toLowerCase().includes(search.toLowerCase()) || t.subdomain.toLowerCase().includes(search.toLowerCase()) || t.contactEmail.toLowerCase().includes(search.toLowerCase())) &&
+    (!statusFilter || t.status === statusFilter)
+  )
 
   function openNew() {
     setEditing(null)
@@ -156,9 +152,32 @@ export function Main() {
     toast.success(`${t.name} ${newStatus === 'suspended' ? 'suspended' : 'reactivated'}`)
   }
 
+  const columns: DatagridColumn<Tenant>[] = [
+    { key: 'name', label: 'Organization' },
+    { key: 'subdomain', label: 'Subdomain', render: v => `${String(v)}.cropguard.app` },
+    { key: 'contactEmail', label: 'Contact Email' },
+    { key: 'status', label: 'Status', render: v => (
+      <BadgeTemplate label={v as TenantStatus} variant={STATUS_VARIANT[v as TenantStatus]} size="sm" className="capitalize" />
+    ) },
+    { key: 'createdAt', label: 'Created' },
+    { key: 'id', label: '', id: 'actions', render: (_v, t) => (
+      <div className="flex items-center justify-end gap-1">
+        <ButtonTemplate
+          variant="outline" size="sm" isIcon
+          tooltip={t.status === 'active' ? 'Deactivate' : 'Reactivate'}
+          leftIcon={t.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+          className={t.status === 'active' ? 'text-red-600 border-red-200 hover:bg-red-50' : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'}
+          onClick={() => toggleStatus(t)}
+        />
+        <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => openEdit(t)} />
+        <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(t)} />
+      </div>
+    ) },
+  ]
+
   return (
     <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: '#1f2937' }}>
             <Building2 className="w-5 h-5 text-white" />
@@ -171,46 +190,33 @@ export function Main() {
         <ButtonTemplate variant="primary" label="New Tenant" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openNew} />
       </div>
 
-      {loading ? (
-        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 text-center text-gray-400 text-sm">
-          Loading tenants…
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <InputTemplate
+            placeholder="Search name, subdomain, email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            leftIcon={<Search className="w-3.5 h-3.5 text-gray-400" />}
+          />
         </div>
-      ) : tenants.length === 0 ? (
-        <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
-          <Building2 className="w-8 h-8 text-gray-200" />
-          <p className="text-sm font-medium text-gray-400 text-center">No tenants yet. Create one to get started.</p>
+        <div className="w-48">
+          <SelectTemplate
+            options={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          />
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {tenants.map(t => (
-            <div key={t.id} className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm p-4 flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                  <BadgeTemplate label={t.planTier} variant={PLAN_VARIANT[t.planTier]} size="sm" className="capitalize" />
-                  <BadgeTemplate label={t.status} variant={STATUS_VARIANT[t.status]} size="sm" className="capitalize" />
-                </div>
-                <p className="text-xs text-gray-400 mb-2">{t.subdomain}.cropguard.app</p>
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{t.contactEmail}</span>
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Created {t.createdAt}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <ButtonTemplate
-                  variant="outline" size="sm" isIcon
-                  tooltip={t.status === 'active' ? 'Deactivate' : 'Reactivate'}
-                  leftIcon={t.status === 'active' ? <Ban className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-                  className={t.status === 'active' ? 'text-red-600 border-red-200 hover:bg-red-50' : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'}
-                  onClick={() => toggleStatus(t)}
-                />
-                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => openEdit(t)} />
-                <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(t)} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        <BadgeTemplate label={`${filtered.length} tenant${filtered.length !== 1 ? 's' : ''}`} variant="neutral" size="sm" />
+      </div>
+
+      <DatagridTemplate<Tenant>
+        columns={columns}
+        data={filtered}
+        rowKey="id"
+        isLoading={loading}
+        emptyLabel="No tenants found"
+        pageSizeOptions={[10, 25, 50, 100, 0]}
+      />
 
       <TenantFormSheet
         open={sheetOpen}

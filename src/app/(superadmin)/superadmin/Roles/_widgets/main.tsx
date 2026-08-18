@@ -1,22 +1,35 @@
 'use client'
 
 import { useState } from 'react'
-import { Shield, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Shield, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
+import { InputTemplate } from '@/customComponents/InputTemplate'
+import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
+import { DatagridTemplate, type DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { RoleFormSheet } from '@/customComponents/RoleFormSheet'
 import { SEED_SUPER_ADMIN_ROLES, SUPER_ADMIN_ROLE_PAGE_GROUPS, type Role } from '@/dataCenter/roles'
+
+const TYPE_FILTER_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'builtin', label: 'Built-in' },
+  { value: 'custom', label: 'Custom' },
+]
 
 export function Main() {
   const [roles, setRoles] = usePersistedState<Role[]>('super-admin-roles', SEED_SUPER_ADMIN_ROLES)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Role | null>(null)
   const [deleting, setDeleting] = useState<Role | null>(null)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
 
-  const builtIn = roles.filter(r => r.isSystem)
-  const custom = roles.filter(r => !r.isSystem)
+  const filtered = roles.filter(r =>
+    r.name.toLowerCase().includes(search.toLowerCase()) &&
+    (!typeFilter || (typeFilter === 'builtin' ? r.isSystem : !r.isSystem))
+  )
 
   function saveRole(role: Role) {
     setRoles(prev => {
@@ -33,6 +46,24 @@ export function Main() {
     setDeleting(null)
   }
 
+  const columns: DatagridColumn<Role>[] = [
+    { key: 'name', label: 'Role' },
+    { key: 'description', label: 'Description', render: v => (
+      <span className="line-clamp-1 max-w-md block">{String(v)}</span>
+    ) },
+    { key: 'isSystem', label: 'Type', render: v => (
+      <BadgeTemplate label={v ? 'Built-in' : 'Custom'} variant={v ? 'warning' : 'info'} size="sm" />
+    ) },
+    { key: 'id', label: '', id: 'actions', render: (_v, r) => (
+      <div className="flex items-center justify-end gap-1">
+        <ButtonTemplate variant="ghost" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
+        {!r.isSystem && (
+          <ButtonTemplate variant="ghost" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(r)} />
+        )}
+      </div>
+    ) },
+  ]
+
   return (
     <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -48,48 +79,32 @@ export function Main() {
         <ButtonTemplate variant="primary" label="New Role" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
       </div>
 
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Built-in Roles</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {builtIn.map(r => (
-            <div key={r.id} className="rounded-xl border p-4 flex flex-col gap-2" style={{ backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-gray-900">{r.name}</p>
-                <div className="flex items-center gap-1 shrink-0">
-                  <BadgeTemplate label="Built-in" variant="warning" size="sm" />
-                  <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">{r.description}</p>
-            </div>
-          ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <InputTemplate
+            placeholder="Search role name…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            leftIcon={<Search className="w-3.5 h-3.5 text-gray-400" />}
+          />
         </div>
+        <div className="w-44">
+          <SelectTemplate
+            options={TYPE_FILTER_OPTIONS}
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+          />
+        </div>
+        <BadgeTemplate label={`${filtered.length} role${filtered.length !== 1 ? 's' : ''}`} variant="neutral" size="sm" />
       </div>
 
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Custom Roles</h3>
-        {custom.length === 0 ? (
-          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm flex flex-col items-center justify-center py-14 text-gray-400">
-            <Shield className="w-10 h-10 mb-3 opacity-30" />
-            <p className="text-sm">No custom roles yet. Click &quot;New Role&quot; to create one.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {custom.map(r => (
-              <div key={r.id} className="rounded-xl border p-4 flex flex-col gap-2" style={{ backgroundColor: 'var(--brand-mint)', borderColor: 'var(--brand-light)' }}>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold" style={{ color: 'var(--brand-forest)' }}>{r.name}</p>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
-                    <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(r)} />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-600 leading-relaxed">{r.description}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <DatagridTemplate<Role>
+        columns={columns}
+        data={filtered}
+        rowKey="id"
+        emptyLabel="No roles found"
+        pageSizeOptions={[10, 25, 50, 100, 0]}
+      />
 
       <RoleFormSheet
         open={adding}

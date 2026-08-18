@@ -10,12 +10,19 @@ import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
+import { DatagridTemplate, type DatagridColumn } from '@/customComponents/DatagridTemplate'
 import { SEED_PLATFORM_USERS, type PlatformUser } from '@/app/(admin)/dashboard/Configuration/_logics/userManagement'
 import { SEED_SUPER_ADMIN_ROLES, type Role } from '@/dataCenter/roles'
 import { AUDIT_LOG_KEY, SEED_AUDIT_LOG, newAuditEntry } from '../../AuditLog/_logics/functions'
 import type { AuditLogEntry } from '../../AuditLog/_logics/interface'
 
 const CURRENT_ACTOR = 'Nana Adjei'
+
+const STATUS_FILTER_OPTIONS = [
+  { value: '', label: 'All Statuses' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+]
 
 interface UserFormSheetProps {
   open: boolean
@@ -171,6 +178,8 @@ export function Main() {
   const [roles] = usePersistedState<Role[]>('super-admin-roles', SEED_SUPER_ADMIN_ROLES)
   const [, setAuditLog] = usePersistedState<AuditLogEntry[]>(AUDIT_LOG_KEY, SEED_AUDIT_LOG)
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [adding, setAdding] = useState(false)
   const [viewing, setViewing] = useState<PlatformUser | null>(null)
   const [editing, setEditing] = useState<PlatformUser | null>(null)
@@ -179,8 +188,9 @@ export function Main() {
   const superAdminUsers = users.filter(u => roles.some(r => r.id === u.roleId))
 
   const filtered = superAdminUsers.filter(u =>
-    u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
+    (u.fullName.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())) &&
+    (!roleFilter || u.roleId === roleFilter) &&
+    (!statusFilter || (statusFilter === 'active' ? u.isActive : !u.isActive))
   )
 
   function toggleActive(u: PlatformUser) {
@@ -211,6 +221,39 @@ export function Main() {
     return roles.find(r => r.id === u.roleId)?.name ?? 'Unknown Role'
   }
 
+  const columns: DatagridColumn<PlatformUser>[] = [
+    { key: 'fullName', label: 'Name', render: (v, u) => (
+      <div className="flex items-center gap-2.5">
+        <PersonAvatar name={u.fullName} size={26} />
+        {String(v)}
+      </div>
+    ) },
+    { key: 'email', label: 'Email' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'roleId', label: 'Role', render: (_v, u) => (
+      <BadgeTemplate label={roleLabel(u)} variant="info" size="sm" />
+    ) },
+    { key: 'isActive', label: 'Status', render: v => (
+      <BadgeTemplate label={v ? 'Active' : 'Inactive'} variant={v ? 'success' : 'neutral'} size="sm" />
+    ) },
+    { key: 'id', label: '', id: 'actions', render: (_v, u) => (
+      <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+        <ButtonTemplate
+          variant="outline" size="sm" isIcon tooltip="Edit"
+          leftIcon={<Pencil className="w-3.5 h-3.5" />}
+          onClick={() => setEditing(u)}
+        />
+        <ButtonTemplate
+          variant="outline" size="sm" isIcon
+          tooltip={u.isActive ? 'Deactivate' : 'Reactivate'}
+          leftIcon={u.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck2 className="w-3.5 h-3.5" />}
+          className={u.isActive ? 'text-red-600 border-red-200 hover:bg-red-50' : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50'}
+          onClick={() => toggleActive(u)}
+        />
+      </div>
+    ) },
+  ]
+
   return (
     <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -223,55 +266,43 @@ export function Main() {
             <p className="text-sm" style={{ color: 'var(--brand-slate)' }}>Super Admin platform-operator accounts</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="w-64">
-            <InputTemplate
-              placeholder="Search name or email…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              leftIcon={<Search className="w-3.5 h-3.5 text-gray-400" />}
-            />
-          </div>
-          <ButtonTemplate variant="primary" label="Add User" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
-        </div>
+        <ButtonTemplate variant="primary" label="Add User" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
       </div>
 
-      <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
-        {filtered.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-12">No users match this search.</p>
-        ) : filtered.map(u => (
-          <div
-            key={u.id}
-            className="flex items-center gap-3 px-4 py-3 border-b border-(--brand-pale)/30 last:border-b-0 cursor-pointer hover:bg-gray-50/60 transition-colors"
-            onClick={() => setViewing(u)}
-          >
-            <PersonAvatar name={u.fullName} size={32} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-medium text-gray-900 truncate">{u.fullName}</p>
-                <BadgeTemplate label={roleLabel(u)} variant="info" size="sm" />
-                {!u.isActive && <BadgeTemplate label="Inactive" variant="neutral" size="sm" />}
-              </div>
-              <p className="text-xs text-gray-400 truncate">{u.email} · {u.phone}</p>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-              <ButtonTemplate
-                variant="outline" size="sm" isIcon tooltip="Edit"
-                leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                onClick={() => setEditing(u)}
-              />
-              <ButtonTemplate
-                variant={u.isActive ? 'outline' : 'primary'}
-                size="sm"
-                label={u.isActive ? 'Deactivate' : 'Reactivate'}
-                leftIcon={u.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck2 className="w-3.5 h-3.5" />}
-                className={u.isActive ? 'text-red-600 border-red-200 hover:bg-red-50' : undefined}
-                onClick={() => toggleActive(u)}
-              />
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <InputTemplate
+            placeholder="Search name or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            leftIcon={<Search className="w-3.5 h-3.5 text-gray-400" />}
+          />
+        </div>
+        <div className="w-48">
+          <SelectTemplate
+            options={[{ value: '', label: 'All Roles' }, ...roles.map(r => ({ value: r.id, label: r.name }))]}
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+          />
+        </div>
+        <div className="w-40">
+          <SelectTemplate
+            options={STATUS_FILTER_OPTIONS}
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+          />
+        </div>
+        <BadgeTemplate label={`${filtered.length} user${filtered.length !== 1 ? 's' : ''}`} variant="neutral" size="sm" />
       </div>
+
+      <DatagridTemplate<PlatformUser>
+        columns={columns}
+        data={filtered}
+        rowKey="id"
+        emptyLabel="No users found"
+        pageSizeOptions={[10, 25, 50, 100, 0]}
+        onRowClick={u => setViewing(u)}
+      />
 
       <UserDetailSheet
         open={!!viewing}

@@ -42,9 +42,10 @@ function presetPages(roleId: string, allKeys: string[], grantedPages: string[], 
 // ─── Tenant / staff-portal roles ─────────────────────────────────────────────
 
 export const TENANT_ROLE_PAGE_GROUPS: { group: string; pages: string[] }[] = [
-  { group: 'Staff Portal', pages: ['Farmer Registry', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance', 'User Management'] },
+  { group: 'Staff Portal', pages: ['Dashboard', 'Governance', 'Farmer Registry', 'Programs Setup', 'Agent Assignment', 'Check-in Config', 'Community Profiling', 'Cooperative Governance', 'Insights', 'Configuration', 'User Management'] },
   { group: 'Analytics & Intelligence', pages: ['FRI Dashboard', 'Risk Intelligence', 'Intelligence Dashboard', 'Reports'] },
   { group: 'Portals', pages: ['Opportunities / Interventions', 'Credits Module', 'Finance & Insurance', 'Partner / MERL', 'Agronomist'] },
+  { group: 'Program Manager', pages: ['Programs & Cohorts', 'Farmer Management', 'Partners', 'Verification & Review', 'FRI & Performance', 'Interventions', 'PM Settings'] },
 ]
 
 export const ALL_TENANT_PAGE_KEYS: string[] = TENANT_ROLE_PAGE_GROUPS.flatMap(g => g.pages)
@@ -99,7 +100,7 @@ export const SEED_TENANT_ROLES: Role[] = [
 // ─── Super Admin platform roles ──────────────────────────────────────────────
 
 export const SUPER_ADMIN_ROLE_PAGE_GROUPS: { group: string; pages: string[] }[] = [
-  { group: 'Platform', pages: ['Tenants', 'Billing & Plans', 'Platform Users', 'System Settings'] },
+  { group: 'Platform', pages: ['Overview', 'Tenants', 'Platform Users', 'Roles', 'System Settings'] },
   { group: 'Records',  pages: ['Activity Log', 'Audit Log'] },
 ]
 

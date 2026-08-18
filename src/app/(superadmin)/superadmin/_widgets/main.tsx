@@ -1,9 +1,8 @@
 'use client'
 
-import { LayoutDashboard, Building2, CheckCircle2, XCircle, Layers } from 'lucide-react'
+import { LayoutDashboard, Building2, CheckCircle2, XCircle } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
   AreaChart, Area, CartesianGrid,
 } from 'recharts'
 import { usePersistedState } from '@/lib/usePersistedState'
@@ -31,10 +30,6 @@ function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub }: {
   )
 }
 
-const PLAN_COLORS: Record<string, string> = {
-  Starter: '#9ca3af', Pro: '#3D7A56', Enterprise: '#1A3D2B',
-}
-
 const ACTION_LABEL: Record<AuditLogEntry['action'], string> = {
   created: 'created', updated: 'updated', suspended: 'suspended', reactivated: 'reactivated', deleted: 'deleted',
 }
@@ -54,15 +49,6 @@ export function Main() {
 
   const active = tenants.filter(t => t.status === 'active').length
   const suspended = tenants.filter(t => t.status === 'suspended').length
-  const starter = tenants.filter(t => t.planTier === 'starter').length
-  const pro = tenants.filter(t => t.planTier === 'pro').length
-  const enterprise = tenants.filter(t => t.planTier === 'enterprise').length
-
-  const PLAN_DATA = [
-    { name: 'Starter', value: starter, color: PLAN_COLORS.Starter },
-    { name: 'Pro', value: pro, color: PLAN_COLORS.Pro },
-    { name: 'Enterprise', value: enterprise, color: PLAN_COLORS.Enterprise },
-  ]
 
   const STATUS_DATA = [
     { name: 'Active', count: active },
@@ -106,51 +92,13 @@ export function Main() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <StatCard icon={Building2} iconBg="bg-[#E6F4EC]" iconColor="text-[#1A3D2B]" label="Total Tenants" value={tenants.length} />
             <StatCard icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" label="Active" value={active} />
             <StatCard icon={XCircle} iconBg="bg-red-50" iconColor="text-red-600" label="Suspended" value={suspended} />
-            <StatCard
-              icon={Layers} iconBg="bg-blue-50" iconColor="text-blue-600" label="Plan Tiers"
-              value={tenants.length}
-              sub={
-                <p className="text-[11px] text-gray-400">
-                  {starter} Starter · {pro} Pro · {enterprise} Enterprise
-                </p>
-              }
-            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
-              <p className="text-sm font-semibold text-gray-900 mb-4">Plan Tier Distribution</p>
-              {tenants.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">No tenants yet</p>
-              ) : (
-                <div className="flex items-center gap-6">
-                  <ResponsiveContainer width={130} height={130}>
-                    <PieChart>
-                      <Pie data={PLAN_DATA} cx="50%" cy="50%" innerRadius={38} outerRadius={58} dataKey="value" strokeWidth={2}>
-                        {PLAN_DATA.map((p, i) => <Cell key={i} fill={p.color} />)}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-col gap-2.5">
-                    {PLAN_DATA.map((p, i) => (
-                      <div key={i} className="flex items-center justify-between gap-8">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ background: p.color }} />
-                          <span className="text-xs text-gray-600">{p.name}</span>
-                        </div>
-                        <span className="text-xs font-semibold text-gray-900">{p.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
             <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Tenant Status Breakdown</p>
               <ResponsiveContainer width="100%" height={140}>
@@ -162,9 +110,7 @@ export function Main() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
               <p className="text-sm font-semibold text-gray-900 mb-4">Tenant Growth Over Time</p>
               {GROWTH_DATA.length === 0 ? (
@@ -181,26 +127,26 @@ export function Main() {
                 </ResponsiveContainer>
               )}
             </div>
+          </div>
 
-            <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
-              <p className="text-sm font-semibold text-gray-900 mb-4">Recent Platform Activity</p>
-              {recentActivity.length === 0 ? (
-                <p className="text-sm text-gray-400 py-8 text-center">No activity yet</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {recentActivity.map(entry => (
-                    <div key={entry.id} className="flex items-start justify-between gap-3 text-sm">
-                      <div className="min-w-0">
-                        <p className="text-gray-800 truncate">
-                          <span className="font-medium">{entry.entityName}</span> was {ACTION_LABEL[entry.action]}
-                        </p>
-                        <p className="text-xs text-gray-400">{entry.actor} · {new Date(entry.timestamp).toLocaleString()}</p>
-                      </div>
+          <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-5">
+            <p className="text-sm font-semibold text-gray-900 mb-4">Recent Platform Activity</p>
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-gray-400 py-8 text-center">No activity yet</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {recentActivity.map(entry => (
+                  <div key={entry.id} className="flex items-start justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="text-gray-800 truncate">
+                        <span className="font-medium">{entry.entityName}</span> was {ACTION_LABEL[entry.action]}
+                      </p>
+                      <p className="text-xs text-gray-400">{entry.actor} · {new Date(entry.timestamp).toLocaleString()}</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

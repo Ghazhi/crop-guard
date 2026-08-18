@@ -1,8 +1,11 @@
 'use client'
 
-import { ClipboardList, Building2, Users as UsersIcon, Settings2 } from 'lucide-react'
+import { useState } from 'react'
+import { ClipboardList, Building2, Users as UsersIcon, Settings2, Search } from 'lucide-react'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
+import { InputTemplate } from '@/customComponents/InputTemplate'
+import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { AUDIT_LOG_KEY, SEED_AUDIT_LOG } from '../_logics/functions'
 import type { AuditLogEntry, AuditEntityType, AuditAction } from '../_logics/interface'
 
@@ -14,9 +17,33 @@ const ACTION_VARIANT: Record<AuditAction, 'success' | 'info' | 'danger' | 'warni
   created: 'success', updated: 'info', suspended: 'danger', reactivated: 'success', deleted: 'warning',
 }
 
+const ENTITY_FILTER_OPTIONS = [
+  { value: '', label: 'All Types' },
+  { value: 'tenant', label: 'Tenant' },
+  { value: 'platform_user', label: 'Platform User' },
+  { value: 'settings', label: 'Settings' },
+]
+
+const ACTION_FILTER_OPTIONS = [
+  { value: '', label: 'All Actions' },
+  { value: 'created', label: 'Created' },
+  { value: 'updated', label: 'Updated' },
+  { value: 'suspended', label: 'Suspended' },
+  { value: 'reactivated', label: 'Reactivated' },
+  { value: 'deleted', label: 'Deleted' },
+]
+
 export function Main() {
   const [entries] = usePersistedState<AuditLogEntry[]>(AUDIT_LOG_KEY, SEED_AUDIT_LOG)
-  const sorted = [...entries].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  const [search, setSearch] = useState('')
+  const [entityFilter, setEntityFilter] = useState('')
+  const [actionFilter, setActionFilter] = useState('')
+
+  const sorted = entries
+    .filter(e => e.entityName.toLowerCase().includes(search.toLowerCase()))
+    .filter(e => !entityFilter || e.entityType === entityFilter)
+    .filter(e => !actionFilter || e.action === actionFilter)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   return (
     <div className="p-6 space-y-6" style={{ background: 'var(--surface-page)', minHeight: '100vh' }}>
@@ -30,10 +57,28 @@ export function Main() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-64">
+          <InputTemplate
+            placeholder="Search entity name…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            leftIcon={<Search className="w-3.5 h-3.5 text-gray-400" />}
+          />
+        </div>
+        <div className="w-44">
+          <SelectTemplate options={ENTITY_FILTER_OPTIONS} value={entityFilter} onChange={e => setEntityFilter(e.target.value)} />
+        </div>
+        <div className="w-44">
+          <SelectTemplate options={ACTION_FILTER_OPTIONS} value={actionFilter} onChange={e => setActionFilter(e.target.value)} />
+        </div>
+        <BadgeTemplate label={`${sorted.length} entr${sorted.length !== 1 ? 'ies' : 'y'}`} variant="neutral" size="sm" />
+      </div>
+
       {sorted.length === 0 ? (
         <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-12 flex flex-col items-center gap-2">
           <ClipboardList className="w-8 h-8 text-gray-200" />
-          <p className="text-sm font-medium text-gray-400 text-center">No activity recorded yet.</p>
+          <p className="text-sm font-medium text-gray-400 text-center">No activity found.</p>
         </div>
       ) : (
         <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">

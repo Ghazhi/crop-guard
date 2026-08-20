@@ -69,17 +69,20 @@ export function MyProfileTab() {
     window.setTimeout(() => setSaved(false), 2500)
   }
 
+  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [pwSaved, setPwSaved] = useState(false)
 
-  const pwValid = newPassword.length >= 6 && newPassword === confirmPassword
+  const pwValid = oldPassword.length > 0 && newPassword.length >= 6 && newPassword === confirmPassword
 
   function handlePasswordUpdate() {
     if (!pwValid) return
     setPwSaved(true)
+    setOldPassword('')
     setNewPassword('')
     setConfirmPassword('')
     window.setTimeout(() => setPwSaved(false), 2500)
@@ -154,6 +157,18 @@ export function MyProfileTab() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <InputTemplate
+            label="Old Password"
+            type={showOld ? 'text' : 'password'}
+            value={oldPassword}
+            onChange={e => setOldPassword(e.target.value)}
+            rightIcon={
+              <button type="button" onClick={() => setShowOld(v => !v)} className="text-gray-400 hover:text-gray-600">
+                {showOld ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            }
+            className="sm:col-span-2"
+          />
           <InputTemplate
             label="New Password"
             type={showNew ? 'text' : 'password'}

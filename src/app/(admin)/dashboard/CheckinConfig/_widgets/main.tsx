@@ -1826,7 +1826,7 @@ export function Main() {
                         type="date"
                         value={schDate}
                         onChange={e => setSchDate(e.target.value)}
-                        className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
+                        className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) scheme-light"
                       />
                     </div>
                   )}
@@ -1839,7 +1839,7 @@ export function Main() {
                       value={schEndDate}
                       min={schMode === 'scheduled' ? schDate || undefined : undefined}
                       onChange={e => setSchEndDate(e.target.value)}
-                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
+                      className="h-10 w-full border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) scheme-light"
                     />
                   </div>
 

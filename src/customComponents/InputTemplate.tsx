@@ -82,6 +82,7 @@ export function InputTemplate({
             error
               ? 'border-(--brand-red) focus:border-(--brand-red) focus:ring-(--brand-red)/20'
               : 'border-gray-200 hover:border-gray-300',
+            props.type === 'date' && 'scheme-light',
             className,
           )}
           {...props}

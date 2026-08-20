@@ -44,21 +44,21 @@ export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   return (
     <div className="px-6 pb-6 space-y-4">
       {/* Step indicator */}
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center justify-center gap-2 pt-1">
         {(['identify', 'otp', 'reset'] as Step[]).map((s, i) => {
           const order = ['identify', 'otp', 'reset', 'done']
           const currentIdx = order.indexOf(step)
           const stepIdx = order.indexOf(s)
           const reached = currentIdx >= stepIdx
           return (
-            <div key={s} className="flex items-center flex-1 gap-2">
+            <div key={s} className="flex items-center gap-2">
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
                 style={{ backgroundColor: reached ? BRAND : '#e5e7eb', color: reached ? 'white' : '#9ca3af' }}
               >
                 {i + 1}
               </div>
-              {i < 2 && <div className="flex-1 h-0.5" style={{ backgroundColor: reached && currentIdx > stepIdx ? BRAND : '#e5e7eb' }} />}
+              {i < 2 && <div className="w-10 h-0.5" style={{ backgroundColor: reached && currentIdx > stepIdx ? BRAND : '#e5e7eb' }} />}
             </div>
           )
         })}
@@ -66,7 +66,7 @@ export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
 
       {step === 'identify' && (
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="text-center">
             <p className="text-sm font-semibold" style={{ color: '#1A3D2B' }}>Forgot your password?</p>
             <p className="text-xs text-gray-500 mt-1">Enter your username or email and we&apos;ll send you a verification code.</p>
           </div>
@@ -100,7 +100,7 @@ export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
 
       {step === 'otp' && (
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="text-center">
             <p className="text-sm font-semibold" style={{ color: '#1A3D2B' }}>Enter verification code</p>
             <p className="text-xs text-gray-500 mt-1">We sent a 6-digit code to <span className="font-medium">{identifier}</span>. (Demo: use {DEMO_OTP})</p>
           </div>
@@ -140,7 +140,7 @@ export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
 
       {step === 'reset' && (
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="text-center">
             <p className="text-sm font-semibold" style={{ color: '#1A3D2B' }}>Set a new password</p>
             <p className="text-xs text-gray-500 mt-1">Choose a new password for your account.</p>
           </div>

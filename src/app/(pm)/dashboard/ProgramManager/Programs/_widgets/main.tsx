@@ -371,11 +371,11 @@ function ProgramCard({ program, cohorts, staff, onUpdate, onAddCohort }: {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium" style={{ color: 'var(--brand-forest)' }}>Start Date</label>
-                <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200" />
+                <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200 scheme-light" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium" style={{ color: 'var(--brand-forest)' }}>End Date</label>
-                <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200" />
+                <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200 scheme-light" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -753,11 +753,11 @@ export function Main() {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium" style={{ color: 'var(--brand-forest)' }}>Start Date</label>
-              <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200" />
+              <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200 scheme-light" />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium" style={{ color: 'var(--brand-forest)' }}>End Date</label>
-              <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200" />
+              <input type="date" className="h-10 border border-gray-200 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200 scheme-light" />
             </div>
           </div>
           <div className="flex flex-col gap-1">

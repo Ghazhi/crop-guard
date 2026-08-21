@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import {
   Shield, Users, Search, Plus, Pencil, Eye, EyeOff, Trash2,
 } from 'lucide-react'
@@ -12,7 +12,13 @@ import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { RoleFormSheet } from '@/customComponents/RoleFormSheet'
+import { PermissionGate } from '@/customComponents/PermissionGate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { PLATFORM_USER_FORM_ID } from '@/dataCenter/formEngine'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { usePermissions } from '@/lib/usePermissions'
 import { cn } from '@/lib/utils'
 import { SEED_PLATFORM_USERS, type PlatformUser } from '../_logics/userManagement'
 import { SEED_TENANT_ROLES, TENANT_ROLE_PAGE_GROUPS, type Role } from '@/dataCenter/roles'
@@ -77,6 +83,9 @@ function UsersSection({
   const [pageSize, setPageSize] = useState(10)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<PlatformUser | null>(null)
+  // inline role/status edits are updates, so they follow the same grant as the Edit button
+  const { can } = usePermissions()
+  const canUpdate = can('User Management', 'update')
 
   const filtered = useMemo(
     () => users.filter(u =>
@@ -109,7 +118,9 @@ function UsersSection({
           />
           <BadgeTemplate label={`${filtered.length} user${filtered.length !== 1 ? 's' : ''}`} variant="neutral" size="sm" />
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="New User" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
+        <PermissionGate pageKey="User Management" action="create">
+          <ButtonTemplate variant="primary" size="sm" label="New User" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
+        </PermissionGate>
       </div>
 
       <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 shadow-sm overflow-hidden">
@@ -132,6 +143,7 @@ function UsersSection({
                   <td className="px-4 py-3">
                     <SelectTemplate
                       size="sm"
+                      isDisabled={!canUpdate}
                       options={roles.map(r => ({ value: r.id, label: r.name }))}
                       value={u.roleId}
                       onChange={e => setUserRole(u.id, e.target.value)}
@@ -139,12 +151,14 @@ function UsersSection({
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => toggleStatus(u.id)}>
+                    <button onClick={() => toggleStatus(u.id)} disabled={!canUpdate}>
                       <BadgeTemplate label={u.isActive ? 'Active' : 'Disabled'} variant={u.isActive ? 'success' : 'neutral'} size="sm" />
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <ButtonTemplate variant="ghost" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(u)} />
+                    <PermissionGate pageKey="User Management" action="update">
+                      <ButtonTemplate variant="ghost" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(u)} />
+                    </PermissionGate>
                   </td>
                 </tr>
               ))}
@@ -188,36 +202,49 @@ function UserFormSheet({
   onClose: () => void
   onSave: (u: PlatformUser) => void
 }) {
-  const [fullName, setFullName] = useState(initial?.fullName ?? '')
-  const [email, setEmail] = useState(initial?.email ?? '')
-  const [phone, setPhone] = useState(initial?.phone ?? '')
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(PLATFORM_USER_FORM_ID)
+  const step = config.steps[0]
+
+  const isEdit = !!initial
+  const seedValues = useCallback(
+    () => (initial
+      ? { fullName: initial.fullName, email: initial.email, phone: initial.phone, roleId: initial.roleId }
+      : { fullName: '', email: '', phone: '', roleId: roles[0]?.id ?? '' }) as Record<string, unknown>,
+    [initial, roles],
+  )
+
+  const [values, setValues] = useState<Record<string, unknown>>(seedValues)
+  // Password lives outside the config: it is create-only and never stored on the record.
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
-  const [roleId, setRoleId] = useState(initial?.roleId ?? roles[0]?.id ?? '')
 
   // reset local state whenever a different record (or a fresh add) opens
   const key = initial?.id ?? 'new'
   const [lastKey, setLastKey] = useState(key)
   if (lastKey !== key) {
     setLastKey(key)
-    setFullName(initial?.fullName ?? '')
-    setEmail(initial?.email ?? '')
-    setPhone(initial?.phone ?? '')
+    setValues(seedValues())
     setPassword('')
-    setRoleId(initial?.roleId ?? roles[0]?.id ?? '')
   }
 
-  const isEdit = !!initial
-  const valid = fullName.trim() && email.trim() && phone.trim() && roleId && (isEdit || password.length >= 6)
+  // Role labels flag built-in roles, which the generic option map does not know about.
+  const roleOptions = useMemo(
+    () => roles.map(r => ({ value: r.id, label: `${r.name}${r.isSystem ? ' (Built-in)' : ''}` })),
+    [roles],
+  )
+  const dynamicOptions = useDynamicFieldOptions({ extra: { roleId: roleOptions } })
+
+  const valid = config.isValid(values) && (isEdit || password.length >= 6)
 
   function submit() {
     if (!valid) return
     onSave({
       id: initial?.id ?? `u-${Date.now()}`,
-      fullName: fullName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      roleId,
+      fullName: String(values.fullName ?? '').trim(),
+      email: String(values.email ?? '').trim(),
+      phone: String(values.phone ?? '').trim(),
+      roleId: String(values.roleId ?? ''),
       isActive: initial?.isActive ?? true,
     })
   }
@@ -235,9 +262,15 @@ function UserFormSheet({
       }
     >
       <div className="px-6 py-5 flex flex-col gap-4">
-        <InputTemplate label="Full Name" isRequired value={fullName} onChange={e => setFullName(e.target.value)} />
-        <InputTemplate label="Email" type="email" isRequired value={email} onChange={e => setEmail(e.target.value)} />
-        <InputTemplate label="Phone" isRequired value={phone} onChange={e => setPhone(e.target.value)} />
+        {step && (
+          <DynamicFormRenderer
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={(k, v) => setValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={dynamicOptions}
+          />
+        )}
         {!isEdit && (
           <InputTemplate
             label="Password" isRequired type={showPw ? 'text' : 'password'}
@@ -250,12 +283,6 @@ function UserFormSheet({
             }
           />
         )}
-        <SelectTemplate
-          label="Role"
-          options={roles.map(r => ({ value: r.id, label: `${r.name}${r.isSystem ? ' (Built-in)' : ''}` }))}
-          value={roleId}
-          onChange={e => setRoleId(e.target.value)}
-        />
         <p className="text-xs text-gray-400 leading-relaxed">
           The assigned role determines which pages this user can view and what actions they can take on each.
         </p>
@@ -297,7 +324,9 @@ function RolesSection({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-end">
-        <ButtonTemplate variant="primary" size="sm" label="New Role" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
+        <PermissionGate pageKey="User Management" action="create">
+          <ButtonTemplate variant="primary" size="sm" label="New Role" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setAdding(true)} />
+        </PermissionGate>
       </div>
 
       <div>
@@ -309,7 +338,9 @@ function RolesSection({
                 <p className="text-sm font-semibold text-gray-900">{r.name}</p>
                 <div className="flex items-center gap-1 shrink-0">
                   <BadgeTemplate label="Built-in" variant="warning" size="sm" />
-                  <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
+                  <PermissionGate pageKey="User Management" action="update">
+                    <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
+                  </PermissionGate>
                 </div>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">{r.description}</p>
@@ -332,8 +363,12 @@ function RolesSection({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold" style={{ color: 'var(--brand-forest)' }}>{r.name}</p>
                   <div className="flex items-center gap-1 shrink-0">
-                    <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
-                    <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(r)} />
+                    <PermissionGate pageKey="User Management" action="update">
+                      <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditing(r)} />
+                    </PermissionGate>
+                    <PermissionGate pageKey="User Management" action="delete">
+                      <ButtonTemplate variant="ghost" size="xs" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />} onClick={() => setDeleting(r)} />
+                    </PermissionGate>
                   </div>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">{r.description}</p>

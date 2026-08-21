@@ -12,11 +12,13 @@ import {
 } from 'lucide-react'
 import { ConfirmModal }         from '@/customComponents/ConfirmModal'
 import { SheetTemplate }        from '@/customComponents/SheetTemplate'
+import { DynamicFormRenderer }  from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { COMMUNITY_FORM_ID, COOPERATIVE_FORM_ID } from '@/dataCenter/formEngine'
 import { ButtonTemplate }       from '@/customComponents/ButtonTemplate'
 import { InputTemplate }        from '@/customComponents/InputTemplate'
-import { SelectTemplate }       from '@/customComponents/SelectTemplate'
 import { BadgeTemplate }        from '@/customComponents/BadgeTemplate'
-import { CheckboxTemplate }     from '@/customComponents/CheckboxTemplate'
 import { FileUploadTemplate }   from '@/customComponents/FileUploadTemplate'
 import { fetchCommunities, fetchCooperatives, fetchRegions } from '../_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
@@ -46,8 +48,6 @@ const ANIMAL_OPTIONS = [
   'Cattle','Goats','Sheep','Pigs','Poultry (Chickens)',
   'Poultry (Turkeys)','Poultry (Ducks)','Rabbits','Donkeys','Other',
 ]
-const INCOME_OPTIONS = ['Farming', 'Trading']
-
 function emptyAmenities(): SocialAmenities {
   const a: AmenityEntry = { present: null, quantity: null, comment: null }
   return { schools: { ...a }, hospital: { ...a }, police: { ...a }, water: { ...a }, financial: { ...a }, road: { ...a }, network: { ...a } }
@@ -93,16 +93,6 @@ function NoYesToggle({
   )
 }
 
-function PillToggle({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
-  return (
-    <button type="button" onClick={onToggle}
-      className="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors"
-      style={selected
-        ? { backgroundColor: 'var(--brand-dark)', borderColor: 'var(--brand-dark)', color: 'white' }
-        : { backgroundColor: 'white', borderColor: '#e5e7eb', color: '#374151' }}
-    >{label}</button>
-  )
-}
 
 function CropPill({ label }: { label: string }) {
   return (
@@ -317,8 +307,49 @@ function CommunitySheet({
   const selectedRegion = regions.find(r => r.code === regionCode)
   const districts = selectedRegion?.districts ?? []
 
-  function toggleStream(s: string) {
-    setStreams(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  // The photo upload, social-amenities matrix and GPS capture stay bespoke and
+  // render between the two dynamic blocks.
+  const communityConfig = useFormConfig(COMMUNITY_FORM_ID)
+  const detailsStep = communityConfig.steps.find(x => x.id === 'details')
+  const leaderStep  = communityConfig.steps.find(x => x.id === 'leader')
+  const communityOptions = useDynamicFieldOptions({
+    extra: {
+      regions:  regions.map(r => ({ value: r.code, label: r.name })),
+      district: districts.map(d => ({ value: d, label: d })),
+    },
+  })
+
+  const communityValues: Record<string, unknown> = {
+    name, regionCode, district, town, status, streams, otherStream, leaderName, leaderTel,
+    socialAmenities: amenities, gpsLocation: community?.gpsLat != null ? `${community.gpsLat}, ${community.gpsLng}` : '',
+  }
+
+  // The bespoke sections below are declared in config too, so deleting one in
+  // Configuration > Forms removes it from this sheet like any other field.
+  const configuredKeys = new Set(communityConfig.form.fields.map(x => x.key))
+  const showsPhoto     = configuredKeys.has('photo')
+  const showsAmenities = configuredKeys.has('socialAmenities')
+  const showsGps       = configuredKeys.has('gpsLocation')
+  function labelFor(key: string, fallback: string) {
+    return communityConfig.form.fields.find(x => x.key === key)?.label ?? fallback
+  }
+
+  const COMMUNITY_SETTERS: Record<string, (v: unknown) => void> = {
+    name:        v => setName(String(v ?? '')),
+    // changing region invalidates the district picked under the previous one
+    regionCode:  v => { setRegionCode(String(v ?? '')); setDistrict('') },
+    district:    v => setDistrict(String(v ?? '')),
+    town:        v => setTown(String(v ?? '')),
+    status:      v => setStatus(String(v ?? '')),
+    streams:     v => setStreams(Array.isArray(v) ? v as string[] : []),
+    otherStream: v => setOtherStream(String(v ?? '')),
+    leaderName:  v => setLeaderName(String(v ?? '')),
+    leaderTel:   v => setLeaderTel(String(v ?? '')),
+  }
+
+  function setCommunityValue(key: string, val: unknown) {
+    COMMUNITY_SETTERS[key]?.(val)
   }
 
   function setAmenityPresent(key: keyof SocialAmenities, present: boolean) {
@@ -456,59 +487,32 @@ function CommunitySheet({
         </>
       ) : (
         <>
-          <FileUploadTemplate
-            label="Community Photo"
-            accept="image/*"
-            placeholder="Upload community photo"
-            initialPreviewUrl={community?.imageUrl ?? null}
-          />
+          {showsPhoto && (
+            <FileUploadTemplate
+              label={labelFor('photo', 'Community Photo')}
+              accept="image/*"
+              placeholder="Upload community photo"
+              initialPreviewUrl={community?.imageUrl ?? null}
+            />
+          )}
 
-          <InputTemplate label="Community Name" labelVariant="compact" isRequired
-            placeholder="e.g. Akumadan" value={name} onChange={e => setName(e.target.value)} />
+          {detailsStep && (
+            <DynamicFormRenderer
+              form={communityConfig.form}
+              stepId={detailsStep.id}
+              values={communityValues}
+              onChange={setCommunityValue}
+              optionsOverride={communityOptions}
+              labelVariant="compact"
+              columns={2}
+              // rendered by the bespoke widgets below/above, not the generic renderer
+              omitKeys={['photo', 'socialAmenities', 'gpsLocation']}
+            />
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="Region" labelVariant="compact" isRequired
-              value={regionCode} onChange={e => { setRegionCode(e.target.value); setDistrict('') }}
-              options={regions.map(r => ({ value: r.code, label: r.name }))}
-              placeholder="Select region" />
-            <SelectTemplate label="District" labelVariant="compact" isRequired
-              value={district} onChange={e => setDistrict(e.target.value)}
-              options={districts.map(d => ({ value: d, label: d }))}
-              placeholder={regionCode ? 'Select district' : 'Select region first'}
-              isDisabled={!regionCode} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Nearest Town" labelVariant="compact"
-              placeholder="e.g. Techiman" value={town} onChange={e => setTown(e.target.value)} />
-            <SelectTemplate label="Socioeconomic Status" labelVariant="compact"
-              value={status} onChange={e => setStatus(e.target.value)}
-              options={[
-                { value: 'rural',      label: 'Rural'      },
-                { value: 'peri_urban', label: 'Peri-Urban' },
-                { value: 'urban',      label: 'Urban'      },
-              ]}
-              placeholder="Select status" />
-          </div>
-
+          {showsAmenities && (
           <div>
-            <CompactLabel>Major Income Streams</CompactLabel>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              {INCOME_OPTIONS.map(s => (
-                <CheckboxTemplate key={s} label={s}
-                  checked={streams.includes(s)} onChange={() => toggleStream(s)} />
-              ))}
-              <CheckboxTemplate label="Other (specify)"
-                checked={streams.includes('Other')} onChange={() => toggleStream('Other')} />
-            </div>
-            {streams.includes('Other') && (
-              <InputTemplate className="mt-2" placeholder="Specify other income streams"
-                value={otherStream} onChange={e => setOtherStream(e.target.value)} />
-            )}
-          </div>
-
-          <div>
-            <CompactLabel>Social Amenities</CompactLabel>
+            <CompactLabel>{labelFor('socialAmenities', 'Social Amenities')}</CompactLabel>
             <div className="space-y-3 mt-1">
               {AMENITY_KEYS.map(({ key, label }) => {
                 const entry = amenities[key]
@@ -543,9 +547,11 @@ function CommunitySheet({
               })}
             </div>
           </div>
+          )}
 
+          {showsGps && (
           <div>
-            <CompactLabel>GPS Location</CompactLabel>
+            <CompactLabel>{labelFor('gpsLocation', 'GPS Location')}</CompactLabel>
             <div className="flex items-center gap-3 mt-1">
               <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Capture GPS"
                 leftIcon={<Navigation className="w-3.5 h-3.5" />} />
@@ -556,15 +562,18 @@ function CommunitySheet({
               )}
             </div>
           </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Community Leader Name" labelVariant="compact"
-              placeholder="Chief or other leader"
-              value={leaderName} onChange={e => setLeaderName(e.target.value)} />
-            <InputTemplate label="Leader Contact" labelVariant="compact"
-              placeholder="+233 ..."
-              value={leaderTel} onChange={e => setLeaderTel(e.target.value)} />
-          </div>
+          {leaderStep && (
+            <DynamicFormRenderer
+              form={communityConfig.form}
+              stepId={leaderStep.id}
+              values={communityValues}
+              onChange={setCommunityValue}
+              labelVariant="compact"
+              columns={2}
+            />
+          )}
         </>
       )}
     </SheetTemplate>
@@ -612,14 +621,43 @@ function CoopSheet({
   }, [isEdit])
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
-  function togglePrimary(c: string) {
-    setPrimary(prev => prev.includes(c) ? prev.filter(x => x !== c) : prev.length < 2 ? [...prev, c] : prev)
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const coopConfig = useFormConfig(COOPERATIVE_FORM_ID)
+  const coopStep = coopConfig.steps[0]
+  const coopOptions = useDynamicFieldOptions({
+    extra: {
+      communityId: communities.map(c => ({
+        value: c.id,
+        label: c.regionName ? `${c.name} · ${c.regionName}` : c.name,
+      })),
+      primary:   CROP_OPTIONS.map(c => ({ value: c, label: c })),
+      secondary: CROP_OPTIONS.map(c => ({ value: c, label: c })),
+      animals:   ANIMAL_OPTIONS.map(a => ({ value: a, label: a })),
+    },
+  })
+
+  const coopValues: Record<string, unknown> = {
+    coopName, communityId, members, primary, secondary, animals, chair, secretary,
   }
-  function toggleSecondary(c: string) {
-    setSecondary(prev => prev.includes(c) ? prev.filter(x => x !== c) : prev.length < 2 ? [...prev, c] : prev)
+
+  /** Crop pickers cap at two selections; adding a third is ignored, as before. */
+  function cappedCrops(next: string[], prev: string[]): string[] {
+    return next.length <= 2 ? next : prev
   }
-  function toggleAnimal(a: string) {
-    setAnimals(prev => prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a])
+
+  const COOP_SETTERS: Record<string, (v: unknown) => void> = {
+    coopName:    v => setCoopName(String(v ?? '')),
+    communityId: v => setCommunityId(String(v ?? '')),
+    members:     v => setMembers(String(v ?? '')),
+    primary:     v => setPrimary(prev => cappedCrops(Array.isArray(v) ? v as string[] : [], prev)),
+    secondary:   v => setSecondary(prev => cappedCrops(Array.isArray(v) ? v as string[] : [], prev)),
+    animals:     v => setAnimals(Array.isArray(v) ? v as string[] : []),
+    chair:       v => setChair(String(v ?? '')),
+    secretary:   v => setSecretary(String(v ?? '')),
+  }
+
+  function setCoopValue(key: string, val: unknown) {
+    COOP_SETTERS[key]?.(val)
   }
 
   function handleSave() {
@@ -705,55 +743,17 @@ function CoopSheet({
         </>
       ) : (
         <>
-          <InputTemplate label="Group / Cooperative Name" labelVariant="compact" isRequired
-            placeholder="e.g. Akumadan Women Farmers Group"
-            value={coopName} onChange={e => setCoopName(e.target.value)} />
-
-          <SelectTemplate label="Community" labelVariant="compact"
-            value={communityId} onChange={e => setCommunityId(e.target.value)}
-            options={communities.map(c => ({
-              value: c.id,
-              label: c.regionName ? `${c.name} · ${c.regionName}` : c.name,
-            } as { value: string; label: string }))}
-            placeholder="No community" />
-
-          <InputTemplate label="Number of Group Members" labelVariant="compact"
-            type="number" placeholder="e.g. 25"
-            value={members} onChange={e => setMembers(e.target.value)} />
-
-          <div>
-            <CompactLabel>Primary Crops (up to 2)</CompactLabel>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {CROP_OPTIONS.map(c => (
-                <PillToggle key={c} label={c} selected={primary.includes(c)} onToggle={() => togglePrimary(c)} />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <CompactLabel>Secondary Crops (up to 2)</CompactLabel>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {CROP_OPTIONS.map(c => (
-                <PillToggle key={c} label={c} selected={secondary.includes(c)} onToggle={() => toggleSecondary(c)} />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <CompactLabel>Farm Animals</CompactLabel>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {ANIMAL_OPTIONS.map(a => (
-                <PillToggle key={a} label={a} selected={animals.includes(a)} onToggle={() => toggleAnimal(a)} />
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Chairman Name" labelVariant="compact"
-              placeholder="Full name" value={chair} onChange={e => setChair(e.target.value)} />
-            <InputTemplate label="Secretary Name" labelVariant="compact"
-              placeholder="Full name" value={secretary} onChange={e => setSecretary(e.target.value)} />
-          </div>
+          {coopStep && (
+            <DynamicFormRenderer
+              form={coopConfig.form}
+              stepId={coopStep.id}
+              values={coopValues}
+              onChange={setCoopValue}
+              optionsOverride={coopOptions}
+              labelVariant="compact"
+              columns={2}
+            />
+          )}
         </>
       )}
     </SheetTemplate>

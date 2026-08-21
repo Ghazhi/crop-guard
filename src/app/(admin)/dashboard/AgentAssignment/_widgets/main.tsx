@@ -8,13 +8,16 @@ import { cn } from '@/lib/utils'
 
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { AGENT_FORM_ID } from '@/dataCenter/formEngine'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 
 import { getAgents, getCohorts, getPrograms, getFarmersByCohort, getFarmersByAgent } from '../_logics/functions'
 import { PaginationBar } from '@/customComponents/PaginationBar'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
-import { InputTemplate } from '@/customComponents/InputTemplate'
 import { PARTNERS } from '@/dataCenter/partners'
 import type { AgentSummary, CohortRow, ProgramOption, FarmerPreview } from '../_logics/interface'
 
@@ -471,8 +474,16 @@ function CreateAgentSheet({ open, onClose, onSave }: {
   const [name,       setName]     = usePersistedState('aa-create-agent-name', '')
   const [phone,      setPhone]    = usePersistedState('aa-create-agent-phone', '')
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(AGENT_FORM_ID)
+  const step = config.steps[0]
+  const dynamicOptions = useDynamicFieldOptions()
+
+  const values: Record<string, unknown> = { partnerId, name, phone }
+  const setters: Record<string, (v: string) => void> = { partnerId: setPartnerId, name: setName, phone: setPhone }
+
   const partner = PARTNERS.find(p => p.id === partnerId)
-  const canSave = !!partner && name.trim() && phone.trim()
+  const canSave = !!partner && config.isValid(values)
 
   function handleSave() {
     if (!canSave || !partner) return
@@ -501,28 +512,20 @@ function CreateAgentSheet({ open, onClose, onSave }: {
       }
     >
       <div className="px-6 py-5 flex flex-col gap-4">
-        <SelectTemplate
-          label="Organization" isRequired
-          placeholder="Select an organization…"
-          options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
-          value={partnerId}
-          onChange={e => setPartnerId(e.target.value)}
-        />
+        {step && (
+          <DynamicFormRenderer
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={(k, v) => setters[k]?.(String(v ?? ''))}
+            optionsOverride={dynamicOptions}
+            // every agent belongs to an organisation — the rest stays locked until one is picked
+            disabledKeys={partnerId ? [] : config.fields(step.id).filter(f => f.key !== 'partnerId').map(f => f.key)}
+          />
+        )}
         {!partnerId && (
           <p className="text-xs text-gray-400 -mt-2">Every agent belongs to an organization — choose one to continue.</p>
         )}
-        <InputTemplate
-          label="Full Name" isRequired isDisabled={!partnerId}
-          placeholder="e.g. Ama Boateng"
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
-        <InputTemplate
-          label="Phone" isRequired isDisabled={!partnerId}
-          placeholder="e.g. 0241234567"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-        />
       </div>
     </SheetTemplate>
   )

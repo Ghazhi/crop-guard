@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Users, Search, UserX, UserCheck2, Plus, Eye, EyeOff, Pencil, Mail, Phone, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePersistedState } from '@/lib/usePersistedState'
@@ -11,6 +11,10 @@ import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { PersonAvatar } from '@/customComponents/PersonAvatar'
 import { DatagridTemplate, type DatagridColumn } from '@/customComponents/DatagridTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { PLATFORM_USER_FORM_ID } from '@/dataCenter/formEngine'
 import { SEED_PLATFORM_USERS, type PlatformUser } from '@/app/(admin)/dashboard/Configuration/_logics/userManagement'
 import { SEED_SUPER_ADMIN_ROLES, type Role } from '@/dataCenter/roles'
 import { AUDIT_LOG_KEY, SEED_AUDIT_LOG, newAuditEntry } from '../../AuditLog/_logics/functions'
@@ -35,40 +39,57 @@ interface UserFormSheetProps {
 }
 
 function UserFormSheet({ open, title, roles, initial, onClose, onSave, onBack }: UserFormSheetProps) {
-  const [fullName, setFullName] = useState(initial?.fullName ?? '')
-  const [email, setEmail] = useState(initial?.email ?? '')
-  const [phone, setPhone] = useState(initial?.phone ?? '')
-  const [password, setPassword] = useState('')
-  const [showPw, setShowPw] = useState(false)
-  const [roleId, setRoleId] = useState(initial?.roleId ?? roles[0]?.id ?? '')
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(PLATFORM_USER_FORM_ID)
+  const step = config.steps[0]
 
   const isEdit = !!initial
+  const emptyValues = useCallback(
+    () => ({ fullName: '', email: '', phone: '', roleId: roles[0]?.id ?? '' }) as Record<string, unknown>,
+    [roles],
+  )
+  const seedValues = useCallback(
+    () => initial
+      ? { fullName: initial.fullName, email: initial.email, phone: initial.phone, roleId: initial.roleId }
+      : emptyValues(),
+    [initial, emptyValues],
+  )
+
+  const [values, setValues] = useState<Record<string, unknown>>(seedValues)
+  // Password lives outside the config: it is create-only and never stored on the record.
+  const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
+
   const key = initial?.id ?? 'new'
   const [lastKey, setLastKey] = useState(key)
   if (lastKey !== key) {
     setLastKey(key)
-    setFullName(initial?.fullName ?? '')
-    setEmail(initial?.email ?? '')
-    setPhone(initial?.phone ?? '')
+    setValues(seedValues())
     setPassword('')
-    setRoleId(initial?.roleId ?? roles[0]?.id ?? '')
   }
 
   function reset() {
-    setFullName(''); setEmail(''); setPhone(''); setPassword('')
-    setRoleId(roles[0]?.id ?? '')
+    setValues(emptyValues())
+    setPassword('')
   }
 
-  const valid = fullName.trim() && email.trim() && phone.trim() && roleId && (isEdit || password.length >= 6)
+  // Role labels flag built-in roles, which the generic option map does not know about.
+  const roleOptions = useMemo(
+    () => roles.map(r => ({ value: r.id, label: `${r.name}${r.isSystem ? ' (Built-in)' : ''}` })),
+    [roles],
+  )
+  const dynamicOptions = useDynamicFieldOptions({ extra: { roleId: roleOptions } })
+
+  const valid = config.isValid(values) && (isEdit || password.length >= 6)
 
   function submit() {
     if (!valid) return
     onSave({
       id: initial?.id ?? `u-${Date.now()}`,
-      fullName: fullName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      roleId,
+      fullName: String(values.fullName ?? '').trim(),
+      email: String(values.email ?? '').trim(),
+      phone: String(values.phone ?? '').trim(),
+      roleId: String(values.roleId ?? ''),
       isActive: initial?.isActive ?? true,
     })
     if (!isEdit) reset()
@@ -88,9 +109,15 @@ function UserFormSheet({ open, title, roles, initial, onClose, onSave, onBack }:
       }
     >
       <div className="px-6 py-5 flex flex-col gap-4">
-        <InputTemplate label="Full Name" isRequired value={fullName} onChange={e => setFullName(e.target.value)} />
-        <InputTemplate label="Email" type="email" isRequired value={email} onChange={e => setEmail(e.target.value)} />
-        <InputTemplate label="Phone" isRequired value={phone} onChange={e => setPhone(e.target.value)} />
+        {step && (
+          <DynamicFormRenderer
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={(k, v) => setValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={dynamicOptions}
+          />
+        )}
         {!isEdit && (
           <InputTemplate
             label="Password" isRequired type={showPw ? 'text' : 'password'}
@@ -103,12 +130,6 @@ function UserFormSheet({ open, title, roles, initial, onClose, onSave, onBack }:
             }
           />
         )}
-        <SelectTemplate
-          label="Role"
-          options={roles.map(r => ({ value: r.id, label: `${r.name}${r.isSystem ? ' (Built-in)' : ''}` }))}
-          value={roleId}
-          onChange={e => setRoleId(e.target.value)}
-        />
         <p className="text-xs text-gray-400 leading-relaxed">
           The assigned role determines which pages this user can view and what actions they can take on each.
         </p>

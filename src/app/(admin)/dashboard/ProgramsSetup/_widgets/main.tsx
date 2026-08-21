@@ -12,13 +12,15 @@ import {
 import { Main as AgentAssignmentTab } from '@/app/(admin)/dashboard/AgentAssignment/_widgets/main'
 import { cn } from '@/lib/utils'
 import { CardTemplate } from '@/customComponents/CardTemplate'
+import { PermissionGate } from '@/customComponents/PermissionGate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { PROGRAM_FORM_ID, COHORT_FORM_ID } from '@/dataCenter/formEngine'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
-import { InputTemplate } from '@/customComponents/InputTemplate'
-import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { useToast } from '@/customComponents/ToastTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
-import { MultiSelectTemplate } from '@/customComponents/MultiSelectTemplate'
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet'
@@ -140,6 +142,11 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
   const toast = useToast()
   const CROP_OPTIONS = useCropOptions()
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(PROGRAM_FORM_ID)
+  const step = config.steps[0]
+  const dynamicOptions = useDynamicFieldOptions({ extra: { crops: CROP_OPTIONS, regions: REGION_OPTIONS } })
+
   const blank = {
     name:             '',
     description:      '',
@@ -168,12 +175,13 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
     })
   }, [open, initial, CROP_OPTIONS])
 
-  function set(key: string, val: string) {
+  function set(key: string, val: unknown) {
     setForm(f => ({ ...f, [key]: val }))
   }
 
   function handleSubmit() {
-    if (!form.name || !form.season || !form.startDate || !form.endDate || !form.crops.length) {
+    const missing = config.missingLabels(step.id, form as unknown as Record<string, unknown>)
+    if (missing.length > 0) {
       toast.error('Please fill in all required fields')
       return
     }
@@ -208,63 +216,14 @@ function ProgramFormSheet({ open, mode, initial, onSave, onClose, onBack }: {
         </>
       }
     >
-      <InputTemplate
-        label="PROGRAM NAME"
-        isRequired
-        placeholder="e.g. 2024 Maize Outgrower Scheme"
-        value={form.name}
-        onChange={e => set('name', e.target.value)}
-      />
-      <InputTemplate
-        label="DESCRIPTION"
-        placeholder="Brief description"
-        value={form.description}
-        onChange={e => set('description', e.target.value)}
-      />
-      <InputTemplate
-        label="CROP SEASON"
-        isRequired
-        placeholder="e.g. 2024A"
-        value={form.season}
-        onChange={e => set('season', e.target.value)}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate
-          label="START DATE"
-          isRequired
-          type="date"
-          value={form.startDate}
-          onChange={e => set('startDate', e.target.value)}
-        />
-        <InputTemplate
-          label="END DATE"
-          isRequired
-          type="date"
-          value={form.endDate}
-          onChange={e => set('endDate', e.target.value)}
-        />
-      </div>
-      <InputTemplate
-        label="TARGET ENROLLMENT"
-        type="number"
-        value={form.targetEnrollment}
-        onChange={e => set('targetEnrollment', e.target.value)}
-      />
-      <MultiSelectTemplate
-        label="CROP TYPES"
-        isRequired
-        placeholder="Select crop types *"
-        options={CROP_OPTIONS}
-        value={form.crops}
-        onChange={vals => setForm(f => ({ ...f, crops: vals }))}
-      />
-      <MultiSelectTemplate
-        label="REGIONS"
-        isRequired
-        placeholder="Select regions *"
-        options={REGION_OPTIONS}
-        value={form.regions}
-        onChange={vals => setForm(f => ({ ...f, regions: vals }))}
+      <DynamicFormRenderer
+        form={config.form}
+        stepId={step.id}
+        values={form}
+        onChange={set}
+        optionsOverride={dynamicOptions}
+        labelVariant="compact"
+        className="gap-3"
       />
     </FormSheet>
   )
@@ -303,6 +262,20 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
     partnerId:   initial?.partnerId   ?? '',
   })
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const cohortConfig = useFormConfig(COHORT_FORM_ID)
+  const cohortStep = cohortConfig.steps[0]
+  // region and agentName persist their LABEL, so these lists use label-as-value.
+  const cohortOptions = useDynamicFieldOptions({
+    extra: {
+      programId: programs.map(p => ({ value: p.id, label: p.name })),
+      region:    REGION_OPTIONS.map(r => ({ value: r.label, label: r.label })),
+      agents:    AGENT_OPTIONS.map(a => ({ value: a.label, label: a.label })),
+      agentName: AGENT_OPTIONS.map(a => ({ value: a.label, label: a.label })),
+      partnerId: PARTNERS.map(p => ({ value: p.id, label: p.name })),
+    },
+  })
+
   useEffect(() => {
     if (!open) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -317,12 +290,13 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
     })
   }, [open, initial, programName, programs])
 
-  function set(key: string, val: string) {
-    setForm(f => ({ ...f, [key]: val }))
+  function set(key: string, val: unknown) {
+    setForm(f => ({ ...f, [key]: String(val ?? '') }))
   }
 
   function handleSubmit() {
-    if (!form.name || !form.region || !form.district) {
+    const missing = cohortConfig.missingLabels(cohortStep.id, form as unknown as Record<string, unknown>)
+    if (missing.length > 0) {
       toast.error('Please fill in all required fields')
       return
     }
@@ -357,52 +331,14 @@ function CohortFormSheet({ open, mode, programName, programs, initial, onSave, o
         </>
       }
     >
-      <SelectTemplate
-        label="PROGRAM"
-        options={programs.map(p => ({ value: p.id, label: p.name }))}
-        value={form.programId}
-        onChange={e => set('programId', e.target.value)}
-      />
-      <InputTemplate
-        label="COHORT NAME"
-        isRequired
-        placeholder="e.g. Ashanti Batch A"
-        value={form.name}
-        onChange={e => set('name', e.target.value)}
-      />
-      <SelectTemplate
-        label="REGION"
-        isRequired
-        placeholder="Select region"
-        options={REGION_OPTIONS}
-        value={REGION_OPTIONS.find(r => r.label === form.region)?.value ?? ''}
-        onChange={e => set('region', REGION_OPTIONS.find(r => r.value === e.target.value)?.label ?? '')}
-      />
-      <InputTemplate
-        label="DISTRICT"
-        isRequired
-        placeholder="e.g. Kumasi Metro"
-        value={form.district}
-        onChange={e => set('district', e.target.value)}
-      />
-      <InputTemplate
-        label="TARGET COUNT"
-        type="number"
-        value={form.targetCount}
-        onChange={e => set('targetCount', e.target.value)}
-      />
-      <SelectTemplate
-        label="ASSIGNED AGENT"
-        options={AGENT_OPTIONS}
-        value={AGENT_OPTIONS.find(a => a.label === form.agentName)?.value ?? ''}
-        onChange={e => set('agentName', AGENT_OPTIONS.find(a => a.value === e.target.value)?.label ?? '')}
-      />
-      <SelectTemplate
-        label="PARTNER"
-        placeholder="Select a partner…"
-        options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
-        value={form.partnerId}
-        onChange={e => set('partnerId', e.target.value)}
+      <DynamicFormRenderer
+        form={cohortConfig.form}
+        stepId={cohortStep.id}
+        values={form}
+        onChange={set}
+        optionsOverride={cohortOptions}
+        labelVariant="compact"
+        className="gap-3"
       />
     </FormSheet>
   )
@@ -492,6 +428,19 @@ function CohortSheet({
   const isEdit = mode === 'edit'
   const filled = pct(cohort.enrolledCount, cohort.targetCount)
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const cohortConfig = useFormConfig(COHORT_FORM_ID)
+  const cohortStep = cohortConfig.steps[0]
+  // region and agentName persist their LABEL, so these lists use label-as-value.
+  const cohortOptions = useDynamicFieldOptions({
+    extra: {
+      programId: programs.map(p => ({ value: p.id, label: p.name })),
+      region:    REGION_OPTIONS.map(r => ({ value: r.label, label: r.label })),
+      agentName: AGENT_OPTIONS.map(a => ({ value: a.label, label: a.label })),
+      partnerId: PARTNERS.map(p => ({ value: p.id, label: p.name })),
+    },
+  })
+
   const [form, setForm] = useState({
     programId:   '',
     name:        '',
@@ -516,10 +465,10 @@ function CohortSheet({
     })
   }, [mode, cohort, programName, programs])
 
-  function set(key: string, val: string) { setForm(f => ({ ...f, [key]: val })) }
+  function set(key: string, val: unknown) { setForm(f => ({ ...f, [key]: String(val ?? '') })) }
 
   function handleSubmit() {
-    if (!form.name || !form.region || !form.district) {
+    if (cohortConfig.missingLabels(cohortStep.id, form as unknown as Record<string, unknown>).length > 0) {
       toast.error('Please fill in all required fields'); return
     }
     const partner = PARTNERS.find(p => p.id === form.partnerId)
@@ -552,9 +501,11 @@ function CohortSheet({
             {!isEdit && (
               <div className="flex items-center gap-2">
                 <BadgeTemplate label={cohort.status} variant={cohort.status === 'Active' ? 'success' : 'neutral'} size="sm" />
-                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
-                  leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                  onClick={() => onModeChange('edit')} />
+                <PermissionGate action="update">
+                  <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
+                    leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                    onClick={() => onModeChange('edit')} />
+                </PermissionGate>
               </div>
             )}
           </div>
@@ -598,26 +549,15 @@ function CohortSheet({
             </>
           ) : (
             <>
-              <SelectTemplate label="PROGRAM"
-                options={programs.map(p => ({ value: p.id, label: p.name }))}
-                value={form.programId} onChange={e => set('programId', e.target.value)} />
-              <InputTemplate label="COHORT NAME" isRequired placeholder="e.g. Ashanti Batch A"
-                value={form.name} onChange={e => set('name', e.target.value)} />
-              <SelectTemplate label="REGION" isRequired placeholder="Select region"
-                options={REGION_OPTIONS}
-                value={REGION_OPTIONS.find(r => r.label === form.region)?.value ?? ''}
-                onChange={e => set('region', REGION_OPTIONS.find(r => r.value === e.target.value)?.label ?? '')} />
-              <InputTemplate label="DISTRICT" isRequired placeholder="e.g. Kumasi Metro"
-                value={form.district} onChange={e => set('district', e.target.value)} />
-              <InputTemplate label="TARGET COUNT" type="number"
-                value={form.targetCount} onChange={e => set('targetCount', e.target.value)} />
-              <SelectTemplate label="ASSIGNED AGENT"
-                options={AGENT_OPTIONS}
-                value={AGENT_OPTIONS.find(a => a.label === form.agentName)?.value ?? ''}
-                onChange={e => set('agentName', AGENT_OPTIONS.find(a => a.value === e.target.value)?.label ?? '')} />
-              <SelectTemplate label="PARTNER" placeholder="Select a partner…"
-                options={PARTNERS.map(p => ({ value: p.id, label: p.name }))}
-                value={form.partnerId} onChange={e => set('partnerId', e.target.value)} />
+              <DynamicFormRenderer
+                form={cohortConfig.form}
+                stepId={cohortStep.id}
+                values={form}
+                onChange={set}
+                optionsOverride={cohortOptions}
+                labelVariant="compact"
+                className="gap-3"
+              />
             </>
           )}
         </div>
@@ -759,6 +699,11 @@ function ProgramSheet({
   const filled        = program ? pct(totalEnrolled, program.targetCount) : 0
   const statusVariant = program?.status === 'Active' ? 'success' : program?.status === 'Completed' ? 'info' : 'neutral'
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const programConfig = useFormConfig(PROGRAM_FORM_ID)
+  const programStep = programConfig.steps[0]
+  const programOptions = useDynamicFieldOptions({ extra: { crops: CROP_OPTIONS, regions: REGION_OPTIONS } })
+
   const [form, setForm] = useState({
     name: '', description: '', season: '', startDate: '', endDate: '',
     targetEnrollment: '100', crops: [] as string[], regions: [] as string[],
@@ -779,10 +724,12 @@ function ProgramSheet({
     })
   }, [mode, program, CROP_OPTIONS])
 
-  function set(key: string, val: string) { setForm(f => ({ ...f, [key]: val })) }
+  function set(key: string, val: unknown) { setForm(f => ({ ...f, [key]: val })) }
 
   function handleSubmit() {
-    if (!form.name || !form.season || !form.startDate || !form.endDate || !form.crops.length) {
+    // regions is not captured on this sheet, so exclude it from the required check
+    const values = { ...form, regions: ['n/a'] } as unknown as Record<string, unknown>
+    if (programConfig.missingLabels(programStep.id, values).length > 0) {
       toast.error('Please fill in all required fields'); return
     }
     onSave({ name: form.name, description: form.description, season: form.season, startDate: form.startDate, endDate: form.endDate, targetCount: Number(form.targetEnrollment) || 100, crops: form.crops.map(v => CROP_OPTIONS.find(o => o.value === v)?.label ?? v), status: program?.status ?? 'Active' })
@@ -812,9 +759,11 @@ function ProgramSheet({
             {!isEdit && (
               <div className="flex items-center gap-2 shrink-0 mt-0.5">
                 <BadgeTemplate label={program.status} variant={statusVariant} size="sm" />
-                <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
-                  leftIcon={<Pencil className="w-3.5 h-3.5" />}
-                  onClick={() => onModeChange('edit')} />
+                <PermissionGate action="update">
+                  <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit"
+                    leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                    onClick={() => onModeChange('edit')} />
+                </PermissionGate>
               </div>
             )}
           </div>
@@ -866,23 +815,17 @@ function ProgramSheet({
             </>
           ) : (
             <>
-              <InputTemplate label="PROGRAM NAME" isRequired placeholder="e.g. Savannah Season 2026"
-                value={form.name} onChange={e => set('name', e.target.value)} />
-              <InputTemplate label="DESCRIPTION" placeholder="Brief description"
-                value={form.description} onChange={e => set('description', e.target.value)} />
-              <InputTemplate label="SEASON" isRequired placeholder="e.g. 2025/26 Season"
-                value={form.season} onChange={e => set('season', e.target.value)} />
-              <div className="grid grid-cols-2 gap-3">
-                <InputTemplate label="START DATE" isRequired type="date"
-                  value={form.startDate} onChange={e => set('startDate', e.target.value)} />
-                <InputTemplate label="END DATE" isRequired type="date"
-                  value={form.endDate} onChange={e => set('endDate', e.target.value)} />
-              </div>
-              <InputTemplate label="TARGET ENROLLMENT" type="number"
-                value={form.targetEnrollment} onChange={e => set('targetEnrollment', e.target.value)} />
-              <MultiSelectTemplate label="CROPS" isRequired placeholder="Select crops"
-                options={CROP_OPTIONS} value={form.crops}
-                onChange={vals => setForm(f => ({ ...f, crops: vals }))} />
+              <DynamicFormRenderer
+                form={programConfig.form}
+                stepId={programStep.id}
+                values={form}
+                onChange={set}
+                optionsOverride={programOptions}
+                labelVariant="compact"
+                className="gap-3"
+                // this sheet never captured regions
+                omitKeys={['regions']}
+              />
             </>
           )}
         </div>
@@ -992,12 +935,14 @@ function ProgramRow({ program, allPrograms, onUpdate }: {
               leftIcon={cohortsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               label={`Cohorts (${program.cohorts.length})`}
               onClick={() => setCohortsOpen(v => !v)} />
-            <ButtonTemplate
-              variant="primary" size="sm"
-              leftIcon={<Plus className="w-3.5 h-3.5" />}
-              label="Add Cohort"
-              onClick={() => setAddCohortOpen(true)}
-            />
+            <PermissionGate action="create">
+              <ButtonTemplate
+                variant="primary" size="sm"
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
+                label="Add Cohort"
+                onClick={() => setAddCohortOpen(true)}
+              />
+            </PermissionGate>
           </div>
         </div>
 
@@ -1259,12 +1204,14 @@ function ProgramsCohortsTab() {
               label="Overview"
               onClick={() => setStatsOpen(v => !v)}
             />
-            <ButtonTemplate
-              variant="primary" size="md"
-              leftIcon={<Plus className="w-4 h-4" />}
-              label="New Program"
-              onClick={() => setCreateOpen(true)}
-            />
+            <PermissionGate action="create">
+              <ButtonTemplate
+                variant="primary" size="md"
+                leftIcon={<Plus className="w-4 h-4" />}
+                label="New Program"
+                onClick={() => setCreateOpen(true)}
+              />
+            </PermissionGate>
             <div className="flex gap-0.5 p-1 rounded-lg border border-gray-200 bg-gray-50">
               <button onClick={() => setViewMode('card')} title="Card view"
                 className="p-1.5 rounded-md transition-colors"

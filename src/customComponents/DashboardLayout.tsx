@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -15,6 +15,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { PermissionGuard } from '@/customComponents/PermissionGuard'
+import { usePermissions } from '@/lib/usePermissions'
+import { pageKeyForRoute } from '@/lib/permissions'
 import type { UserRole, AuthUser } from '@/app/login/_logics/interface'
 
 // ─── Nav definitions per role ─────────────────────────────────────────────────
@@ -113,6 +116,7 @@ export function DashboardLayout({ children, initialRole, initialUser }: Dashboar
   const [authUser,   setAuthUser]   = useState<AuthUser>(initialUser ?? { name: 'Abena Owusu', initials: 'AO', org: 'CropGuard' })
   const pathname = usePathname()
   const router   = useRouter()
+  const { permission } = usePermissions()
 
   useEffect(() => {
     // server already resolved the role for first paint — this fetch is just a fallback
@@ -133,8 +137,24 @@ export function DashboardLayout({ children, initialRole, initialUser }: Dashboar
     fetch('/api/auth/logout', { method: 'POST' }).finally(() => router.push('/login'))
   }
 
-  const nav  = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : role === 'pm' ? PM_NAV : role === 'super_admin' ? SUPER_ADMIN_NAV : STAFF_NAV
-  const meta = ROLE_META[role]
+  const roleNav = role === 'partner' ? PARTNER_NAV : role === 'finance' ? FINANCE_NAV : role === 'pm' ? PM_NAV : role === 'super_admin' ? SUPER_ADMIN_NAV : STAFF_NAV
+  const meta    = ROLE_META[role]
+
+  // Drop links the tenant role has no `view` grant on, then drop any section
+  // header left with no links under it. Super Admin resolves as unrestricted,
+  // so the platform-operator sidebar is untouched.
+  const nav = useMemo(() => {
+    const visible = roleNav.filter(item => {
+      if ('section' in item) return true
+      const pageKey = pageKeyForRoute(item.href)
+      return !pageKey || permission(pageKey).view
+    })
+    return visible.filter((item, i) => {
+      if (!('section' in item)) return true
+      const next = visible[i + 1]
+      return !!next && !('section' in next)
+    })
+  }, [roleNav, permission])
 
   const sidebarW = collapsed ? 'md:w-16' : 'md:w-60'
   const mainML   = collapsed ? 'md:ml-16' : 'md:ml-60'
@@ -282,7 +302,7 @@ export function DashboardLayout({ children, initialRole, initialUser }: Dashboar
         </header>
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 p-4 sm:p-6">
-          {children}
+          <PermissionGuard>{children}</PermissionGuard>
         </main>
       </div>
     </div>

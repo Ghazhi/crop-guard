@@ -11,6 +11,9 @@ import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { DatagridTemplate, type DatagridColumn } from '@/customComponents/DatagridTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { TENANT_FORM_ID } from '@/dataCenter/formEngine'
 import { getTenants } from '../_logics/functions'
 import type { Tenant, TenantStatus } from '../_logics/interface'
 import { AUDIT_LOG_KEY, SEED_AUDIT_LOG, newAuditEntry } from '../../AuditLog/_logics/functions'
@@ -27,6 +30,12 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'active', label: 'Active' },
   { value: 'suspended', label: 'Suspended' },
 ]
+
+const FORM_PLACEHOLDERS: Record<string, string> = {
+  name: 'e.g. ASINYO Cooperative',
+  subdomain: 'e.g. asinyo',
+  contactEmail: 'e.g. admin@asinyo.coop',
+}
 
 function emptyTenant(): Tenant {
   return {
@@ -45,6 +54,11 @@ function TenantFormSheet({
 }) {
   const [draft, setDraft] = useState<Tenant>(tenant ?? emptyTenant())
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(TENANT_FORM_ID)
+  const step = config.steps[0]
+  const values = draft as unknown as Record<string, unknown>
+
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -52,7 +66,7 @@ function TenantFormSheet({
     }
   }, [open, tenant])
 
-  const canSave = draft.name.trim() && draft.subdomain.trim() && draft.contactEmail.trim()
+  const canSave = config.isValid(values)
 
   return (
     <SheetTemplate
@@ -66,32 +80,16 @@ function TenantFormSheet({
         </>
       }
     >
-      <div className="px-6 py-5 flex flex-col gap-4">
-        <InputTemplate
-          label="Organization Name" isRequired
-          placeholder="e.g. ASINYO Cooperative"
-          value={draft.name}
-          onChange={e => setDraft({ ...draft, name: e.target.value })}
+      {step && (
+        <DynamicFormRenderer
+          form={config.form}
+          stepId={step.id}
+          values={values}
+          onChange={(k, v) => setDraft(prev => ({ ...prev, [k]: v }))}
+          placeholders={FORM_PLACEHOLDERS}
+          className="px-6 py-5"
         />
-        <InputTemplate
-          label="Subdomain" isRequired
-          placeholder="e.g. asinyo"
-          value={draft.subdomain}
-          onChange={e => setDraft({ ...draft, subdomain: e.target.value })}
-        />
-        <InputTemplate
-          label="Contact Email" isRequired type="email"
-          placeholder="e.g. admin@asinyo.coop"
-          value={draft.contactEmail}
-          onChange={e => setDraft({ ...draft, contactEmail: e.target.value })}
-        />
-        <SelectTemplate
-          label="Status"
-          options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }]}
-          value={draft.status}
-          onChange={e => setDraft({ ...draft, status: e.target.value as TenantStatus })}
-        />
-      </div>
+      )}
     </SheetTemplate>
   )
 }

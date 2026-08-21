@@ -21,6 +21,9 @@ import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { PM_PARTNER_IDS, PM_PROGRAM_IDS, isPmProgram } from '@/dataCenter/pmScope'
 import { cn } from '@/lib/utils'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { PARTNER_FORM_ID } from '@/dataCenter/formEngine'
 
 interface Partner {
   id: string; name: string; type: string; region: string
@@ -55,6 +58,32 @@ interface AddForm {
 
 const EMPTY_FORM: AddForm = { name: '', type: '', region: '', website: '', contact: '', email: '', phone: '', role: '' }
 
+// This portal's own type/region lists — they replace the generic runtime sources.
+const PARTNER_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  type:   PARTNER_TYPES.map(t => ({ value: t, label: t })),
+  region: REGIONS.map(r => ({ value: r, label: r })),
+}
+
+/** Category lives in the shared FormDef but is not captured here, so it never blocks a step. */
+const CATEGORY_LABEL = 'Category'
+
+const ERROR_MESSAGES: Partial<Record<keyof AddForm, string>> = {
+  name:    'Organisation name is required',
+  type:    'Please select a partner type',
+  region:  'Please select a region',
+  contact: 'Contact name is required',
+  email:   'Email address is required',
+}
+
+/** Maps a configured field label back onto the inline error slot it fills. */
+const ERROR_KEY_BY_LABEL: Record<string, keyof AddForm> = {
+  'Organisation Name': 'name',
+  'Partner Type':      'type',
+  'Region':            'region',
+  'Full Name':         'contact',
+  'Email Address':     'email',
+}
+
 function statusCls(s: PartnerStatus) {
   if (s === 'Active')  return 'bg-green-50 text-green-700 border-green-200'
   if (s === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-200'
@@ -68,17 +97,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       {children}
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
-  )
-}
-
-function Input({ value, onChange, placeholder, type = 'text', error }: {
-  value: string; onChange: (v: string) => void; placeholder?: string; type?: string; error?: string
-}) {
-  return (
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className={`w-full h-9 px-3 text-sm border rounded-lg bg-white focus:outline-none focus:ring-1 placeholder:text-gray-400 ${
-        error ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-green-300'
-      }`} />
   )
 }
 
@@ -105,22 +123,25 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
   const [form,   setForm]   = useState<AddForm>(EMPTY_FORM)
   const [errors, setErrors] = useState<Partial<Record<keyof AddForm, string>>>({})
 
-  function set(k: keyof AddForm) {
-    return (v: string) => {
-      setForm(f => ({ ...f, [k]: v }))
-      setErrors(e => ({ ...e, [k]: undefined }))
-    }
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  // The PM portal does not capture a partner category, so that field is omitted here.
+  const config = useFormConfig(PARTNER_FORM_ID)
+  const values = form as unknown as Record<string, unknown>
+  const configStep = config.steps[step]
+
+  function set(k: string, v: unknown) {
+    setForm(f => ({ ...f, [k]: v }) as AddForm)
+    setErrors(e => ({ ...e, [k]: undefined }))
   }
 
   function validate(): boolean {
+    if (!configStep) return true
+    const missing = config.missingLabels(configStep.id, values)
+      .filter(label => label !== CATEGORY_LABEL)
     const next: typeof errors = {}
-    if (step === 0) {
-      if (!form.name)   next.name   = 'Organisation name is required'
-      if (!form.type)   next.type   = 'Please select a partner type'
-      if (!form.region) next.region = 'Please select a region'
-    } else if (step === 1) {
-      if (!form.contact) next.contact = 'Contact name is required'
-      if (!form.email)   next.email   = 'Email address is required'
+    for (const label of missing) {
+      const key = ERROR_KEY_BY_LABEL[label]
+      if (key) next[key] = ERROR_MESSAGES[key]
     }
     setErrors(next)
     return Object.keys(next).length === 0
@@ -179,40 +200,25 @@ function AddPartnerSheet({ open, onOpenChange, onSave }: {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {step === 0 && (
+          {configStep && (
             <>
-              <Field label="Organisation Name" error={errors.name}>
-                <Input value={form.name} onChange={set('name')} placeholder="e.g. Fidelity Bank Ghana" error={errors.name} />
-              </Field>
-              <Field label="Partner Type" error={errors.type}>
-                <Select value={form.type} onChange={set('type')} options={PARTNER_TYPES} placeholder="Select type…" error={errors.type} />
-              </Field>
-              <Field label="Region" error={errors.region}>
-                <Select value={form.region} onChange={set('region')} options={REGIONS} placeholder="Select region…" error={errors.region} />
-              </Field>
-              <Field label="Website (optional)">
-                <Input value={form.website} onChange={set('website')} placeholder="https://example.com" type="url" />
-              </Field>
+              <DynamicFormRenderer
+                form={config.form}
+                stepId={configStep.id}
+                values={values}
+                onChange={set}
+                omitKeys={['category']}
+                optionsOverride={PARTNER_OPTIONS}
+                placeholders={{ type: 'Select type…', region: 'Select region…' }}
+                className="space-y-5 gap-5"
+              />
+              {(Object.keys(ERROR_MESSAGES) as (keyof AddForm)[])
+                .filter(k => errors[k] && config.fields(configStep.id).some(f => f.key === k))
+                .map(k => <p key={k} className="text-xs text-red-500">{errors[k]}</p>)}
             </>
           )}
 
-          {step === 1 && (
-            <>
-              <Field label="Full Name" error={errors.contact}>
-                <Input value={form.contact} onChange={set('contact')} placeholder="e.g. Kwame Mensah" error={errors.contact} />
-              </Field>
-              <Field label="Email Address" error={errors.email}>
-                <Input value={form.email} onChange={set('email')} placeholder="kwame@partner.org" type="email" error={errors.email} />
-              </Field>
-              <Field label="Phone Number (optional)">
-                <Input value={form.phone} onChange={set('phone')} placeholder="+233 20 000 0000" />
-              </Field>
-              <Field label="Job Title (optional)">
-                <Input value={form.role} onChange={set('role')} placeholder="e.g. Head of Credit" />
-              </Field>
-            </>
-          )}
-
+          {/* Review is a read-only summary rather than a field list, so it stays hand-written. */}
           {step === 2 && (
             <div className="space-y-4">
               <div className="rounded-xl border border-gray-200 overflow-hidden">
@@ -726,25 +732,37 @@ function ViewPartnerSheet({ partner, onClose, onRemove, onEdit }: {
 function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
   partner: Partner | null; open: boolean; onOpenChange: (v: boolean) => void; onSave: (p: Partner) => void
 }) {
-  const [name,    setName]    = useState('')
-  const [type,    setType]    = useState('')
-  const [region,  setRegion]  = useState('')
-  const [contact, setContact] = useState('')
-  const [email,   setEmail]   = useState('')
-  const [status,  setStatus]  = useState<PartnerStatus>('Active')
+  const [values, setValues] = useState<Record<string, unknown>>({})
+  const [status, setStatus] = useState<PartnerStatus>('Active')
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  // Status is not part of the shared Partner form, so it stays a hand-written select.
+  const config = useFormConfig(PARTNER_FORM_ID)
+
+  const name    = String(values.name    ?? '')
+  const type    = String(values.type    ?? '')
+  const region  = String(values.region  ?? '')
+  const contact = String(values.contact ?? '')
+  const email   = String(values.email   ?? '')
 
   useEffect(() => {
     if (open && partner) {
       /* eslint-disable react-hooks/set-state-in-effect */
-      setName(partner.name)
-      setType(partner.type)
-      setRegion(partner.region)
-      setContact(partner.contact)
-      setEmail(partner.email)
+      setValues({
+        name:    partner.name,
+        type:    partner.type,
+        region:  partner.region,
+        contact: partner.contact,
+        email:   partner.email,
+      })
       setStatus(partner.status)
       /* eslint-enable react-hooks/set-state-in-effect */
     }
   }, [open, partner])
+
+  function setValue(k: string, v: unknown) {
+    setValues(prev => ({ ...prev, [k]: v }))
+  }
 
   function handleSave() {
     if (!partner || !name.trim()) return
@@ -761,24 +779,28 @@ function EditPartnerSheet({ partner, open, onOpenChange, onSave }: {
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <Field label="Organisation Name">
-            <Input value={name} onChange={setName} placeholder="Organisation name" />
-          </Field>
-          <Field label="Partner Type">
-            <Select value={type} onChange={setType} options={PARTNER_TYPES} placeholder="Select type…" />
-          </Field>
-          <Field label="Region">
-            <Select value={region} onChange={setRegion} options={REGIONS} placeholder="Select region…" />
-          </Field>
+          <DynamicFormRenderer
+            columns={2}
+            form={config.form}
+            stepId="organisation"
+            values={values}
+            onChange={setValue}
+            omitKeys={['category', 'website']}
+            optionsOverride={PARTNER_OPTIONS}
+            placeholders={{ name: 'Organisation name', type: 'Select type…', region: 'Select region…' }}
+          />
           <Field label="Status">
             <Select value={status} onChange={v => setStatus(v as PartnerStatus)} options={['Active', 'Inactive', 'Pending']} />
           </Field>
-          <Field label="Primary Contact Name">
-            <Input value={contact} onChange={setContact} placeholder="Full name" />
-          </Field>
-          <Field label="Contact Email">
-            <Input value={email} onChange={setEmail} placeholder="email@example.com" type="email" />
-          </Field>
+          <DynamicFormRenderer
+            columns={2}
+            form={config.form}
+            stepId="contact"
+            values={values}
+            onChange={setValue}
+            omitKeys={['phone', 'role']}
+            placeholders={{ contact: 'Full name', email: 'email@example.com' }}
+          />
         </div>
 
         <SheetFooter className="px-6 pb-6 pt-4 border-t border-gray-100 flex-row gap-3">

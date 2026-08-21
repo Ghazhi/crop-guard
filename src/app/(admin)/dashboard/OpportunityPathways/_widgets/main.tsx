@@ -5,10 +5,14 @@ import { usePersistedState } from '@/lib/usePersistedState'
 import { cn } from '@/lib/utils'
 import { Plus, Pencil, PauseCircle, Trash2, ChevronDown, ChevronUp, X, Package, AlertCircle, UserPlus, Layers, Users, TrendingUp, Search, Clock, CheckCircle2, XCircle, SlidersHorizontal, BarChart2, LayoutGrid, List } from 'lucide-react'
 import { SheetTemplate }    from '@/customComponents/SheetTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { PermissionGate } from '@/customComponents/PermissionGate'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { INTERVENTION_FORM_ID } from '@/dataCenter/formEngine'
 import { ButtonTemplate }   from '@/customComponents/ButtonTemplate'
 import { InputTemplate }    from '@/customComponents/InputTemplate'
 import { SelectTemplate }   from '@/customComponents/SelectTemplate'
-import { TextareaTemplate } from '@/customComponents/TextareaTemplate'
 import { BadgeTemplate }    from '@/customComponents/BadgeTemplate'
 import { ConfirmModal }     from '@/customComponents/ConfirmModal'
 import { getInterventions, getPrograms, getProgramsWithCohorts } from '../_logics/functions'
@@ -106,6 +110,30 @@ function InterventionSheet({ open, mode, initial, onSave, onClose }: SheetProps)
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm(f => ({ ...f, [k]: v }))
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(INTERVENTION_FORM_ID)
+  const step = config.steps[0]
+  const options = useDynamicFieldOptions({
+    extra: {
+      type:     TYPES.map(t => ({ value: t, label: t })),
+      status:   STATUSES.map(x => ({ value: x, label: x })),
+      approval: APPROVALS.map(a => ({ value: a, label: a })),
+    },
+  })
+
+  const values: Record<string, unknown> = {
+    name: form.name, type: form.type, season: form.season,
+    valueDescription: form.valueDescription, description: form.description,
+    minFri: form.minFri, capacity: form.capacity,
+    status: form.status, approval: form.approval,
+  }
+
+  // minFri/capacity stay numeric in the payload; the renderer emits strings
+  function setValue(key: string, val: unknown) {
+    const numeric = key === 'minFri' || key === 'capacity'
+    setForm(f => ({ ...f, [key]: numeric ? Number(val) || 0 : val }))
+  }
+
   const eligible = form.rules.length > 0 && simFri >= form.minFri
 
   function addRule() {
@@ -145,96 +173,19 @@ function InterventionSheet({ open, mode, initial, onSave, onClose }: SheetProps)
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
 
-        {/* ── Left column ── */}
+        {/* ── Left column — field list comes from Configuration > Forms ── */}
         <div className="space-y-4">
-          <InputTemplate
-            label="Opportunity Name"
-            labelVariant="compact"
-            isRequired
-            size="sm"
-            placeholder="e.g. Soybean Input Loan"
-            value={form.name}
-            onChange={e => set('name', e.currentTarget.value)}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate
-              label="Type"
+          {step && (
+            <DynamicFormRenderer
+              form={config.form}
+              stepId={step.id}
+              values={values}
+              onChange={setValue}
+              optionsOverride={options}
               labelVariant="compact"
-              isRequired
-              size="sm"
-              options={TYPES.map(t => ({ value: t, label: t }))}
-              value={form.type}
-              onChange={e => set('type', e.currentTarget.value as InterventionType)}
+              columns={2}
             />
-            <InputTemplate
-              label="Season"
-              labelVariant="compact"
-              isRequired
-              size="sm"
-              placeholder="e.g. June-Sept 2026"
-              value={form.season}
-              onChange={e => set('season', e.currentTarget.value)}
-            />
-          </div>
-
-          <InputTemplate
-            label="Value Description"
-            labelVariant="compact"
-            size="sm"
-            placeholder="e.g. GHS 1,400"
-            value={form.valueDescription}
-            onChange={e => set('valueDescription', e.currentTarget.value)}
-          />
-
-          <TextareaTemplate
-            label="Description"
-            labelVariant="compact"
-            rows={2}
-            placeholder="Short description of the opportunity"
-            value={form.description}
-            onChange={e => set('description', e.currentTarget.value)}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate
-              label="Min FRI"
-              labelVariant="compact"
-              size="sm"
-              type="number"
-              min={0} max={100}
-              value={form.minFri}
-              onChange={e => set('minFri', Number(e.currentTarget.value))}
-            />
-            <InputTemplate
-              label="Capacity"
-              labelVariant="compact"
-              size="sm"
-              type="number"
-              min={1}
-              value={form.capacity}
-              onChange={e => set('capacity', Number(e.currentTarget.value))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate
-              label="Status"
-              labelVariant="compact"
-              size="sm"
-              options={STATUSES.map(s => ({ value: s, label: s }))}
-              value={form.status}
-              onChange={e => set('status', e.currentTarget.value as InterventionStatus)}
-            />
-            <SelectTemplate
-              label="Approval"
-              labelVariant="compact"
-              size="sm"
-              options={APPROVALS.map(a => ({ value: a, label: a }))}
-              value={form.approval}
-              onChange={e => set('approval', e.currentTarget.value as ApprovalMode)}
-            />
-          </div>
+          )}
         </div>
 
         {/* ── Right column ── */}
@@ -1038,12 +989,14 @@ export function Main() {
               <List className="w-4 h-4" />
             </button>
           </div>
-          <ButtonTemplate
-            variant="primary" size="sm"
-            leftIcon={<Plus className="w-4 h-4" />}
-            label="New Opportunity"
-            onClick={openNew}
-          />
+          <PermissionGate action="create">
+            <ButtonTemplate
+              variant="primary" size="sm"
+              leftIcon={<Plus className="w-4 h-4" />}
+              label="New Opportunity"
+              onClick={openNew}
+            />
+          </PermissionGate>
         </div>
       </div>
 

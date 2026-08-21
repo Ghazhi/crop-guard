@@ -16,10 +16,18 @@ import { InputTemplate } from '@/customComponents/InputTemplate'
 import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
-import { CheckboxTemplate } from '@/customComponents/CheckboxTemplate'
 import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { PermissionGate } from '@/customComponents/PermissionGate'
 import { usePersistedState } from '@/lib/usePersistedState'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions, type Option } from '@/lib/useDynamicFieldOptions'
+import {
+  GOVERNANCE_OFFICER_FORM_ID, GOVERNANCE_MEETING_FORM_ID, GOVERNANCE_RESOLUTION_FORM_ID,
+  GOVERNANCE_FUND_FORM_ID, GOVERNANCE_DOCUMENT_FORM_ID, GOVERNANCE_TRACEABILITY_FORM_ID,
+  GOVERNANCE_CERTIFICATION_FORM_ID, GOVERNANCE_FBO_FORM_ID, GOVERNANCE_LBC_FORM_ID,
+} from '@/dataCenter/formEngine'
 import { COOPERATIVES, type Cooperative, type CooperativeStatus } from '@/dataCenter/cooperatives'
 import { FARMERS_LIST } from '@/dataCenter/farmerManagement'
 import { FARMER_COOPERATIVE_MAP } from '@/dataCenter/farmerCooperatives'
@@ -87,6 +95,22 @@ const FBO_STATUSES: FboStatus[] = ['Registered', 'Pending', 'Lapsed']
 const FUND_TYPES: FundTransactionType[] = ['Contribution', 'Withdrawal', 'Loan Disbursement', 'Loan Repayment']
 const PAYMENT_MODES: PaymentMode[] = ['Cash', 'Mobile Money', 'Bank Transfer']
 const DOCUMENT_TYPES: DocumentType[] = ['Constitution', 'Registration Certificate', 'Meeting Minutes', 'Financial Statement', 'Other']
+
+/** Turns a static string union list into the {value,label} shape a config-driven select expects. */
+function toOptions(list: readonly string[]): Option[] {
+  return list.map(v => ({ value: v, label: v }))
+}
+
+/** Numeric answer from the dynamic bag, or null when left blank — matches the nullable payload columns. */
+function numOrNull(v: unknown): number | null {
+  return v === '' || v === undefined || v === null ? null : Number(v)
+}
+
+/** Inline "<Field> is required" message, matching the per-field error style the sheets used before. */
+function FormError({ message }: { message?: string }) {
+  if (!message) return null
+  return <p className="text-xs" style={{ color: 'var(--brand-red)' }}>{message}</p>
+}
 
 function coopStatusVariant(status: CooperativeStatus): 'success' | 'neutral' | 'warning' {
   if (status === 'Active') return 'success'
@@ -748,9 +772,13 @@ function LeadershipTab({
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Officer | null>(null)
   const [deleting, setDeleting] = useState<Officer | null>(null)
-  const [form, setForm] = useState<Partial<Officer>>({})
-  const [farmerId, setFarmerId] = useState('')
+  const [values, setValues] = useState<Record<string, unknown>>({})
   const [farmerError, setFarmerError] = useState<string | undefined>()
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_OFFICER_FORM_ID)
+  const step = config.steps[0]
+  const farmerId = String(values.farmerId ?? '')
 
   const filtered = officers.filter(o => o.cooperativeId === scopeId)
 
@@ -766,8 +794,10 @@ function LeadershipTab({
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
           onClick={() => {
             setEditing(row)
-            setForm(row)
-            setFarmerId(FARMERS_LIST.find(f => f.fullName === row.name && FARMER_COOPERATIVE_MAP[f.id] === row.cooperativeId)?.id ?? '')
+            setValues({
+              ...row,
+              farmerId: FARMERS_LIST.find(f => f.fullName === row.name && FARMER_COOPERATIVE_MAP[f.id] === row.cooperativeId)?.id ?? '',
+            })
             setFarmerError(undefined)
           }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
@@ -776,28 +806,48 @@ function LeadershipTab({
     ) },
   ]
 
-  const cooperativeIdForForm = form.cooperativeId ?? scopeId
-  const farmerOptions = availableFarmersFor(cooperativeIdForForm, officers, editing?.id).map(f => ({ value: f.id, label: f.fullName }))
+  const cooperativeIdForForm = String(values.cooperativeId ?? '') || scopeId
+  // Officer choices depend on the cooperative currently picked in the sheet, and
+  // exclude farmers who already hold another active role there.
+  const farmerOptions = useMemo(
+    () => availableFarmersFor(cooperativeIdForForm, officers, editing?.id).map(f => ({ value: f.id, label: f.fullName })),
+    [cooperativeIdForForm, officers, editing?.id],
+  )
+  const extraOptions = useMemo(() => ({ farmerId: farmerOptions, role: toOptions(OFFICER_ROLES) }), [farmerOptions])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
+
+  function setValue(key: string, value: unknown) {
+    // Changing cooperative invalidates the officer picked from the previous one.
+    setValues(prev => key === 'cooperativeId' ? { ...prev, cooperativeId: value, farmerId: '' } : { ...prev, [key]: value })
+    if (key === 'farmerId') setFarmerError(undefined)
+  }
 
   function openAdd() {
-    setForm({ cooperativeId: scopeId, role: 'Executive Member', isActive: true })
-    setFarmerId('')
+    setValues({ cooperativeId: scopeId, farmerId: '', role: 'Executive Member', isActive: true })
     setFarmerError(undefined)
     setAdding(true)
   }
 
+  /** Officer payload fields, minus the `farmerId` the renderer captures (name/phone come from the farmer). */
+  function officerDraft(): Partial<Officer> {
+    const rest = { ...values }
+    delete rest.farmerId
+    return rest as Partial<Officer>
+  }
+
   function saveNew() {
     const farmer = FARMERS_LIST.find(f => f.id === farmerId)
-    if (!farmer) { setFarmerError('Select an officer'); return }
+    if (!farmer) { setFarmerError(`${config.missingLabels('details', values)[0] ?? 'Officer'} is required`); return }
+    const draft = officerDraft()
     const o: Officer = {
       id: `off-${Date.now()}`,
-      cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
+      cooperativeId: draft.cooperativeId ?? cooperatives[0]?.id ?? '',
       name: farmer.fullName,
-      role: form.role ?? 'Executive Member',
+      role: draft.role ?? 'Executive Member',
       phone: farmer.phone,
-      termStart: form.termStart ?? '',
-      termEnd: form.termEnd ?? '',
-      isActive: form.isActive ?? true,
+      termStart: draft.termStart ?? '',
+      termEnd: draft.termEnd ?? '',
+      isActive: draft.isActive ?? true,
     }
     setOfficers(prev => [...prev, o])
     setAdding(false)
@@ -806,8 +856,8 @@ function LeadershipTab({
   function saveEdit() {
     if (!editing) return
     const farmer = FARMERS_LIST.find(f => f.id === farmerId)
-    if (!farmer) { setFarmerError('Select an officer'); return }
-    setOfficers(prev => prev.map(o => o.id === editing.id ? { ...o, ...form, name: farmer.fullName, phone: farmer.phone } as Officer : o))
+    if (!farmer) { setFarmerError(`${config.missingLabels('details', values)[0] ?? 'Officer'} is required`); return }
+    setOfficers(prev => prev.map(o => o.id === editing.id ? { ...o, ...officerDraft(), name: farmer.fullName, phone: farmer.phone } as Officer : o))
     setEditing(null)
   }
 
@@ -824,7 +874,9 @@ function LeadershipTab({
           <Users2 className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Leadership</h2>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Officer" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Officer" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       <DatagridTemplate columns={columns} data={filtered} rowKey="id" defaultPageSize={10} pageSizeOptions={[10, 25, 50, 0]} emptyLabel="No officers found" />
@@ -840,24 +892,20 @@ function LeadershipTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => { setForm({ ...form, cooperativeId: e.target.value }); setFarmerId('') }} />
-          <SelectTemplate
-            label="Select Officer (Farmer)"
-            isRequired
-            error={farmerError}
-            options={farmerOptions}
-            placeholder={farmerOptions.length ? 'Choose a farmer...' : 'No farmers in this cooperative'}
-            value={farmerId}
-            onChange={e => { setFarmerId(e.target.value); setFarmerError(undefined) }}
-          />
-          <SelectTemplate label="Role" options={OFFICER_ROLES.map(r => ({ value: r, label: r }))} value={form.role ?? 'Executive Member'} onChange={e => setForm({ ...form, role: e.target.value as OfficerRole })} />
-          <CheckboxTemplate label="Active" checked={form.isActive ?? true} onChange={() => setForm({ ...form, isActive: !form.isActive })} />
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Term Start" type="date" value={form.termStart ?? ''} onChange={e => setForm({ ...form, termStart: e.target.value })} />
-            <InputTemplate label="Term End" type="date" value={form.termEnd ?? ''} onChange={e => setForm({ ...form, termEnd: e.target.value })} />
+        {step && (
+          <div className="px-6 py-5 flex flex-col gap-4">
+            <DynamicFormRenderer
+              columns={2}
+              form={config.form}
+              stepId={step.id}
+              values={values}
+              onChange={setValue}
+              optionsOverride={dynamicOptions}
+              placeholders={{ farmerId: farmerOptions.length ? 'Choose a farmer...' : 'No farmers in this cooperative' }}
+            />
+            <FormError message={farmerError} />
           </div>
-        </div>
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Remove Officer" message={`Remove "${deleting?.name}" from leadership?`} confirmLabel="Remove" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
@@ -879,7 +927,16 @@ function MeetingsTab({
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Meeting | null>(null)
   const [deleting, setDeleting] = useState<Meeting | null>(null)
-  const [form, setForm] = useState<Partial<Meeting>>({})
+  const [values, setValues] = useState<Record<string, unknown>>({})
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_MEETING_FORM_ID)
+  const step = config.steps[0]
+  const extraOptions = useMemo(() => ({
+    cooperativeId: cooperatives.map(c => ({ value: c.id, label: c.name })),
+    meetingType:   toOptions(MEETING_TYPES),
+  }), [cooperatives])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
 
   const filtered = meetings.filter(m => m.cooperativeId === scopeId)
 
@@ -892,7 +949,7 @@ function MeetingsTab({
     { key: 'id', label: '', id: 'actions', render: (_v, row) => (
       <div className="flex items-center gap-1 justify-end">
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row) }} />
+          onClick={() => { setEditing(row); setValues({ ...row }) }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
           onClick={() => setDeleting(row)} />
       </div>
@@ -900,11 +957,12 @@ function MeetingsTab({
   ]
 
   function openAdd() {
-    setForm({ cooperativeId: scopeId, meetingType: 'General', attendanceCount: 0 })
+    setValues({ cooperativeId: scopeId, meetingType: 'General', attendanceCount: 0 })
     setAdding(true)
   }
 
   function saveNew() {
+    const form = values as Partial<Meeting>
     const m: Meeting = {
       id: `mtg-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
@@ -920,6 +978,7 @@ function MeetingsTab({
 
   function saveEdit() {
     if (!editing) return
+    const form = values as Partial<Meeting>
     setMeetings(prev => prev.map(m => m.id === editing.id ? { ...m, ...form, attendanceCount: Number(form.attendanceCount ?? editing.attendanceCount) } as Meeting : m))
     setEditing(null)
   }
@@ -937,7 +996,9 @@ function MeetingsTab({
           <CalendarDays className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Meetings</h2>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Meeting" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Meeting" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       <DatagridTemplate columns={columns} data={filtered} rowKey="id" defaultPageSize={10} pageSizeOptions={[10, 25, 50, 0]} emptyLabel="No meetings found" />
@@ -953,16 +1014,17 @@ function MeetingsTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="Meeting Type" options={MEETING_TYPES.map(t => ({ value: t, label: t }))} value={form.meetingType ?? 'General'} onChange={e => setForm({ ...form, meetingType: e.target.value as MeetingType })} />
-            <InputTemplate label="Date" type="date" value={form.meetingDate ?? ''} onChange={e => setForm({ ...form, meetingDate: e.target.value })} />
-          </div>
-          <InputTemplate label="Attendance Count" type="number" value={form.attendanceCount ?? 0} onChange={e => setForm({ ...form, attendanceCount: Number(e.target.value) })} />
-          <InputTemplate label="Agenda" value={form.agenda ?? ''} onChange={e => setForm({ ...form, agenda: e.target.value })} />
-          <InputTemplate label="Minutes" value={form.minutes ?? ''} onChange={e => setForm({ ...form, minutes: e.target.value })} />
-        </div>
+        {step && (
+          <DynamicFormRenderer
+              columns={2}
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={(k, v) => setValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={dynamicOptions}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Delete Meeting" message={`Delete this ${deleting?.meetingType} meeting record?`} confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
@@ -985,8 +1047,12 @@ function ResolutionsTab({
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Resolution | null>(null)
   const [deleting, setDeleting] = useState<Resolution | null>(null)
-  const [form, setForm] = useState<Partial<Resolution>>({})
+  const [values, setValues] = useState<Record<string, unknown>>({})
   const [titleError, setTitleError] = useState<string | undefined>()
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_RESOLUTION_FORM_ID)
+  const step = config.steps[0]
 
   const filtered = resolutions.filter(r => r.cooperativeId === scopeId)
 
@@ -999,24 +1065,38 @@ function ResolutionsTab({
     { key: 'id', label: '', id: 'actions', render: (_v, row) => (
       <div className="flex items-center gap-1 justify-end">
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row); setTitleError(undefined) }} />
+          onClick={() => { setEditing(row); setValues({ ...row }); setTitleError(undefined) }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
           onClick={() => setDeleting(row)} />
       </div>
     ) },
   ]
 
-  const cooperativeIdForForm = form.cooperativeId ?? scopeId
-  const meetingOptions = meetings.filter(m => m.cooperativeId === cooperativeIdForForm).map(m => ({ value: m.id, label: `${m.meetingType} — ${m.meetingDate}` }))
+  const cooperativeIdForForm = String(values.cooperativeId ?? '') || scopeId
+  // Meeting choices are scoped to the cooperative currently picked in the sheet.
+  const extraOptions = useMemo(() => ({
+    cooperativeId:        cooperatives.map(c => ({ value: c.id, label: c.name })),
+    meetingId:            meetings.filter(m => m.cooperativeId === cooperativeIdForForm).map(m => ({ value: m.id, label: `${m.meetingType} — ${m.meetingDate}` })),
+    voteOutcome:          toOptions(VOTE_OUTCOMES),
+    implementationStatus: toOptions(IMPLEMENTATION_STATUSES),
+  }), [cooperatives, meetings, cooperativeIdForForm])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
+
+  function setValue(key: string, value: unknown) {
+    // Changing cooperative invalidates the meeting picked from the previous one.
+    setValues(prev => key === 'cooperativeId' ? { ...prev, cooperativeId: value, meetingId: '' } : { ...prev, [key]: value })
+    if (key === 'title') setTitleError(undefined)
+  }
 
   function openAdd() {
-    setForm({ cooperativeId: scopeId, voteOutcome: 'Passed', implementationStatus: 'Pending' })
+    setValues({ cooperativeId: scopeId, voteOutcome: 'Passed', implementationStatus: 'Pending' })
     setTitleError(undefined)
     setAdding(true)
   }
 
   function saveNew() {
-    if (!form.title?.trim()) { setTitleError('Title is required'); return }
+    const form = values as Partial<Resolution>
+    if (!config.isValid(values)) { setTitleError(`${config.missingLabels('details', values)[0]} is required`); return }
     const r: Resolution = {
       id: `res-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
@@ -1033,8 +1113,8 @@ function ResolutionsTab({
 
   function saveEdit() {
     if (!editing) return
-    if (!form.title?.trim()) { setTitleError('Title is required'); return }
-    setResolutions(prev => prev.map(r => r.id === editing.id ? { ...r, ...form } as Resolution : r))
+    if (!config.isValid(values)) { setTitleError(`${config.missingLabels('details', values)[0]} is required`); return }
+    setResolutions(prev => prev.map(r => r.id === editing.id ? { ...r, ...values } as Resolution : r))
     setEditing(null)
   }
 
@@ -1051,7 +1131,9 @@ function ResolutionsTab({
           <Gavel className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Resolutions</h2>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Resolution" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Resolution" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       <DatagridTemplate columns={columns} data={filtered} rowKey="id" defaultPageSize={10} pageSizeOptions={[10, 25, 50, 0]} emptyLabel="No resolutions found" />
@@ -1067,17 +1149,20 @@ function ResolutionsTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value, meetingId: undefined })} />
-          <SelectTemplate label="Meeting" options={meetingOptions} placeholder="Select a meeting..." value={form.meetingId ?? ''} onChange={e => setForm({ ...form, meetingId: e.target.value })} />
-          <InputTemplate label="Title" isRequired error={titleError} value={form.title ?? ''} onChange={e => { setForm({ ...form, title: e.target.value }); setTitleError(undefined) }} />
-          <InputTemplate label="Description" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="Vote Outcome" options={VOTE_OUTCOMES.map(v => ({ value: v, label: v }))} value={form.voteOutcome ?? 'Passed'} onChange={e => setForm({ ...form, voteOutcome: e.target.value as VoteOutcome })} />
-            <SelectTemplate label="Implementation" options={IMPLEMENTATION_STATUSES.map(v => ({ value: v, label: v }))} value={form.implementationStatus ?? 'Pending'} onChange={e => setForm({ ...form, implementationStatus: e.target.value as ImplementationStatus })} />
+        {step && (
+          <div className="px-6 py-5 flex flex-col gap-4">
+            <DynamicFormRenderer
+              columns={2}
+              form={config.form}
+              stepId={step.id}
+              values={values}
+              onChange={setValue}
+              optionsOverride={dynamicOptions}
+              placeholders={{ meetingId: 'Select a meeting...' }}
+            />
+            <FormError message={titleError} />
           </div>
-          <InputTemplate label="Date Passed" type="date" value={form.datePassed ?? ''} onChange={e => setForm({ ...form, datePassed: e.target.value })} />
-        </div>
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Delete Resolution" message={`Delete resolution "${deleting?.title}"?`} confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
@@ -1132,20 +1217,37 @@ function ComplianceTab({
   const [showCertForm, setShowCertForm] = useState(false)
   const [showFboForm, setShowFboForm] = useState(false)
   const [showLicenseForm, setShowLicenseForm] = useState(false)
-  const [certForm, setCertForm] = useState<Partial<ComplianceItem>>({})
-  const [fboForm, setFboForm] = useState<Partial<FboRegistration>>({})
-  const [licenseForm, setLicenseForm] = useState<Partial<CocobodLicense>>({})
+  const [certValues, setCertValues] = useState<Record<string, unknown>>({})
+  const [fboValues, setFboValues] = useState<Record<string, unknown>>({})
+  const [licenseValues, setLicenseValues] = useState<Record<string, unknown>>({})
+
+  // Field lists, order, labels and required-ness all come from Configuration > Forms.
+  const certConfig    = useFormConfig(GOVERNANCE_CERTIFICATION_FORM_ID)
+  const fboConfig     = useFormConfig(GOVERNANCE_FBO_FORM_ID)
+  const licenseConfig = useFormConfig(GOVERNANCE_LBC_FORM_ID)
+  const certStep    = certConfig.steps[0]
+  const fboStep     = fboConfig.steps[0]
+  const licenseStep = licenseConfig.steps[0]
+
+  const certExtra = useMemo(() => ({
+    certificationType: toOptions(CERTIFICATION_TYPES),
+    status:            toOptions(COMPLIANCE_STATUSES),
+  }), [])
+  const fboExtra = useMemo(() => ({ status: toOptions(FBO_STATUSES) }), [])
+  const certOptions = useDynamicFieldOptions({ extra: certExtra })
+  const fboOptions  = useDynamicFieldOptions({ extra: fboExtra })
 
   const certs = compliance.filter(c => c.cooperativeId === scopeId)
   const fbos = fboRegistrations.filter(f => f.cooperativeId === scopeId)
   const licenses = cocobodLicenses.filter(l => l.cooperativeId === scopeId)
 
   function openAddCert() {
-    setCertForm({ cooperativeId: scopeId, certificationType: 'Fairtrade Certification', status: 'Valid' })
+    setCertValues({ cooperativeId: scopeId, certificationType: 'Fairtrade Certification', status: 'Valid' })
     setShowCertForm(true)
   }
   function saveCert() {
-    if (!certForm.certificationType) return
+    const certForm = certValues as Partial<ComplianceItem>
+    if (!certConfig.isValid(certValues)) return
     setCompliance(prev => [...prev, {
       id: `cmp-${Date.now()}`,
       cooperativeId: scopeId,
@@ -1160,10 +1262,11 @@ function ComplianceTab({
   }
 
   function openAddFbo() {
-    setFboForm({ cooperativeId: scopeId, status: 'Pending' })
+    setFboValues({ cooperativeId: scopeId, status: 'Pending' })
     setShowFboForm(true)
   }
   function saveFbo() {
+    const fboForm = fboValues as Partial<FboRegistration>
     setFboRegistrations(prev => [...prev, {
       id: `fbo-${Date.now()}`,
       cooperativeId: scopeId,
@@ -1177,11 +1280,12 @@ function ComplianceTab({
   }
 
   function openAddLicense() {
-    setLicenseForm({ cooperativeId: scopeId })
+    setLicenseValues({ cooperativeId: scopeId })
     setShowLicenseForm(true)
   }
   function saveLicense() {
-    if (!licenseForm.lbcName?.trim()) return
+    const licenseForm = licenseValues as Partial<CocobodLicense>
+    if (!licenseConfig.isValid(licenseValues)) return
     setCocobodLicenses(prev => [...prev, {
       id: `lic-${Date.now()}`,
       cooperativeId: scopeId,
@@ -1189,8 +1293,8 @@ function ComplianceTab({
       licenseNumber: licenseForm.licenseNumber || null,
       agreementStartDate: licenseForm.agreementStartDate || null,
       agreementEndDate: licenseForm.agreementEndDate || null,
-      seasonalProducerPrice: licenseForm.seasonalProducerPrice ?? null,
-      premiumAmount: licenseForm.premiumAmount ?? null,
+      seasonalProducerPrice: numOrNull(licenseValues.seasonalProducerPrice),
+      premiumAmount: numOrNull(licenseValues.premiumAmount),
       season: licenseForm.season || null,
       premiumDistributionNotes: licenseForm.premiumDistributionNotes || null,
     }])
@@ -1272,18 +1376,17 @@ function ComplianceTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Type" options={CERTIFICATION_TYPES.map(t => ({ value: t, label: t }))}
-            value={certForm.certificationType ?? 'Fairtrade Certification'}
-            onChange={e => setCertForm({ ...certForm, certificationType: e.target.value as CertificationType })} />
-          <InputTemplate label="Registration #" value={certForm.registrationNumber ?? ''} onChange={e => setCertForm({ ...certForm, registrationNumber: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Issue Date" type="date" value={certForm.issueDate ?? ''} onChange={e => setCertForm({ ...certForm, issueDate: e.target.value })} />
-            <InputTemplate label="Expiry Date" type="date" value={certForm.expiryDate ?? ''} onChange={e => setCertForm({ ...certForm, expiryDate: e.target.value })} />
-          </div>
-          <SelectTemplate label="Status" options={COMPLIANCE_STATUSES.map(s => ({ value: s, label: s }))} value={certForm.status ?? 'Valid'} onChange={e => setCertForm({ ...certForm, status: e.target.value as ComplianceStatus })} />
-          <InputTemplate label="Notes" value={certForm.notes ?? ''} onChange={e => setCertForm({ ...certForm, notes: e.target.value })} />
-        </div>
+        {certStep && (
+          <DynamicFormRenderer
+              columns={2}
+            form={certConfig.form}
+            stepId={certStep.id}
+            values={certValues}
+            onChange={(k, v) => setCertValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={certOptions}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       {/* Add FBO Registration sheet */}
@@ -1298,13 +1401,17 @@ function ComplianceTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <InputTemplate label="Registration #" value={fboForm.registrationNumber ?? ''} onChange={e => setFboForm({ ...fboForm, registrationNumber: e.target.value })} />
-          <InputTemplate label="Registration Date" type="date" value={fboForm.registrationDate ?? ''} onChange={e => setFboForm({ ...fboForm, registrationDate: e.target.value })} />
-          <SelectTemplate label="Status" options={FBO_STATUSES.map(s => ({ value: s, label: s }))} value={fboForm.status ?? 'Pending'} onChange={e => setFboForm({ ...fboForm, status: e.target.value as FboStatus })} />
-          <InputTemplate label="Renewal Due" type="date" value={fboForm.renewalDueDate ?? ''} onChange={e => setFboForm({ ...fboForm, renewalDueDate: e.target.value })} />
-          <InputTemplate label="Notes" value={fboForm.notes ?? ''} onChange={e => setFboForm({ ...fboForm, notes: e.target.value })} />
-        </div>
+        {fboStep && (
+          <DynamicFormRenderer
+              columns={2}
+            form={fboConfig.form}
+            stepId={fboStep.id}
+            values={fboValues}
+            onChange={(k, v) => setFboValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={fboOptions}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       {/* Add LBC License sheet */}
@@ -1315,24 +1422,21 @@ function ComplianceTab({
         footer={
           <div className="col-span-2 flex justify-end gap-2">
             <ButtonTemplate variant="outline" label="Cancel" onClick={() => setShowLicenseForm(false)} />
-            <ButtonTemplate variant="primary" label="Add License" isDisabled={!licenseForm.lbcName?.trim()} onClick={saveLicense} />
+            <ButtonTemplate variant="primary" label="Add License" isDisabled={!licenseConfig.isValid(licenseValues)} onClick={saveLicense} />
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <InputTemplate label="LBC Name" isRequired value={licenseForm.lbcName ?? ''} onChange={e => setLicenseForm({ ...licenseForm, lbcName: e.target.value })} />
-          <InputTemplate label="License #" value={licenseForm.licenseNumber ?? ''} onChange={e => setLicenseForm({ ...licenseForm, licenseNumber: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Agreement Start" type="date" value={licenseForm.agreementStartDate ?? ''} onChange={e => setLicenseForm({ ...licenseForm, agreementStartDate: e.target.value })} />
-            <InputTemplate label="Agreement End" type="date" value={licenseForm.agreementEndDate ?? ''} onChange={e => setLicenseForm({ ...licenseForm, agreementEndDate: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Producer Price (GHS/ton)" type="number" value={licenseForm.seasonalProducerPrice?.toString() ?? ''} onChange={e => setLicenseForm({ ...licenseForm, seasonalProducerPrice: e.target.value === '' ? null : Number(e.target.value) })} />
-            <InputTemplate label="Premium (GHS)" type="number" value={licenseForm.premiumAmount?.toString() ?? ''} onChange={e => setLicenseForm({ ...licenseForm, premiumAmount: e.target.value === '' ? null : Number(e.target.value) })} />
-          </div>
-          <InputTemplate label="Season" placeholder="e.g. 2025/2026" value={licenseForm.season ?? ''} onChange={e => setLicenseForm({ ...licenseForm, season: e.target.value })} />
-          <InputTemplate label="Premium Distribution Notes" value={licenseForm.premiumDistributionNotes ?? ''} onChange={e => setLicenseForm({ ...licenseForm, premiumDistributionNotes: e.target.value })} />
-        </div>
+        {licenseStep && (
+          <DynamicFormRenderer
+              columns={2}
+            form={licenseConfig.form}
+            stepId={licenseStep.id}
+            values={licenseValues}
+            onChange={(k, v) => setLicenseValues(prev => ({ ...prev, [k]: v }))}
+            placeholders={{ season: 'e.g. 2025/2026' }}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
     </div>
   )
@@ -1352,7 +1456,17 @@ function FundsTab({
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<FundTransaction | null>(null)
   const [deleting, setDeleting] = useState<FundTransaction | null>(null)
-  const [form, setForm] = useState<Partial<FundTransaction>>({})
+  const [values, setValues] = useState<Record<string, unknown>>({})
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_FUND_FORM_ID)
+  const step = config.steps[0]
+  const extraOptions = useMemo(() => ({
+    cooperativeId:   cooperatives.map(c => ({ value: c.id, label: c.name })),
+    transactionType: toOptions(FUND_TYPES),
+    modeOfPayment:   toOptions(PAYMENT_MODES),
+  }), [cooperatives])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
 
   const filtered = funds.filter(f => f.cooperativeId === scopeId)
   const total = filtered.reduce((sum, f) => sum + (f.transactionType === 'Withdrawal' || f.transactionType === 'Loan Disbursement' ? -f.amount : f.amount), 0)
@@ -1367,7 +1481,7 @@ function FundsTab({
     { key: 'id', label: '', id: 'actions', render: (_v, row) => (
       <div className="flex items-center gap-1 justify-end">
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row) }} />
+          onClick={() => { setEditing(row); setValues({ ...row }) }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
           onClick={() => setDeleting(row)} />
       </div>
@@ -1375,11 +1489,12 @@ function FundsTab({
   ]
 
   function openAdd() {
-    setForm({ cooperativeId: scopeId, transactionType: 'Contribution', modeOfPayment: 'Mobile Money', amount: 0 })
+    setValues({ cooperativeId: scopeId, transactionType: 'Contribution', modeOfPayment: 'Mobile Money', amount: 0 })
     setAdding(true)
   }
 
   function saveNew() {
+    const form = values as Partial<FundTransaction>
     const f: FundTransaction = {
       id: `fnd-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
@@ -1395,6 +1510,7 @@ function FundsTab({
 
   function saveEdit() {
     if (!editing) return
+    const form = values as Partial<FundTransaction>
     setFunds(prev => prev.map(f => f.id === editing.id ? { ...f, ...form, amount: Number(form.amount ?? editing.amount) } as FundTransaction : f))
     setEditing(null)
   }
@@ -1412,7 +1528,9 @@ function FundsTab({
           <Wallet className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Funds</h2>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Transaction" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Transaction" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       <div className="bg-(--surface-card) rounded-xl border border-(--brand-pale)/40 p-4">
@@ -1433,18 +1551,17 @@ function FundsTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value })} />
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="Transaction Type" options={FUND_TYPES.map(t => ({ value: t, label: t }))} value={form.transactionType ?? 'Contribution'} onChange={e => setForm({ ...form, transactionType: e.target.value as FundTransactionType })} />
-            <InputTemplate label="Amount (GHS)" type="number" value={form.amount ?? 0} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="Payment Mode" options={PAYMENT_MODES.map(m => ({ value: m, label: m }))} value={form.modeOfPayment ?? 'Mobile Money'} onChange={e => setForm({ ...form, modeOfPayment: e.target.value as PaymentMode })} />
-            <InputTemplate label="Date" type="date" value={form.transactionDate ?? ''} onChange={e => setForm({ ...form, transactionDate: e.target.value })} />
-          </div>
-          <InputTemplate label="Notes" value={form.notes ?? ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
-        </div>
+        {step && (
+          <DynamicFormRenderer
+              columns={2}
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={(k, v) => setValues(prev => ({ ...prev, [k]: v }))}
+            optionsOverride={dynamicOptions}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Delete Transaction" message="Delete this fund transaction record?" confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
@@ -1466,8 +1583,18 @@ function DocumentsTab({
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<GovernanceDocument | null>(null)
   const [deleting, setDeleting] = useState<GovernanceDocument | null>(null)
-  const [form, setForm] = useState<Partial<GovernanceDocument>>({})
+  const [values, setValues] = useState<Record<string, unknown>>({})
   const [titleError, setTitleError] = useState<string | undefined>()
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_DOCUMENT_FORM_ID)
+  const step = config.steps[0]
+  const extraOptions = useMemo(() => ({
+    cooperativeId: cooperatives.map(c => ({ value: c.id, label: c.name })),
+    documentType:  toOptions(DOCUMENT_TYPES),
+    status:        toOptions(['Active', 'Archived']),
+  }), [cooperatives])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
 
   const filtered = documents.filter(d => d.cooperativeId === scopeId)
 
@@ -1480,21 +1607,27 @@ function DocumentsTab({
     { key: 'id', label: '', id: 'actions', render: (_v, row) => (
       <div className="flex items-center gap-1 justify-end">
         <ButtonTemplate variant="outline" size="sm" isIcon tooltip="Edit" leftIcon={<Pencil className="w-3.5 h-3.5" />}
-          onClick={() => { setEditing(row); setForm(row); setTitleError(undefined) }} />
+          onClick={() => { setEditing(row); setValues({ ...row }); setTitleError(undefined) }} />
         <ButtonTemplate variant="danger" size="sm" isIcon tooltip="Delete" leftIcon={<Trash2 className="w-3.5 h-3.5" />}
           onClick={() => setDeleting(row)} />
       </div>
     ) },
   ]
 
+  function setValue(key: string, value: unknown) {
+    setValues(prev => ({ ...prev, [key]: value }))
+    if (key === 'title') setTitleError(undefined)
+  }
+
   function openAdd() {
-    setForm({ cooperativeId: scopeId, documentType: 'Constitution', status: 'Active' })
+    setValues({ cooperativeId: scopeId, documentType: 'Constitution', status: 'Active' })
     setTitleError(undefined)
     setAdding(true)
   }
 
   function saveNew() {
-    if (!form.title?.trim()) { setTitleError('Title is required'); return }
+    const form = values as Partial<GovernanceDocument>
+    if (!config.isValid(values)) { setTitleError(`${config.missingLabels('details', values)[0]} is required`); return }
     const d: GovernanceDocument = {
       id: `doc-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? cooperatives[0]?.id ?? '',
@@ -1509,8 +1642,8 @@ function DocumentsTab({
 
   function saveEdit() {
     if (!editing) return
-    if (!form.title?.trim()) { setTitleError('Title is required'); return }
-    setDocuments(prev => prev.map(d => d.id === editing.id ? { ...d, ...form } as GovernanceDocument : d))
+    if (!config.isValid(values)) { setTitleError(`${config.missingLabels('details', values)[0]} is required`); return }
+    setDocuments(prev => prev.map(d => d.id === editing.id ? { ...d, ...values } as GovernanceDocument : d))
     setEditing(null)
   }
 
@@ -1527,7 +1660,9 @@ function DocumentsTab({
           <FileText className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
           <h2 className="text-base font-bold text-gray-900">Documents</h2>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Document" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Document" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       <DatagridTemplate columns={columns} data={filtered} rowKey="id" defaultPageSize={10} pageSizeOptions={[10, 25, 50, 0]} emptyLabel="No documents found" />
@@ -1543,13 +1678,19 @@ function DocumentsTab({
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={cooperatives.map(c => ({ value: c.id, label: c.name }))} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value })} />
-          <InputTemplate label="Title" isRequired error={titleError} value={form.title ?? ''} onChange={e => { setForm({ ...form, title: e.target.value }); setTitleError(undefined) }} />
-          <SelectTemplate label="Document Type" options={DOCUMENT_TYPES.map(t => ({ value: t, label: t }))} value={form.documentType ?? 'Constitution'} onChange={e => setForm({ ...form, documentType: e.target.value as DocumentType })} />
-          <InputTemplate label="Upload Date" type="date" value={form.uploadDate ?? ''} onChange={e => setForm({ ...form, uploadDate: e.target.value })} />
-          <SelectTemplate label="Status" options={(['Active', 'Archived'] as const).map(s => ({ value: s, label: s }))} value={form.status ?? 'Active'} onChange={e => setForm({ ...form, status: e.target.value as 'Active' | 'Archived' })} />
-        </div>
+        {step && (
+          <div className="px-6 py-5 flex flex-col gap-4">
+            <DynamicFormRenderer
+              columns={2}
+              form={config.form}
+              stepId={step.id}
+              values={values}
+              onChange={setValue}
+              optionsOverride={dynamicOptions}
+            />
+            <FormError message={titleError} />
+          </div>
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Delete Document" message={`Delete "${deleting?.title}"?`} confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />
@@ -1599,7 +1740,11 @@ function TraceabilityTab() {
   const [coopFilter, setCoopFilter] = useState('all')
   const [adding, setAdding] = useState(false)
   const [deleting, setDeleting] = useState<TraceabilityRecord | null>(null)
-  const [form, setForm] = useState<Partial<TraceabilityRecord>>({})
+  const [values, setValues] = useState<Record<string, unknown>>({})
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(GOVERNANCE_TRACEABILITY_FORM_ID)
+  const step = config.steps[0]
 
   function coopName(id: string) {
     return COOPERATIVES.find(c => c.id === id)?.name ?? '—'
@@ -1633,9 +1778,24 @@ function TraceabilityTab() {
   const dried = filtered.filter(r => r.dryingConfirmed).length
   const receipts = filtered.filter(r => r.lbcReceiptNumber).length
 
-  const farmerOptionsForForm = Object.entries(FARMER_COOPERATIVE_MAP)
-    .filter(([, coopId]) => coopId === form.cooperativeId)
-    .map(([farmerId]) => ({ value: farmerId, label: farmerName(farmerId) }))
+  // Farmer choices depend on the cooperative currently picked in the sheet.
+  const selectedCoopId = String(values.cooperativeId ?? '')
+  const farmerOptionsForForm = useMemo(
+    () => Object.entries(FARMER_COOPERATIVE_MAP)
+      .filter(([, coopId]) => coopId === selectedCoopId)
+      .map(([farmerId]) => ({ value: farmerId, label: FARMERS_LIST.find(f => f.id === farmerId)?.fullName ?? '—' })),
+    [selectedCoopId],
+  )
+  const extraOptions = useMemo(() => ({
+    cooperativeId: COOPERATIVES.map(c => ({ value: c.id, label: c.name })),
+    farmerId:      farmerOptionsForForm,
+  }), [farmerOptionsForForm])
+  const dynamicOptions = useDynamicFieldOptions({ extra: extraOptions })
+
+  function setValue(key: string, value: unknown) {
+    // Changing cooperative invalidates the farmer picked from the previous one.
+    setValues(prev => key === 'cooperativeId' ? { ...prev, cooperativeId: value, farmerId: '' } : { ...prev, [key]: value })
+  }
 
   const columns: DatagridColumn<TraceabilityRecord>[] = [
     { key: 'harvestDate', label: 'Harvest Date' },
@@ -1663,12 +1823,13 @@ function TraceabilityTab() {
   ]
 
   function openAdd() {
-    setForm({ cooperativeId: COOPERATIVES[0]?.id, harvestDate: '', batchWeightKg: 0, fermentationConfirmed: false, dryingConfirmed: false, season: '' })
+    setValues({ cooperativeId: COOPERATIVES[0]?.id, farmerId: '', harvestDate: '', batchWeightKg: 0, fermentationConfirmed: false, dryingConfirmed: false, season: '' })
     setAdding(true)
   }
 
   function saveNew() {
-    if (!form.harvestDate || !form.batchWeightKg || !form.farmerId) return
+    if (!config.isValid(values)) return
+    const form = values as Partial<TraceabilityRecord>
     const r: TraceabilityRecord = {
       id: `trc-${Date.now()}`,
       cooperativeId: form.cooperativeId ?? COOPERATIVES[0]?.id ?? '',
@@ -1677,10 +1838,10 @@ function TraceabilityTab() {
       batchWeightKg: Number(form.batchWeightKg ?? 0),
       fermentationConfirmed: form.fermentationConfirmed ?? false,
       dryingConfirmed: form.dryingConfirmed ?? false,
-      dryingMoisturePct: form.dryingMoisturePct != null ? Number(form.dryingMoisturePct) : null,
+      dryingMoisturePct: numOrNull(values.dryingMoisturePct),
       lbcReceiptNumber: form.lbcReceiptNumber ?? null,
-      producerPrice: form.producerPrice != null ? Number(form.producerPrice) : null,
-      premiumPaid: form.premiumPaid != null ? Number(form.premiumPaid) : null,
+      producerPrice: numOrNull(values.producerPrice),
+      premiumPaid: numOrNull(values.premiumPaid),
       saleDate: form.saleDate ?? null,
       season: form.season ?? '',
     }
@@ -1704,7 +1865,9 @@ function TraceabilityTab() {
             <p className="text-xs text-gray-500">Track produce batches from farm to sale — supports traceability and sustainability compliance</p>
           </div>
         </div>
-        <ButtonTemplate variant="primary" size="sm" label="Add Batch" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        <PermissionGate action="create">
+          <ButtonTemplate variant="primary" size="sm" label="Add Batch" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={openAdd} />
+        </PermissionGate>
       </div>
 
       {/* stats */}
@@ -1751,34 +1914,25 @@ function TraceabilityTab() {
         footer={
           <div className="col-span-2 flex justify-end gap-2">
             <ButtonTemplate variant="outline" label="Cancel" onClick={() => setAdding(false)} />
-            <ButtonTemplate variant="primary" label="Add Batch" isDisabled={!form.harvestDate || !form.batchWeightKg || !form.farmerId} onClick={saveNew} />
+            <ButtonTemplate variant="primary" label="Add Batch" isDisabled={!config.isValid(values)} onClick={saveNew} />
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <SelectTemplate label="Cooperative" options={coopOptions.filter(o => o.value !== 'all')} value={form.cooperativeId ?? ''} onChange={e => setForm({ ...form, cooperativeId: e.target.value, farmerId: undefined })} />
-          <SelectTemplate label="Farmer" options={farmerOptionsForForm} placeholder={farmerOptionsForForm.length ? 'Select a farmer...' : 'No farmers in this cooperative'} value={form.farmerId ?? ''} onChange={e => setForm({ ...form, farmerId: e.target.value })} isDisabled={!form.cooperativeId} />
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Harvest Date" isRequired type="date" value={form.harvestDate ?? ''} onChange={e => setForm({ ...form, harvestDate: e.target.value })} />
-            <InputTemplate label="Batch Weight (kg)" isRequired type="number" value={form.batchWeightKg ?? 0} onChange={e => setForm({ ...form, batchWeightKg: Number(e.target.value) })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Drying Moisture (%)" type="number" step="0.1" value={form.dryingMoisturePct ?? ''} onChange={e => setForm({ ...form, dryingMoisturePct: e.target.value === '' ? null : Number(e.target.value) })} />
-            <InputTemplate label="LBC Receipt #" value={form.lbcReceiptNumber ?? ''} onChange={e => setForm({ ...form, lbcReceiptNumber: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Producer Price (GHS/ton)" type="number" value={form.producerPrice ?? ''} onChange={e => setForm({ ...form, producerPrice: e.target.value === '' ? null : Number(e.target.value) })} />
-            <InputTemplate label="Premium (GHS)" type="number" value={form.premiumPaid ?? ''} onChange={e => setForm({ ...form, premiumPaid: e.target.value === '' ? null : Number(e.target.value) })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="Sale Date" type="date" value={form.saleDate ?? ''} onChange={e => setForm({ ...form, saleDate: e.target.value })} />
-            <InputTemplate label="Season" placeholder="e.g. 2025/2026" value={form.season ?? ''} onChange={e => setForm({ ...form, season: e.target.value })} />
-          </div>
-          <div className="flex flex-col gap-2">
-            <CheckboxTemplate label="Fermentation confirmed" checked={form.fermentationConfirmed ?? false} onChange={() => setForm({ ...form, fermentationConfirmed: !form.fermentationConfirmed })} />
-            <CheckboxTemplate label="Drying confirmed" checked={form.dryingConfirmed ?? false} onChange={() => setForm({ ...form, dryingConfirmed: !form.dryingConfirmed })} />
-          </div>
-        </div>
+        {step && (
+          <DynamicFormRenderer
+              columns={2}
+            form={config.form}
+            stepId={step.id}
+            values={values}
+            onChange={setValue}
+            optionsOverride={dynamicOptions}
+            placeholders={{
+              farmerId: farmerOptionsForForm.length ? 'Select a farmer...' : 'No farmers in this cooperative',
+              season:   'e.g. 2025/2026',
+            }}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       <ConfirmModal open={!!deleting} title="Delete Batch" message="Delete this traceability batch record?" confirmLabel="Delete" variant="danger" onConfirm={confirmDelete} onCancel={() => setDeleting(null)} />

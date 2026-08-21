@@ -17,19 +17,22 @@ import {
 } from 'recharts'
 
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
-import { InputTemplate } from '@/customComponents/InputTemplate'
-import { SelectTemplate } from '@/customComponents/SelectTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { FileUploadTemplate } from '@/customComponents/FileUploadTemplate'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { PaginationBar } from '@/customComponents/PaginationBar'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import {
+  FARMER_REGISTRATION_FORM_ID, FARMER_ASSIGN_AGENT_FORM_ID,
+  FARMER_ENROLL_FORM_ID, PM_FARMER_EDIT_FORM_ID,
+} from '@/dataCenter/formEngine'
 
 import { getFarmers, getProgramOptions } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/functions'
 import type { Farmer, FriZone, ProgramOption } from '@/app/(admin)/dashboard/FarmersRegistry/_logics/interface'
 import { PM_PROGRAM_IDS, PM_PROGRAMS, isPmProgram } from '@/dataCenter/pmScope'
 import { useCropOptions } from '@/dataCenter/useCropOptions'
-import { COMMUNITIES } from '@/dataCenter/communityProfile'
-import { COOPERATIVES } from '@/dataCenter/cooperatives'
 
 // ── PM scoping ─────────────────────────────────────────────────────────────────
 // Keep unassigned farmers (needed for enroll flows) plus farmers enrolled in one
@@ -94,11 +97,6 @@ const REGION_OPTIONS = [
   { value: 'western_north',label: 'Western North'},
 ]
 
-const GENDER_OPTIONS = [
-  { value: 'male',             label: 'Male'             },
-  { value: 'female',           label: 'Female'           },
-  { value: 'prefer_not_to_say',label: 'Prefer not to say'},
-]
 
 const CSV_FIELDS = 'full_name, phone, national_id, date_of_birth, gender, region_code, district, community, primary_crop, total_farm_size_ha'
 
@@ -202,429 +200,12 @@ function StepIndicator({ step, total }: { step: number; total: number }) {
   )
 }
 
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <p className="text-[11px] font-bold tracking-widest uppercase pt-1" style={{ color: 'var(--brand-forest)' }}>
-      {label}
-    </p>
-  )
-}
-
-function YesNo({ value, onChange }: { value: '' | 'yes' | 'no'; onChange: (v: 'yes' | 'no') => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {(['yes', 'no'] as const).map(v => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          className={cn(
-            'h-10 rounded-lg border text-sm font-medium transition-colors capitalize',
-            value === v
-              ? 'border-(--brand-forest) text-(--brand-forest) bg-green-50'
-              : 'border-gray-200 text-gray-500 hover:border-gray-300',
-          )}
-        >
-          {v === 'yes' ? 'Yes' : 'No'}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function ChipSelect({ options, value, onChange }: {
-  options: string[]; value: string[]; onChange: (v: string[]) => void
-}) {
-  function toggle(opt: string) {
-    onChange(value.includes(opt) ? value.filter(x => x !== opt) : [...value, opt])
-  }
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map(opt => {
-        const on = value.includes(opt)
-        return (
-          <button
-            key={opt} type="button" onClick={() => toggle(opt)}
-            className={cn(
-              'px-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
-              on ? 'border-(--brand-forest) text-(--brand-forest) bg-green-50'
-                 : 'border-gray-200 text-gray-600 hover:border-gray-300',
-            )}
-          >
-            {opt}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function PhotoArea({ label, wide }: { label: string; wide?: boolean }) {
-  return (
-    <div className={cn('flex flex-col gap-1', wide && 'col-span-2')}>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-      <div className="flex items-center justify-center gap-2 h-20 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 text-xs cursor-pointer hover:border-gray-300 transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        Take photo or upload
-      </div>
-    </div>
-  )
-}
-
-// ── Step pages ─────────────────────────────────────────────────────────────────
-
-function Step1({ f, set, programs }: {
-  f: StepperForm
-  set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void
-  programs: ProgramOption[]
-}) {
-  const cohorts = programs.find(p => p.id === f.programId)?.cohorts ?? []
-  return (
-    <div className="space-y-3">
-      <SectionHeader label="Name & Contact" />
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate label="FIRST NAME" isRequired placeholder="Ama"
-          value={f.firstName} onChange={e => set('firstName', e.target.value)} />
-        <InputTemplate label="LAST NAME" isRequired placeholder="Mensah"
-          value={f.lastName} onChange={e => set('lastName', e.target.value)} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <SelectTemplate label="GENDER"
-          options={[{ value: '', label: 'Select' }, ...GENDER_OPTIONS]}
-          value={f.gender} onChange={e => set('gender', e.target.value)} />
-        <InputTemplate label="DATE OF BIRTH" type="date"
-          value={f.dob} onChange={e => set('dob', e.target.value)} />
-      </div>
-      <InputTemplate label="PHONE NUMBER" isRequired placeholder="0241 234 567"
-        value={f.phone} onChange={e => set('phone', e.target.value)} />
-
-      <SectionHeader label="Community & Program" />
-      <SelectTemplate label="COMMUNITY"
-        options={[{ value: '', label: 'Select community' }, ...COMMUNITIES.map(c => ({ value: c.name, label: c.name }))]}
-        value={f.community} onChange={e => set('community', e.target.value)} />
-      <SelectTemplate label="GROUP / COOPERATIVE"
-        options={[{ value: '', label: 'Select group' }, ...COOPERATIVES.map(c => ({ value: c.name, label: c.name }))]}
-        value={f.group} onChange={e => set('group', e.target.value)} />
-      <div className="grid grid-cols-2 gap-3">
-        <SelectTemplate label="PROGRAM (OPTIONAL)"
-          options={[{ value: '', label: 'None' }, ...programs.map(p => ({ value: p.id, label: p.name }))]}
-          value={f.programId} onChange={e => set('programId', e.target.value)} />
-        <SelectTemplate label="COHORT (OPTIONAL)"
-          options={[{ value: '', label: 'None' }, ...cohorts.map(c => ({ value: c.id, label: c.name }))]}
-          value={f.cohortId} onChange={e => set('cohortId', e.target.value)} />
-      </div>
-    </div>
-  )
-}
-
-function Step2({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
-  return (
-    <div className="space-y-3">
-      <SectionHeader label="ID Document" />
-      <SelectTemplate label="ID TYPE" isRequired
-        options={[
-          { value: '', label: 'Select ID type' },
-          { value: 'ghana_card', label: 'Ghana Card' },
-          { value: 'passport', label: 'Passport' },
-          { value: 'voter_id', label: "Voter's ID" },
-          { value: 'nhis', label: 'NHIS Card' },
-          { value: 'drivers', label: "Driver's Licence" },
-        ]}
-        value={f.idType} onChange={e => set('idType', e.target.value)} />
-      <InputTemplate label="ID NUMBER" isRequired placeholder="GHA-XXXXXXXXX-X"
-        value={f.idNumber} onChange={e => set('idNumber', e.target.value)} />
-
-      <SectionHeader label="Photos" />
-      <div className="space-y-3">
-        <PhotoArea label="Passport / Profile Photo" wide />
-        <div className="grid grid-cols-2 gap-3">
-          <PhotoArea label="ID Front" />
-          <PhotoArea label="ID Back" />
-        </div>
-      </div>
-
-      <SectionHeader label="Voice Consent" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Voice Consent Recording</p>
-        <button type="button" className="flex items-center gap-2 h-9 px-4 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-gray-300 transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-          Record
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function Step3({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
-  const CROP_OPTIONS = useCropOptions()
-  return (
-    <div className="space-y-3">
-      <SectionHeader label="Farm Experience" />
-      <div className="grid grid-cols-2 gap-3">
-        <InputTemplate label="YEARS OF EXPERIENCE" type="number" placeholder="e.g. 5"
-          value={f.yearsExp} onChange={e => set('yearsExp', e.target.value)} />
-        <InputTemplate label="ACRES CULTIVATED" type="number" placeholder="e.g. 3.5"
-          value={f.acres} onChange={e => set('acres', e.target.value)} />
-      </div>
-
-      <SectionHeader label="Crops" />
-      <SelectTemplate label="PRIMARY CROP" isRequired
-        options={[{ value: '', label: 'Select crop' }, ...CROP_OPTIONS]}
-        value={f.primaryCrop} onChange={e => set('primaryCrop', e.target.value)} />
-      <InputTemplate label="BAGS (100KG) — PRIMARY CROP, PREV SEASON" type="number" placeholder="e.g. 20"
-        value={f.bagsPrevSeason} onChange={e => set('bagsPrevSeason', e.target.value)} />
-      <SelectTemplate label="SECONDARY CROP"
-        options={[{ value: '', label: 'None' }, ...CROP_OPTIONS]}
-        value={f.secondaryCrop} onChange={e => set('secondaryCrop', e.target.value)} />
-
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">OWNS A TRACTOR?</p>
-        <YesNo value={f.ownsTractor} onChange={v => set('ownsTractor', v)} />
-      </div>
-    </div>
-  )
-}
-
-function Step4({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
-  const MARITAL = [
-    { value: '', label: 'Select' },
-    { value: 'single', label: 'Single' },
-    { value: 'married', label: 'Married' },
-    { value: 'divorced', label: 'Divorced' },
-    { value: 'widowed', label: 'Widowed' },
-  ]
-  const PREFS = ['School', 'Roads', 'Water', 'Hospital', 'Police station', 'Banks']
-  return (
-    <div className="space-y-3">
-      <SectionHeader label="Household" />
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">OWNS A HOUSE?</p>
-          <YesNo value={f.ownsHouse} onChange={v => set('ownsHouse', v)} />
-        </div>
-        <SelectTemplate label="MARITAL STATUS"
-          options={MARITAL} value={f.maritalStatus}
-          onChange={e => set('maritalStatus', e.target.value)} />
-      </div>
-      <InputTemplate label="NUMBER OF CHILDREN" type="number" placeholder="0"
-        value={f.numChildren} onChange={e => set('numChildren', e.target.value)} />
-
-      <SectionHeader label="Other Business" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">ANY OTHER BUSINESS?</p>
-        <YesNo value={f.otherBusiness} onChange={v => set('otherBusiness', v)} />
-      </div>
-
-      <SectionHeader label="Community Background" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">NATIVE OF THIS COMMUNITY?</p>
-        <YesNo value={f.nativeCommunity} onChange={v => set('nativeCommunity', v)} />
-      </div>
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">COMMUNITY PREFERENCES (SELECT ALL THAT APPLY)</p>
-        <ChipSelect options={PREFS} value={f.communityPrefs}
-          onChange={v => set('communityPrefs', v)} />
-      </div>
-    </div>
-  )
-}
-
-function GpsField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [capturing, setCapturing] = useState(false)
-  const [manual,    setManual]    = useState(false)
-  const [lat,       setLat]       = useState('')
-  const [lng,       setLng]       = useState('')
-  const [error,     setError]     = useState('')
-
-  function capture() {
-    if (!navigator.geolocation) { setError('Geolocation not supported by this browser'); return }
-    setCapturing(true); setError('')
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const la = pos.coords.latitude.toFixed(6)
-        const lo = pos.coords.longitude.toFixed(6)
-        setLat(la); setLng(lo)
-        onChange(`${la}, ${lo}`)
-        setCapturing(false)
-      },
-      err => {
-        setError(err.code === 1 ? 'Location permission denied' : 'Unable to retrieve location')
-        setCapturing(false)
-      },
-      { enableHighAccuracy: true, timeout: 10000 },
-    )
-  }
-
-  function applyManual() {
-    const la = parseFloat(lat); const lo = parseFloat(lng)
-    if (isNaN(la) || la < -90  || la > 90)  { setError('Latitude must be between -90 and 90');  return }
-    if (isNaN(lo) || lo < -180 || lo > 180) { setError('Longitude must be between -180 and 180'); return }
-    setError('')
-    onChange(`${la.toFixed(6)}, ${lo.toFixed(6)}`)
-  }
-
-  const captured = value && !manual
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">GPS LOCATION</p>
-        <button
-          type="button"
-          onClick={() => { setManual(v => !v); setError('') }}
-          className="text-[10px] font-medium transition-colors"
-          style={{ color: 'var(--brand-green)' }}
-        >
-          {manual ? 'Use auto-capture' : 'Enter manually'}
-        </button>
-      </div>
-
-      {!manual ? (
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            'flex-1 flex items-center gap-2 border rounded-xl px-3 h-10 transition-colors',
-            captured ? 'border-green-300 bg-green-50' : 'border-gray-200',
-          )}>
-            <input
-              readOnly
-              className="flex-1 text-sm outline-none bg-transparent placeholder:text-gray-400"
-              style={{ color: captured ? 'var(--brand-forest)' : '#9ca3af' }}
-              placeholder="Tap to capture location"
-              value={value}
-            />
-            {captured && <Check className="w-3.5 h-3.5 shrink-0 text-green-500" />}
-          </div>
-          <button
-            type="button"
-            onClick={capture}
-            disabled={capturing}
-            className="shrink-0 w-10 h-10 rounded-xl border border-gray-200 flex items-center justify-center hover:border-gray-300 transition-colors disabled:opacity-50"
-            style={{ color: 'var(--brand-mid)' }}
-            title="Capture GPS"
-          >
-            {capturing
-              ? <RefreshCw className="w-4 h-4 animate-spin" />
-              : <MapPin className="w-4 h-4" />}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">LATITUDE</p>
-              <input
-                type="number" step="any" placeholder="e.g. 9.408293"
-                value={lat} onChange={e => setLat(e.target.value)}
-                className="w-full h-10 border border-gray-200 rounded-xl px-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
-              />
-            </div>
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">LONGITUDE</p>
-              <input
-                type="number" step="any" placeholder="e.g. -0.851492"
-                value={lng} onChange={e => setLng(e.target.value)}
-                className="w-full h-10 border border-gray-200 rounded-xl px-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark)"
-              />
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={applyManual}
-            className="w-full h-9 rounded-xl border text-sm font-medium transition-colors"
-            style={{ borderColor: 'var(--brand-green)', color: 'var(--brand-green)' }}
-          >
-            Apply Coordinates
-          </button>
-          {value && (
-            <p className="text-xs text-green-600 flex items-center gap-1">
-              <Check className="w-3 h-3" /> Saved: {value}
-            </p>
-          )}
-        </div>
-      )}
-
-      {error && <p className="text-xs text-red-500 flex items-center gap-1"><X className="w-3 h-3" />{error}</p>}
-    </div>
-  )
-}
-
-function Step5({ f, set }: { f: StepperForm; set: (k: keyof StepperForm, v: StepperForm[keyof StepperForm]) => void }) {
-  const ASSETS = ['Tractor', 'Irrigation system', 'Storage facility', 'Processing equipment', 'Solar pump', 'Drone sprayer', 'Motorbike', 'Other']
-  return (
-    <div className="space-y-3">
-      <SectionHeader label="Other Agric Engagements" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">ENGAGED WITH OTHER AGRIC COMPANIES?</p>
-        <YesNo value={f.engagedAgric} onChange={v => set('engagedAgric', v)} />
-      </div>
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">DESIRED ASSETS (SELECT ALL THAT APPLY)</p>
-        <ChipSelect options={ASSETS} value={f.desiredAssets} onChange={v => set('desiredAssets', v)} />
-      </div>
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">WILLING TO PARTICIPATE IN INPUT CREDIT?</p>
-        <YesNo value={f.inputCredit} onChange={v => set('inputCredit', v)} />
-      </div>
-
-      <SectionHeader label="Organisation Engagement" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">ENGAGED WITH OTHER ORGANISATIONS?</p>
-        <YesNo value={f.engagedOrgs} onChange={v => set('engagedOrgs', v)} />
-      </div>
-
-      <SectionHeader label="Feedback" />
-      <div>
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">WHAT DO YOU WANT ASINYO TO IMPROVE?</p>
-        <textarea
-          rows={3}
-          placeholder="Farmer's suggestions..."
-          value={f.suggestions}
-          onChange={e => set('suggestions', e.target.value)}
-          className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) resize-none"
-        />
-      </div>
-
-      <SectionHeader label="GPS & Consent" />
-      <GpsField
-        value={f.gpsLocation}
-        onChange={v => set('gpsLocation', v)}
-      />
-
-      <div className="rounded-xl border p-4 space-y-2.5" style={{ borderColor: 'var(--brand-pale)', background: 'var(--brand-gray)' }}>
-        <p className="text-sm font-semibold" style={{ color: 'var(--brand-forest)' }}>Consent</p>
-        <p className="text-xs leading-relaxed text-gray-500">
-          I confirm that the farmer has consented to their personal data being collected and
-          stored by ASINYO CropGuard for agricultural program management, insurance, and credit facilitation services.
-        </p>
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <div
-            className={cn(
-              'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors',
-              f.consentGiven ? 'bg-(--brand-dark) border-(--brand-dark)' : 'border-gray-300 bg-white'
-            )}
-            onClick={() => set('consentGiven', !f.consentGiven)}
-          >
-            {f.consentGiven && <Check className="w-2.5 h-2.5 text-white" />}
-          </div>
-          <span className="text-xs" style={{ color: 'var(--brand-forest)' }}>
-            Farmer has given informed consent <span className="text-red-500">*</span>
-          </span>
-        </label>
-      </div>
-    </div>
-  )
-}
-
 // ── Step titles ───────────────────────────────────────────────────────────────
 
 const STEP_TITLES = ['Basic Details', 'Identity Details', 'Farm Details', 'Household Details', 'Support Details']
+
+/** Steps of the shared farmer-registration form this portal collects (no Financial step). */
+const PM_FARMER_STEP_IDS = ['personal', 'identity', 'farm', 'household', 'support']
 
 // ── AddFarmerSheet ────────────────────────────────────────────────────────────
 
@@ -636,32 +217,33 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<StepperForm>(EMPTY_STEPPER)
   const [saving, setSaving] = useState(false)
-  const TOTAL = 5
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  // The shared farmer-registration form also carries a Financial step, which this
+  // portal does not collect — render only the five steps the PM wizard uses.
+  const config = useFormConfig(FARMER_REGISTRATION_FORM_ID)
+  const steps = config.steps.filter(s => PM_FARMER_STEP_IDS.includes(s.id))
+  const values = form as unknown as Record<string, unknown>
+  const dynamicOptions = useDynamicFieldOptions({ programs, selectedProgramId: form.programId })
+
+  const TOTAL = steps.length
+  const currentStep = steps[step - 1]
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) { setStep(1); setForm(EMPTY_STEPPER) }
   }, [open])
 
-  function set(k: keyof StepperForm, v: StepperForm[keyof StepperForm]) {
-    setForm(prev => ({ ...prev, [k]: v }))
+  function set(k: string, v: unknown) {
+    setForm(prev => ({ ...prev, [k]: v }) as StepperForm)
   }
 
   function validateStep(): boolean {
-    if (step === 1) {
-      if (!form.firstName.trim()) { toast.error('First name is required'); return false }
-      if (!form.lastName.trim())  { toast.error('Last name is required'); return false }
-      if (!form.phone.trim())     { toast.error('Phone number is required'); return false }
-    }
-    if (step === 2) {
-      if (!form.idType)           { toast.error('ID type is required'); return false }
-      if (!form.idNumber.trim())  { toast.error('ID number is required'); return false }
-    }
-    if (step === 3) {
-      if (!form.primaryCrop)      { toast.error('Primary crop is required'); return false }
-    }
-    if (step === 5) {
-      if (!form.consentGiven)     { toast.error('Farmer consent is required'); return false }
+    if (!currentStep) return true
+    const missing = config.missingLabels(currentStep.id, values)
+    if (missing.length > 0) {
+      toast.error(`${missing[0]} is required`)
+      return false
     }
     return true
   }
@@ -689,19 +271,11 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
     onClose()
   }
 
-  const stepContent: Record<number, React.ReactNode> = {
-    1: <Step1 f={form} set={set} programs={programs} />,
-    2: <Step2 f={form} set={set} />,
-    3: <Step3 f={form} set={set} />,
-    4: <Step4 f={form} set={set} />,
-    5: <Step5 f={form} set={set} />,
-  }
-
   return (
     <SheetTemplate
       open={open}
       onClose={onClose}
-      title={STEP_TITLES[step - 1]}
+      title={STEP_TITLES[step - 1] ?? currentStep?.name ?? 'Register Farmer'}
       subtitle={`Step ${step} of ${TOTAL}`}
       size="lg"
       bodyClassName="px-6 py-4"
@@ -723,7 +297,17 @@ function AddFarmerSheet({ open, onClose, onSave, programs }: {
       }
     >
       <StepIndicator step={step} total={TOTAL} />
-      {stepContent[step]}
+      {currentStep && (
+        <DynamicFormRenderer
+          form={config.form}
+          stepId={currentStep.id}
+          values={values}
+          onChange={set}
+          optionsOverride={dynamicOptions}
+          labelVariant="compact"
+          className="gap-3"
+        />
+      )}
     </SheetTemplate>
   )
 }
@@ -763,29 +347,33 @@ const DISTRICT_OPTIONS: Record<string, { value: string; label: string }[]> = {
 
 // ── Assign Agent sheet ─────────────────────────────────────────────────────────
 
-const SELECT_STYLE = {
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat' as const,
-  backgroundPosition: 'right 10px center',
-}
-
-const SELECT_CLS = 'w-full h-10 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-9 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) cursor-pointer disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed'
-
 function AssignAgentSheet({ open, onClose, farmer, farmerCount }: {
   open: boolean; onClose: () => void
   farmer: Farmer | null; farmerCount: number
 }) {
-  const [agent, setAgent] = useState('')
+  const [values, setValues] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(FARMER_ASSIGN_AGENT_FORM_ID)
+  const step = config.steps[0]
+  const dynamicOptions = useDynamicFieldOptions({
+    agents: MOCK_AGENTS.map(a => ({ value: a, label: a })),
+  })
+  const agent = String(values.agent ?? '')
 
   useEffect(() => {
     if (!open) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAgent(farmer?.enrollment?.agentName ?? '')
+    setValues({ agent: farmer?.enrollment?.agentName ?? '' })
   }, [open, farmer])
 
   const isSingle = !!farmer
   const title = isSingle ? 'Assign Agent to Farmer' : `Assign Agent — ${farmerCount} Farmers`
+
+  function setValue(k: string, v: unknown) {
+    setValues(prev => ({ ...prev, [k]: v }))
+  }
 
   async function handleSave() {
     if (!agent) { toast.error('Select an agent'); return }
@@ -818,13 +406,17 @@ function AssignAgentSheet({ open, onClose, farmer, farmerCount }: {
           {farmerCount} farmers will be updated.
         </div>
       )}
-      <div className="space-y-1.5">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Field Agent</p>
-        <select value={agent} onChange={e => setAgent(e.target.value)} className={SELECT_CLS} style={SELECT_STYLE}>
-          <option value="">Select agent…</option>
-          {MOCK_AGENTS.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-      </div>
+      {step && (
+        <DynamicFormRenderer
+          form={config.form}
+          stepId={step.id}
+          values={values}
+          onChange={setValue}
+          optionsOverride={dynamicOptions}
+          labelVariant="compact"
+          placeholders={{ agent: 'Select agent…' }}
+        />
+      )}
     </SheetTemplate>
   )
 }
@@ -834,16 +426,22 @@ function AssignAgentSheet({ open, onClose, farmer, farmerCount }: {
 function EnrollSheet({ open, onClose, farmerCount, programs }: {
   open: boolean; onClose: () => void; farmerCount: number; programs: ProgramOption[]
 }) {
-  const [programId, setProgramId] = useState('')
-  const [cohortId,  setCohortId]  = useState('')
-  const [saving,    setSaving]    = useState(false)
+  const [values, setValues] = useState<Record<string, unknown>>({})
+  const [saving, setSaving] = useState(false)
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(FARMER_ENROLL_FORM_ID)
+  const step = config.steps[0]
+  const programId = String(values.programId ?? '')
+  const dynamicOptions = useDynamicFieldOptions({ programs, selectedProgramId: programId })
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (open) { setProgramId(''); setCohortId('') } }, [open])
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setCohortId('') }, [programId])
+  useEffect(() => { if (open) setValues({}) }, [open])
 
-  const cohorts = programs.find(p => p.id === programId)?.cohorts ?? []
+  function setValue(k: string, v: unknown) {
+    // changing the program invalidates the cohort chosen under the previous one
+    setValues(prev => (k === 'programId' ? { ...prev, programId: v, cohortId: '' } : { ...prev, [k]: v }))
+  }
 
   async function handleEnroll() {
     if (!programId) { toast.error('Select a program'); return }
@@ -865,36 +463,17 @@ function EnrollSheet({ open, onClose, farmerCount, programs }: {
       <div className="rounded-lg px-4 py-3 text-sm text-green-700 bg-green-50">
         Farmers already enrolled in the selected program will have their cohort updated.
       </div>
-      <div className="space-y-1.5">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-          Program <span className="text-red-500">*</span>
-        </p>
-        <select
-          value={programId} onChange={e => setProgramId(e.target.value)}
-          className="w-full h-10 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-9 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 focus:border-(--brand-dark) cursor-pointer"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
-          }}
-        >
-          <option value="">Select program</option>
-          {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-      </div>
-      <div className="space-y-1.5">
-        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Cohort (Optional)</p>
-        <select
-          value={cohortId} onChange={e => setCohortId(e.target.value)} disabled={!programId}
-          className="w-full h-10 text-sm rounded-lg border border-gray-200 bg-white px-3 pr-9 appearance-none focus:outline-none focus:ring-2 focus:ring-(--brand-dark)/20 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
-          }}
-        >
-          <option value="">No cohort</option>
-          {cohorts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
+      {step && (
+        <DynamicFormRenderer
+          form={config.form}
+          stepId={step.id}
+          values={values}
+          onChange={setValue}
+          optionsOverride={dynamicOptions}
+          labelVariant="compact"
+          placeholders={{ programId: 'Select program', cohortId: 'No cohort' }}
+        />
+      )}
     </SheetTemplate>
   )
 }
@@ -993,6 +572,11 @@ function FarmerSheet({
   const [form, setForm] = useState<EditFarmerForm>(EMPTY_EDIT)
   const [saving, setSaving] = useState(false)
 
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(PM_FARMER_EDIT_FORM_ID)
+  const editStep = config.steps[0]
+  const values = form as unknown as Record<string, unknown>
+
   useEffect(() => {
     if (mode === 'edit' && farmer) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1014,7 +598,15 @@ function FarmerSheet({
     }
   }, [mode, farmer])
 
-  const districts = form.region ? (DISTRICT_OPTIONS[form.region] ?? []) : []
+  const region = form.region
+
+  // Region/district/crop lists are this screen's own, so they override the
+  // generic runtime sources rather than coming from useDynamicFieldOptions.
+  const editOptions = useMemo(() => ({
+    region:      REGION_OPTIONS,
+    district:    region ? (DISTRICT_OPTIONS[region] ?? []) : [],
+    primaryCrop: CROP_OPTIONS,
+  }), [region, CROP_OPTIONS])
 
   function setField<K extends keyof EditFarmerForm>(k: K, v: string) {
     setForm(prev => {
@@ -1023,6 +615,10 @@ function FarmerSheet({
       if (k === 'region') n.district = ''
       return n
     })
+  }
+
+  function setValue(k: string, v: unknown) {
+    setField(k as keyof EditFarmerForm, String(v))
   }
 
   async function handleSave() {
@@ -1082,43 +678,18 @@ function FarmerSheet({
             </div>
           )}
 
-          <InputTemplate label="FULL NAME" isRequired placeholder="Ama Mensah"
-            value={form.fullName} onChange={e => setField('fullName', e.target.value)} />
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="PHONE" isRequired placeholder="0221234567"
-              value={form.phone} onChange={e => setField('phone', e.target.value)} />
-            <InputTemplate label="NATIONAL ID" isRequired placeholder="GHA-XXXXXXXXX-X"
-              value={form.nationalId} onChange={e => setField('nationalId', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="DATE OF BIRTH" type="date"
-              value={form.dateOfBirth} onChange={e => setField('dateOfBirth', e.target.value)} />
-            <SelectTemplate label="GENDER"
-              options={[{ value: '', label: 'Select gender' }, ...GENDER_OPTIONS]}
-              value={form.gender} onChange={e => setField('gender', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <SelectTemplate label="REGION" isRequired
-              options={[{ value: '', label: 'Select region' }, ...REGION_OPTIONS]}
-              value={form.region} onChange={e => setField('region', e.target.value)} />
-            <SelectTemplate label="DISTRICT" isRequired
-              options={[{ value: '', label: form.region ? 'Select district' : 'Select region first' }, ...districts]}
-              value={form.district} onChange={e => setField('district', e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <InputTemplate label="COMMUNITY" placeholder="Community"
-              value={form.community} onChange={e => setField('community', e.target.value)} />
-            <SelectTemplate label="PRIMARY CROP" isRequired
-              options={[{ value: '', label: 'Select crop' }, ...CROP_OPTIONS]}
-              value={form.primaryCrop} onChange={e => setField('primaryCrop', e.target.value)} />
-          </div>
-
-          <InputTemplate label="FARM SIZE (HA)" type="number" placeholder="2.5"
-            value={form.farmSize} onChange={e => setField('farmSize', e.target.value)} />
+          {editStep && (
+            <DynamicFormRenderer
+              columns={2}
+              form={config.form}
+              stepId={editStep.id}
+              values={values}
+              onChange={setValue}
+              optionsOverride={editOptions}
+              labelVariant="compact"
+              placeholders={{ district: form.region ? 'Select district' : 'Select region first' }}
+            />
+          )}
         </>
       ) : (
         <>

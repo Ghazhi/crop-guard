@@ -1,7 +1,7 @@
 'use client'
 
 import { usePersistedState } from '@/lib/usePersistedState'
-import { Settings2, User, Users, Palette, GitBranch, Building2, Zap, Lightbulb } from 'lucide-react'
+import { Settings2, User, Users, Palette, GitBranch, Building2, Zap, Lightbulb, LayoutTemplate } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MyProfileTab } from './MyProfileTab'
 import { UserManagementTab } from './UserManagementTab'
@@ -10,14 +10,16 @@ import { ActivitiesShell } from './activities/ActivitiesShell'
 import { BrandingConfigShell } from './branding/BrandingConfigShell'
 import { WorkflowStagesSection } from './workflow/WorkflowStagesSection'
 import { AdvisoryConfigShell } from './advisory/AdvisoryConfigShell'
+import { FormsConfigSection } from './forms/FormsConfigSection'
 
-type ConfigTab = 'profile' | 'users' | 'organizations' | 'activities' | 'branding' | 'workflow' | 'advisory'
+type ConfigTab = 'profile' | 'users' | 'organizations' | 'activities' | 'forms' | 'branding' | 'workflow' | 'advisory'
 
 const CONFIG_TABS: { id: ConfigTab; Icon: React.ElementType; label: string }[] = [
   { id: 'profile',       Icon: User,       label: 'My Profile' },
   { id: 'users',         Icon: Users,      label: 'User Management' },
   { id: 'organizations', Icon: Building2,  label: 'Organizations' },
   { id: 'activities',    Icon: Zap,        label: 'Activities' },
+  { id: 'forms',         Icon: LayoutTemplate, label: 'Forms' },
   { id: 'branding',      Icon: Palette,    label: 'Branding' },
   { id: 'workflow',      Icon: GitBranch,  label: 'Workflow Stages' },
   { id: 'advisory',      Icon: Lightbulb,  label: 'Advisory' },
@@ -62,6 +64,7 @@ export function Main() {
       {tab === 'users' && <UserManagementTab />}
       {tab === 'organizations' && <OrganizationsSection />}
       {tab === 'activities' && <ActivitiesShell />}
+      {tab === 'forms' && <FormsConfigSection />}
       {tab === 'branding' && <BrandingConfigShell />}
       {tab === 'workflow' && <WorkflowStagesSection />}
       {tab === 'advisory' && <AdvisoryConfigShell />}

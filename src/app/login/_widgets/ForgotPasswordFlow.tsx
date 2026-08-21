@@ -1,13 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, CheckCircle2, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 const BRAND = '#2C5F3F'
 const DEMO_OTP = '123456'
 
 type Step = 'identify' | 'otp' | 'reset' | 'done'
+
+const STEP_LABELS: { id: Step; label: string }[] = [
+  { id: 'identify', label: 'Identify' },
+  { id: 'otp',      label: 'Verify'   },
+  { id: 'reset',    label: 'Reset'    },
+]
 
 export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
   const [step, setStep] = useState<Step>('identify')
@@ -43,22 +50,36 @@ export function ForgotPasswordFlow({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="px-6 pb-6 space-y-4">
-      {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2 pt-1">
-        {(['identify', 'otp', 'reset'] as Step[]).map((s, i) => {
-          const order = ['identify', 'otp', 'reset', 'done']
+      {/* Step indicator — spans the full panel width, connectors flexing to fill */}
+      <div className="flex items-center w-full pt-1">
+        {STEP_LABELS.map(({ id, label }, i) => {
+          const order: Step[] = ['identify', 'otp', 'reset', 'done']
           const currentIdx = order.indexOf(step)
-          const stepIdx = order.indexOf(s)
+          const stepIdx = order.indexOf(id)
           const reached = currentIdx >= stepIdx
+          const complete = currentIdx > stepIdx
           return (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-                style={{ backgroundColor: reached ? BRAND : '#e5e7eb', color: reached ? 'white' : '#9ca3af' }}
-              >
-                {i + 1}
+            <div key={id} className={cn('flex items-center', i < STEP_LABELS.length - 1 && 'flex-1')}>
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors"
+                  style={{ backgroundColor: reached ? BRAND : '#e5e7eb', color: reached ? 'white' : '#9ca3af' }}
+                >
+                  {complete ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                </div>
+                <span
+                  className="text-[10px] font-semibold whitespace-nowrap"
+                  style={{ color: reached ? BRAND : '#9ca3af' }}
+                >
+                  {label}
+                </span>
               </div>
-              {i < 2 && <div className="w-10 h-0.5" style={{ backgroundColor: reached && currentIdx > stepIdx ? BRAND : '#e5e7eb' }} />}
+              {i < STEP_LABELS.length - 1 && (
+                <div
+                  className="flex-1 h-0.5 mx-2 -mt-4 rounded-full transition-colors"
+                  style={{ backgroundColor: complete ? BRAND : '#e5e7eb' }}
+                />
+              )}
             </div>
           )
         })}

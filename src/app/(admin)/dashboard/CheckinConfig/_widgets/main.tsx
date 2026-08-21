@@ -6,6 +6,7 @@ import { MultiSelectTabsTemplate } from '@/customComponents/MultiSelectTabsTempl
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
+import { PermissionGate } from '@/customComponents/PermissionGate'
 import { MultiSelectTemplate } from '@/customComponents/MultiSelectTemplate'
 import { DatagridTemplate } from '@/customComponents/DatagridTemplate'
 import type { DatagridColumn } from '@/customComponents/DatagridTemplate'
@@ -1570,7 +1571,9 @@ export function Main() {
                   <ListChecks className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
                   <h2 className="text-base font-bold text-gray-900">Check-in Lists</h2>
                 </div>
-                <ButtonTemplate variant="primary" size="sm" label="New Check-in List" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewCheckInListSheetOpen(true)} />
+                <PermissionGate action="create">
+                  <ButtonTemplate variant="primary" size="sm" label="New Check-in List" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewCheckInListSheetOpen(true)} />
+                </PermissionGate>
               </div>
 
               {CHECKIN_LISTS.length === 0 ? (
@@ -1708,13 +1711,15 @@ export function Main() {
                   <Calendar className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
                   <h2 className="text-base font-bold text-gray-900">Cohort Schedules</h2>
                 </div>
-                <ButtonTemplate
-                  variant="primary"
-                  label="New Schedule"
-                  size="sm"
-                  leftIcon={<Plus className="w-3.5 h-3.5" />}
-                  onClick={openNewSchedule}
-                />
+                <PermissionGate action="create">
+                  <ButtonTemplate
+                    variant="primary"
+                    label="New Schedule"
+                    size="sm"
+                    leftIcon={<Plus className="w-3.5 h-3.5" />}
+                    onClick={openNewSchedule}
+                  />
+                </PermissionGate>
               </div>
 
               {schedules.length === 0 ? (
@@ -1960,7 +1965,9 @@ export function Main() {
                   <Layers className="w-4.5 h-4.5" style={{ color: 'var(--brand-forest)' }} />
                   <h2 className="text-base font-bold text-gray-900">Baseline Activities</h2>
                 </div>
-                <ButtonTemplate variant="primary" size="sm" label="New Baseline" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewBaselineSheetOpen(true)} />
+                <PermissionGate action="create">
+                  <ButtonTemplate variant="primary" size="sm" label="New Baseline" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setNewBaselineSheetOpen(true)} />
+                </PermissionGate>
               </div>
 
               {BASELINE_OPTIONS.length === 0 ? (

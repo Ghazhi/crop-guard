@@ -72,13 +72,29 @@ export function Main() {
   const [confirmPw, setConfirmPw] = useState('')
   const [showCurrentPw, setShowCurrentPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [twoFactor, setTwoFactor] = useState(false)
 
   const [saving, setSaving] = useState(false)
 
+  // the old password must be supplied before a change is accepted
+  const pwMismatch = confirmPw.length > 0 && newPw !== confirmPw
+  const pwValid = currentPw.length > 0 && newPw.length >= 6 && newPw === confirmPw
+
   const handleSave = () => {
     setSaving(true)
     setTimeout(() => setSaving(false), 1200)
+  }
+
+  const handlePasswordUpdate = () => {
+    if (!pwValid) return
+    setSaving(true)
+    setTimeout(() => {
+      setSaving(false)
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
+    }, 1200)
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -407,6 +423,7 @@ export function Main() {
                   {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-xs text-gray-400">At least 6 characters</p>
             </div>
 
             {/* Confirm password */}
@@ -414,13 +431,23 @@ export function Main() {
               <FieldLabel>Confirm New Password</FieldLabel>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showConfirmPw ? 'text' : 'password'}
                   value={confirmPw}
                   onChange={e => setConfirmPw(e.target.value)}
                   placeholder="Confirm new password"
-                  className={INPUT_CLASS}
+                  className={cn(INPUT_CLASS, 'pr-10')}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {pwMismatch && (
+                <p className="text-xs" style={{ color: 'var(--brand-red)' }}>Passwords do not match</p>
+              )}
             </div>
           </div>
 
@@ -466,7 +493,8 @@ export function Main() {
               size="sm"
               leftIcon={<Save className="w-3.5 h-3.5" />}
               isLoading={saving}
-              onClick={handleSave}
+              isDisabled={!pwValid}
+              onClick={handlePasswordUpdate}
             >
               Update Password
             </ButtonTemplate>

@@ -8,9 +8,11 @@ import {
 import { ButtonTemplate } from '@/customComponents/ButtonTemplate'
 import { BadgeTemplate } from '@/customComponents/BadgeTemplate'
 import { InputTemplate } from '@/customComponents/InputTemplate'
-import { SelectTemplate } from '@/customComponents/SelectTemplate'
-import { TextareaTemplate } from '@/customComponents/TextareaTemplate'
 import { SheetTemplate } from '@/customComponents/SheetTemplate'
+import { DynamicFormRenderer } from '@/customComponents/DynamicFormRenderer'
+import { useFormConfig } from '@/lib/useFormConfig'
+import { useDynamicFieldOptions } from '@/lib/useDynamicFieldOptions'
+import { TRAINING_BUNDLE_FORM_ID, TRAINING_WEEK_FORM_ID } from '@/dataCenter/formEngine'
 import { ConfirmModal } from '@/customComponents/ConfirmModal'
 import { FileUploadTemplate } from '@/customComponents/FileUploadTemplate'
 import { usePersistedState } from '@/lib/usePersistedState'
@@ -73,6 +75,10 @@ export function Main() {
 
   const [editingTemplate, setEditingTemplate] = useState<TrainingTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState<Partial<TrainingTemplate>>({})
+
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const weekConfig = useFormConfig(TRAINING_WEEK_FORM_ID)
+  const weekStep = weekConfig.steps[0]
 
   const [addingMaterialFor, setAddingMaterialFor] = useState<string | null>(null)
   const [materialFile, setMaterialFile] = useState<File | null>(null)
@@ -354,12 +360,21 @@ export function Main() {
           </div>
         }
       >
-        <div className="px-6 py-5 flex flex-col gap-4">
-          <InputTemplate label="Week Title" placeholder="e.g. Land Preparation" value={templateForm.weekTitle != null && isUnsetWeekTitle(templateForm.weekTitle) ? '' : (templateForm.weekTitle ?? '')} onChange={e => setTemplateForm({ ...templateForm, weekTitle: e.target.value })} />
-          <InputTemplate label="Topic" value={templateForm.topic ?? ''} onChange={e => setTemplateForm({ ...templateForm, topic: e.target.value })} />
-          <TextareaTemplate label="Description" value={templateForm.description ?? ''} onChange={e => setTemplateForm({ ...templateForm, description: e.target.value })} />
-          <TextareaTemplate label="Notes" value={templateForm.notes ?? ''} onChange={e => setTemplateForm({ ...templateForm, notes: e.target.value })} />
-        </div>
+        {weekStep && (
+          <DynamicFormRenderer
+            form={weekConfig.form}
+            stepId={weekStep.id}
+            values={{
+              // a placeholder week title reads as empty so the user types a real one
+              weekTitle: templateForm.weekTitle != null && isUnsetWeekTitle(templateForm.weekTitle) ? '' : (templateForm.weekTitle ?? ''),
+              topic: templateForm.topic ?? '',
+              description: templateForm.description ?? '',
+              notes: templateForm.notes ?? '',
+            }}
+            onChange={(k, v) => setTemplateForm({ ...templateForm, [k]: v })}
+            className="px-6 py-5"
+          />
+        )}
       </SheetTemplate>
 
       {/* Add material sheet */}
@@ -426,15 +441,36 @@ function BundleForm({
   titleError?: string
   clearTitleError?: () => void
 }) {
+  // Field list, order, labels and required-ness all come from Configuration > Forms.
+  const config = useFormConfig(TRAINING_BUNDLE_FORM_ID)
+  const step = config.steps[0]
+  const options = useDynamicFieldOptions({ extra: { cropType: CROP_OPTIONS } })
+
+  const values: Record<string, unknown> = {
+    title: form.title ?? '',
+    cropType: form.cropType ?? 'maize',
+    season: form.season ?? '',
+    totalWeeks: form.totalWeeks ?? 8,
+    description: form.description ?? '',
+  }
+
+  function set(key: string, val: unknown) {
+    if (key === 'title') clearTitleError?.()
+    setForm({ ...form, [key]: key === 'totalWeeks' ? Number(val) : val })
+  }
+
+  if (!step) return null
   return (
-    <div className="px-6 py-5 flex flex-col gap-4">
-      <InputTemplate label="Title" isRequired error={titleError} value={form.title ?? ''} onChange={e => { setForm({ ...form, title: e.target.value }); clearTitleError?.() }} />
-      <div className="grid grid-cols-2 gap-3">
-        <SelectTemplate label="Crop" options={CROP_OPTIONS} value={form.cropType ?? 'maize'} onChange={e => setForm({ ...form, cropType: e.target.value as CropType })} />
-        <InputTemplate label="Season" placeholder="e.g. 2026A" value={form.season ?? ''} onChange={e => setForm({ ...form, season: e.target.value })} />
-      </div>
-      <InputTemplate label="Total Weeks" type="number" value={form.totalWeeks ?? 8} onChange={e => setForm({ ...form, totalWeeks: Number(e.target.value) })} />
-      <TextareaTemplate label="Description" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} />
+    <div className="px-6 py-5">
+      <DynamicFormRenderer
+        form={config.form}
+        stepId={step.id}
+        values={values}
+        onChange={set}
+        optionsOverride={options}
+        columns={2}
+      />
+      {titleError && <p className="text-xs mt-1" style={{ color: 'var(--brand-red)' }}>{titleError}</p>}
     </div>
   )
 }
